@@ -36,9 +36,66 @@ To build SWE-bench from source, follow these steps:
 You can download the SWE-bench dataset from [source](https://drive.google.com/uc?export=download&id=164g55i3_B78F6EphCZGtgSrd2GneFyRM) (`.json` file) or from [HuggingFace](https://huggingface.co/datasets/princeton-nlp/SWE-bench)
 
 Find out more about how to use SWE-bench, such as how to...
-* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/README.md) models against SWE-bench
-* Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/README.md) on your own repositories
-* Get model generations with our [inference pipeline](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) and SWE-Llama [13B](https://huggingface.co/princeton-nlp/SWE-Llama-13b) and [7B](https://huggingface.co/princeton-nlp/SWE-Llama-7b) (Parameter Efficient Alternatives: [13B](https://huggingface.co/princeton-nlp/SWE-Llama-13b-peft) and [7B](https://huggingface.co/princeton-nlp/SWE-Llama-7b-peft)).
+* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench
+* Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories
+* Train your own models on our pre-tokenized datasets or run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on SWE-Llama models directly.
+
+<div style="display: flex; flex-direction: row; justify-content: center;">
+  <div style="display: flex; flex-direction: column; margin-right: 0.5em;">
+    <a href="https://huggingface.co/datasets/princeton-nlp/SWE-bench">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🤗 SWE-bench
+      </button>
+    </a>
+    <a href="https://huggingface.co/datasets/princeton-nlp/SWE-bench_oracle_llama">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🤗 "Oracle" Retrieval (Llama tokenized)
+      </button>
+    </a>
+    <a href="https://huggingface.co/datasets/princeton-nlp/SWE-bench_oracle_cl100k">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🤗 "Oracle" Retrieval (cl100k tokenized)
+      </button>
+    </a>
+    <a href="https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_13k_cl100k">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🤗 BM25 Retrieval 13k (cl100k tokenized)
+      </button>
+    </a>
+    <a href="https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_27k_cl100k">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🤗 BM25 Retrieval 27k (cl100k tokenized)
+      </button>
+    </a>
+  </div>
+  <div style="display: flex; flex-direction: column; margin-left: 0.5em;">
+    <a href="https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_50k_llama">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🤗 BM25 Retrieval 50k (Llama tokenized)
+      </button>
+    </a>
+    <a href="https://huggingface.co/princeton-nlp/SWE-Llama-13b">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🦙 SWE-Llama 13b
+      </button>
+    </a>
+    <a href="https://huggingface.co/princeton-nlp/SWE-Llama-13b-peft">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🦙 SWE-Llama 13b (PEFT)
+      </button>
+    </a>
+    <a href="https://huggingface.co/princeton-nlp/SWE-Llama-7b">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🦙 SWE-Llama 7b
+      </button>
+    </a>
+    <a href="https://huggingface.co/princeton-nlp/SWE-Llama-7b-peft">
+      <button style="border-radius:0.5em;background-color:transparent;border:#1697e2 2px solid;margin: 0.2em 0;color:#1697e2;width:100%;cursor:pointer;">
+        🦙 SWE-Llama 7b (PEFT)
+      </button>
+    </a>
+  </div>
+</div>
 
 ## 💫 Contributions
 We would love to hear from the broader NLP, Machine Learning, and Software Engineering research communities, and we welcome any contributions, pull requests, or issues!
