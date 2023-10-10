@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/princeton-nlp/Llamao">
-    <img src="assets/swellama_banner.png" width="50%" alt="swellama logo" />
+    <img src="assets/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 

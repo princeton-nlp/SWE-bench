@@ -13,7 +13,7 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )
-from datasets import load_from_disk, concatenate_datasets
+from datasets import load_dataset, concatenate_datasets
 from make_datasets.utils import extract_diff
 from argparse import ArgumentParser
 import logging
@@ -241,7 +241,7 @@ def parse_model_args(model_args):
 
 
 def main(
-    dataset_path,
+    dataset_name,
     model_name_or_path,
     shard_id,
     num_shards,
@@ -259,7 +259,7 @@ def main(
         model_nickname = Path(model_name_or_path).parent.name
     else:
         model_nickname = Path(model_name_or_path).name
-    output_file = f"{model_nickname}__{Path(dataset_path).name}"
+    output_file = f"{model_nickname}__{dataset_name.split('/')[-1]}"
     if shard_id is not None and num_shards is not None:
         output_file += f"__shard-{shard_id}__num_shards-{num_shards}"
     output_file = Path(output_dir, output_file + ".jsonl")
@@ -272,7 +272,7 @@ def main(
                 instance_id = data["instance_id"]
                 existing_ids.add(instance_id)
     logger.info(f"Read {len(existing_ids)} already completed ids")
-    dataset = load_from_disk(dataset_path)
+    dataset = load_dataset(dataset_name)
     load_splits = [split for split in dataset.keys() if 'test' in split]
     dataset = concatenate_datasets([dataset[split] for split in load_splits])
     if 'input_ids' in dataset.features:
@@ -304,10 +304,10 @@ def main(
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        "--dataset_path",
+        "--dataset_name",
         type=str,
         required=True,
-        help="Path to the directory containing a datasets dataset",
+        help="HuggingFace dataset name, with pre-tokenized inputs",
     )
     parser.add_argument(
         "--model_name_or_path",
