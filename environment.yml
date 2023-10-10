@@ -1,0 +1,20 @@
+name: swe-bench
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - beautifulsoup4
+    - chardet
+    - ghapi
+    - GitPython
+    - jupyter
+    - matplotlib
+    - pandas
+    - python-dotenv
+    - requests
+    - rich
+    - seaborn
+    - torch>=2.1
+    - flash-attn>=2.1
+    - transformers>=4.34.0
+  - conda-forge::gh
