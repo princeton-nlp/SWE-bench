@@ -58,11 +58,13 @@ Contact person: [Carlos E. Jimenez](http://www.carlosejimenez.com/) and [John Ya
 ## ✍️ Citation
 If you find our work helpful, please use the following citations.
 ```
-@inproceedings{jimenez2023swebench,
-  title = {SWE-bench: Can Language Models Resolve Real-World GitHub Issues?},
-  author = {Jimenez, Carlos E. and Yang, John and Wettig, Alexander and Yao, Shunyu and Pei, Kexin and Press, Ofir and Narasimhan, Karthik},
-  booktitle = {ArXiv},
-  year = {2023},
+@misc{jimenez2023swebench,
+      title={SWE-bench: Can Language Models Resolve Real-World GitHub Issues?}, 
+      author={Carlos E. Jimenez and John Yang and Alexander Wettig and Shunyu Yao and Kexin Pei and Ofir Press and Karthik Narasimhan},
+      year={2023},
+      eprint={2310.06770},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
 
