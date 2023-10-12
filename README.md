@@ -6,7 +6,7 @@
 
 ---
 <p align="center">
-Companion repository containing the code and data for our paper "<a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>".
+Code and data for paper "<a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>".
     </br>
     </br>
     <a href="https://www.python.org/">
