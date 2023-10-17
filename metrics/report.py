@@ -26,13 +26,18 @@ from typing import Dict, List
 ### MARK - Eval Report Generation
 
 
-def get_eval_report(eval_sm: Dict, gold_results: Dict) -> Dict:
+def get_eval_report(
+    eval_sm: Dict,
+    gold_results: Dict,
+    calculate_to_fail: bool = False
+) -> Dict:
     """
     Create a report based on failure/pass change from gold results to eval results.
 
     Args:
         eval_sm (dict): evaluation status map
         gold_results (dict): gold results
+        calculate_to_fail (bool): whether to calculate metrics for "x to fail" tests
     Returns:
         report (dict): report of metrics
 
@@ -66,26 +71,8 @@ def get_eval_report(eval_sm: Dict, gold_results: Dict) -> Dict:
             p2p_success.append(test_case)
         elif test_failed(test_case, eval_sm):
             p2p_failure.append(test_case)
-
-    # Calculate "extra credit" metrics
-    f2f_success = []
-    f2f_failure = []
-    for test_case in gold_results[FAIL_TO_FAIL]:
-        if test_passed(test_case, eval_sm):
-            f2f_success.append(test_case)
-        elif test_failed(test_case, eval_sm):
-            f2f_failure.append(test_case)
-
-    # Calculate not considered metrics
-    p2f_success = []
-    p2f_failure = []
-    for test_case in gold_results[PASS_TO_FAIL]:
-        if test_passed(test_case, eval_sm):
-            p2f_success.append(test_case)
-        elif test_failed(test_case, eval_sm):
-            p2f_failure.append(test_case)
-
-    return {
+    
+    results = {
         FAIL_TO_PASS: {
             "success": f2p_success,
             "failure": f2p_failure,
@@ -93,7 +80,29 @@ def get_eval_report(eval_sm: Dict, gold_results: Dict) -> Dict:
         PASS_TO_PASS: {
             "success": p2p_success,
             "failure": p2p_failure,
-        },
+        }
+    }
+
+    f2f_success = []
+    f2f_failure = []
+    p2f_success = []
+    p2f_failure = []
+    if calculate_to_fail:
+        # Calculate "extra credit" metrics
+        for test_case in gold_results[FAIL_TO_FAIL]:
+            if test_passed(test_case, eval_sm):
+                f2f_success.append(test_case)
+            elif test_failed(test_case, eval_sm):
+                f2f_failure.append(test_case)
+
+        # Calculate not considered metrics
+        for test_case in gold_results[PASS_TO_FAIL]:
+            if test_passed(test_case, eval_sm):
+                p2f_success.append(test_case)
+            elif test_failed(test_case, eval_sm):
+                p2f_failure.append(test_case)
+
+    results.update({
         FAIL_TO_FAIL: {
             "success": f2f_success,
             "failure": f2f_failure,
@@ -101,13 +110,14 @@ def get_eval_report(eval_sm: Dict, gold_results: Dict) -> Dict:
         PASS_TO_FAIL: {
             "success": p2f_success,
             "failure": p2f_failure,
-        },
-    }
+        }
+    })
+    return results
 
 
 def get_eval_reports_for_logs(
     eval_logs: List,
-    eval_refs_path: str,
+    swe_bench_path: str,
     callback: callable = None,
     verbose: bool = False,
 ) -> (Dict, Dict):
@@ -116,7 +126,7 @@ def get_eval_reports_for_logs(
 
     Args:
         eval_logs (list): list of paths to evaluation logs
-        eval_refs_path (str): path to eval references (swe-bench-eval-refs.json)
+        swe_bench_path (str): path to eval task instances (swe-bench.json)
         callback (callable): callback function for evaluation logs
         verbose (bool): whether to print verbose output
     Returns:
@@ -125,7 +135,8 @@ def get_eval_reports_for_logs(
     """
     reports_patch_success = {}
     reports_patch_failure = {}
-    eval_refs = json.load(open(eval_refs_path, "r"))
+    eval_refs = json.load(open(swe_bench_path, "r"))
+    eval_refs = {t['instance_id']: t for t in eval_refs}
 
     for eval_log in eval_logs:
         # Remove task instances that do not satisfy callback
@@ -161,7 +172,7 @@ def get_eval_reports_for_logs(
 
 
 def get_eval_reports_for_dir(
-    eval_dir: str, eval_refs_path: str, callback: callable = None, verbose=False
+    eval_dir: str, swe_bench_path: str, callback: callable = None, verbose=False
 ) -> Dict:
     """
     Wrapper for getting eval report for a directory of evaluation logs.
@@ -173,7 +184,7 @@ def get_eval_reports_for_dir(
     if not os.path.exists(eval_dir):
         raise ValueError(f"Path {eval_dir} does not exist")
     logs_list = [x for x in glob.glob(os.path.join(eval_dir, "*.log"))]
-    return get_eval_reports_for_logs(logs_list, eval_refs_path, callback, verbose)
+    return get_eval_reports_for_logs(logs_list, swe_bench_path, callback, verbose)
 
 
 ### MARK - Model Evaluation Summary
@@ -182,7 +193,7 @@ def get_eval_reports_for_dir(
 def get_model_eval_summary(
     predicts_path: str,
     eval_dir: str,
-    eval_refs_path: str,
+    swe_bench_path: str,
     repo: str = None,
 ):
     """
@@ -191,7 +202,7 @@ def get_model_eval_summary(
     Args:
         predicts_path (str): path to predictions file
         eval_dir (str): path to directory of evaluation logs
-        eval_refs_path (str): path to eval references (swe-bench-eval-refs.json)
+        swe_bench_path (str): path to eval references (swe-bench-eval-refs.json)
         repo (str): if given, repo name to limit evaluation to
     """
     # Load Predictions
@@ -209,7 +220,7 @@ def get_model_eval_summary(
 
     # Get reports
     reports_patch_success, reports_patch_failure = get_eval_reports_for_dir(
-        eval_dir, eval_refs_path, callback=criteria_eval_sm, verbose=False
+        eval_dir, swe_bench_path, callback=criteria_eval_sm, verbose=False
     )
 
     # Print reports for different granularities of patch success/failure
@@ -246,7 +257,7 @@ def get_model_eval_summary(
 
 
 def get_model_report(
-    model: str, predict_path: str, gold_refs_path: str, log_dir_path: str
+    model: str, predict_path: str, swe_bench_path: str, log_dir_path: str
 ):
     """
     Generate a report of model evaluation results from predictions, task instances,
@@ -255,12 +266,14 @@ def get_model_report(
     Args:
         model (str): model name
         predict_path (str): path to predictions file
-        gold_refs_path (str): path to eval references (swe-bench-eval-refs.json)
+        swe_bench_path (str): path to eval references (swe-bench-eval-refs.json)
         log_dir_path (str): path to directory of evaluation logs
     Returns:
         report_map (dict): map of repo to report
     """
-    gold_refs = json.load(open(gold_refs_path, "r"))
+    eval_refs = json.load(open(swe_bench_path, "r"))
+    eval_refs = [{key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]} for t in eval_refs]
+    eval_refs = {t['instance_id']: t for t in eval_refs}
 
     # Get predictions
     predictions = []
@@ -303,7 +316,7 @@ def get_model_report(
             continue
         report_map[repo]["applied"].append(p['instance_id'])
 
-        report = get_eval_report(eval_sm, gold_refs[p["instance_id"]])
+        report = get_eval_report(eval_sm, eval_refs[p["instance_id"]])
         if get_resolution_status(report) == "RESOLVED_FULL":
             report_map[repo]["resolved"].append(p['instance_id'])
 
