@@ -13,7 +13,7 @@ from tenacity import (
     stop_after_attempt,
     wait_random_exponential,
 )
-from datasets import load_dataset, concatenate_datasets
+from datasets import load_dataset, load_from_disk
 from make_datasets.utils import extract_diff
 from argparse import ArgumentParser
 import logging
@@ -22,34 +22,43 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
 
-
+# The maximum number of tokens that can be processed by each model.
 MODEL_LIMITS = {
-    'gpt-3.5-turbo-16k-0613': 16_000,
-    'gpt-4-32k-0613': 31_000,
-    'gpt-4-0613': 7_800,
+    'gpt-3.5-turbo-16k-0613': 16_385,
+    'gpt-3.5-turbo-16k': 16_385,
+    'gpt-3.5-turbo-0613': 4_097,
+    'gpt-3.5-turbo': 4_097,
+    'gpt-4-32k-0613': 32_768,
+    'gpt-4-32k': 32_768,
+    'gpt-4-0613': 8_192,
+    'gpt-4': 8_192,
 }
 
-
+# The cost per token for each model input.
 MODEL_COST_PER_INPUT = {
     'gpt-3.5-turbo-16k-0613': 0.0000015,
+    'gpt-3.5-turbo-16k': 0.0000015,
     'gpt-4-0613': 0.00003,
-    'gpt-4-32k-0613': 0.00006,
     'gpt-4': 0.00003,
-    'gpt-35-turbo': 0.0000015,
+    'gpt-4-32k-0613': 0.00006,
     'gpt-4-32k': 0.00006,
+    'gpt-35-turbo-0613': 0.0000015,
+    'gpt-35-turbo': 0.0000015,
 }
 
- 
+# The cost per token for each model output.
 MODEL_COST_PER_OUTPUT = {
     'gpt-3.5-turbo-16k-0613': 0.000002,
+    'gpt-3.5-turbo-16k': 0.000002,
     'gpt-4-0613': 0.0006,
-    'gpt-4-32k-0613': 0.00012,
     'gpt-4': 0.0006,
-    'gpt-35-turbo': 0.000002,
+    'gpt-4-32k-0613': 0.00012,
     'gpt-4-32k': 0.00012,
+    'gpt-35-turbo-0613': 0.000002,
+    'gpt-35-turbo': 0.000002,
 }
 
-
+# used for azure
 ENGINES = {
     'gpt-3.5-turbo-16k-0613': 'gpt-35-turbo-16k',
     'gpt-4-0613': 'gpt-4',
@@ -58,6 +67,15 @@ ENGINES = {
 
 
 def calc_cost(response):
+    """
+    Calculates the cost of a response from the openai API.
+
+    Args:
+    response (openai.ChatCompletion): The response from the API.
+
+    Returns:
+    float: The cost of the response.
+    """
     model_name = response.model
     input_tokens = response.usage.prompt_tokens
     output_tokens = response.usage.completion_tokens
@@ -70,7 +88,18 @@ def calc_cost(response):
 
 
 @retry(wait=wait_random_exponential(min=30, max=600), stop=stop_after_attempt(3))
-def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p):
+def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model_args):
+    """
+    Calls the openai API to generate completions for the given inputs.
+
+    Args:
+    model_name_or_path (str): The name or path of the model to use.
+    inputs (str): The inputs to generate completions for.
+    use_azure (bool): Whether to use the azure API.
+    temperature (float): The temperature to use.
+    top_p (float): The top_p to use.
+    **model_args (dict): A dictionary of model arguments.
+    """
     system_messages = inputs.split("\n", 1)[0]
     user_message = inputs.split("\n", 1)[1]
     try:
@@ -83,6 +112,7 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p):
                 ],
                 temperature=temperature,
                 top_p=top_p,
+                **model_args,
             )
         else:
             response = openai.ChatCompletion.create(
@@ -93,6 +123,7 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p):
                 ],
                 temperature=temperature,
                 top_p=top_p,
+                **model_args,
             )
         cost = calc_cost(response)
         return response, cost
@@ -111,7 +142,20 @@ def openai_inference(
     existing_ids,
     max_cost,
 ):
+    """
+    Runs inference on a dataset using the openai API.
+
+    Args:
+    test_dataset (datasets.Dataset): The dataset to run inference on.
+    model_name_or_path (str): The name or path of the model to use.
+    output_file (str): The path to the output file.
+    model_args (dict): A dictionary of model arguments.
+    existing_ids (set): A set of ids that have already been processed.
+    max_cost (float): The maximum cost to spend on inference.
+    """
     openai_key = os.environ.get("OPENAI_API_KEY", None)
+    if openai_key is None:
+        raise ValueError("Must provide an api key. Expected in OPENAI_API_KEY environment variable.")
     openai.api_key = openai_key
     print(f"Using OpenAI key {'*' * max(0, len(openai_key)-5) + openai_key[-5:]}")
 
@@ -143,14 +187,10 @@ def openai_inference(
                 output_dict["full_output"] = None
                 output_dict["model_patch"] = None
             else:
-                if model_name_or_path == 'gpt-4-32k-0613' and len(datum['input_ids']) <= 6000:
-                    response, cost = call_chat('gpt-4-0613', output_dict["text"], use_azure, temperature, top_p)
-                    completion = response.choices[0]['message']['content']
-                else:
-                    response, cost = call_chat(
-                        output_dict["model_name_or_path"], output_dict["text"], use_azure, temperature, top_p
-                    )
-                    completion = response.choices[0]['message']['content']
+                response, cost = call_chat(
+                    output_dict["model_name_or_path"], output_dict["text"], use_azure, temperature, top_p
+                )
+                completion = response.choices[0]['message']['content']
                 total_cost += cost
                 print(f"Total Cost: {total_cost:.2f}")
                 output_dict["full_output"] = completion
@@ -162,7 +202,18 @@ def openai_inference(
 
 
 @retry(wait=wait_random_exponential(min=60, max=600), stop=stop_after_attempt(6))
-def call_anthropic(inputs, anthropic, model_name_or_path, temperature, top_p):
+def call_anthropic(inputs, anthropic, model_name_or_path, temperature, top_p, **model_args):
+    """
+    Calls the anthropic API to generate completions for the given inputs.
+
+    Args:
+    inputs (str): The inputs to generate completions for.
+    anthropic (Anthropic): The anthropic API object.
+    model_name_or_path (str): The name or path of the model to use.
+    temperature (float): The temperature to use.
+    top_p (float): The top_p to use.
+    model_args (dict): A dictionary of model arguments.
+    """
     try:
         completion = anthropic.completions.create(
             model=model_name_or_path,
@@ -170,6 +221,7 @@ def call_anthropic(inputs, anthropic, model_name_or_path, temperature, top_p):
             prompt=inputs,
             temperature=temperature,
             top_p=top_p,
+            **model_args,
         )
         return completion
     except Exception as e:
@@ -188,14 +240,27 @@ def anthropic_inference(
     existing_ids,
     max_cost,
 ):
-    api_key = model_args.pop(
-        "anthropic_api_key", os.environ.get("ANTHROPIC_API_KEY", None)
-    )
+    """
+    Runs inference on a dataset using the anthropic API.
+
+    Args:
+    test_dataset (datasets.Dataset): The dataset to run inference on.
+    model_name_or_path (str): The name or path of the model to use.
+    output_file (str): The path to the output file.
+    model_args (dict): A dictionary of model arguments.
+    existing_ids (set): A set of ids that have already been processed.
+    max_cost (float): The maximum cost to spend on inference.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", None)
+    if api_key is None:
+        raise ValueError("Must provide an api key. Expected in ANTHROPIC_API_KEY environment variable.")
+    if max_cost is not None:
+        raise ValueError("max_cost not supported for anthropic yet")
+    print(f"Using Anthropic key {'*' * max(0, len(api_key)-5) + api_key[-5:]}")
     anthropic = Anthropic(api_key=api_key)
     temperature = model_args.pop('temperature', 0.2)
     top_p = model_args.pop('top_p', 0.95 if temperature > 0 else 1)
     print(f'Using temperature={temperature}, top_p={top_p}')
-
     basic_args = {
         "model_name_or_path": model_name_or_path,
     }
@@ -207,13 +272,22 @@ def anthropic_inference(
             output_dict = {"instance_id": instance_id}
             output_dict.update(basic_args)
             output_dict["text_inputs"] = f"{HUMAN_PROMPT} {datum['text']}\n\n{AI_PROMPT}"
-            completion = call_anthropic(output_dict["text_inputs"], anthropic, model_name_or_path, temperature, top_p)
+            completion = call_anthropic(output_dict["text_inputs"], anthropic, model_name_or_path, temperature, top_p, **model_args)
             output_dict["full_output"] = completion.completion
             output_dict["model_patch"] = extract_diff(completion.completion)
             print(json.dumps(output_dict), file=f, flush=True)
 
 
 def parse_model_args(model_args):
+    """
+    Parses a string of model arguments and returns a dictionary of keyword arguments.
+
+    Args:
+        model_args (str): A string of comma-separated key-value pairs representing model arguments.
+
+    Returns:
+        dict: A dictionary of keyword arguments parsed from the input string.
+    """
     kwargs = dict()
     if model_args is not None:
         for arg in model_args.split(","):
@@ -241,7 +315,8 @@ def parse_model_args(model_args):
 
 
 def main(
-    dataset_name,
+    dataset_name_or_path,
+    split,
     model_name_or_path,
     shard_id,
     num_shards,
@@ -259,7 +334,7 @@ def main(
         model_nickname = Path(model_name_or_path).parent.name
     else:
         model_nickname = Path(model_name_or_path).name
-    output_file = f"{model_nickname}__{dataset_name.split('/')[-1]}"
+    output_file = f"{model_nickname}__{dataset_name_or_path.split('/')[-1]}__{split}"
     if shard_id is not None and num_shards is not None:
         output_file += f"__shard-{shard_id}__num_shards-{num_shards}"
     output_file = Path(output_dir, output_file + ".jsonl")
@@ -271,17 +346,21 @@ def main(
                 data = json.loads(line)
                 instance_id = data["instance_id"]
                 existing_ids.add(instance_id)
-    logger.info(f"Read {len(existing_ids)} already completed ids")
-    dataset = load_dataset(dataset_name)
-    load_splits = [split for split in dataset.keys() if 'test' in split]
-    dataset = concatenate_datasets([dataset[split] for split in load_splits])
+    logger.info(f"Read {len(existing_ids)} already completed ids from {output_file}")
+    if Path(dataset_name_or_path).exists():
+        dataset = load_from_disk(dataset_name_or_path)
+    else:
+        dataset = load_dataset(dataset_name_or_path)
+    if not split in dataset:
+        raise ValueError(f"Invalid split {split} for dataset {dataset_name_or_path}")
+    dataset = dataset[split]
     if 'input_ids' in dataset.features:
         lens = np.array(list(map(len, dataset['input_ids'])))
     else:
         lens = np.array(list(map(len, dataset['text'])))
     dataset = dataset.select(np.argsort(lens))
     if len(existing_ids) > 0:
-        dataset = dataset.filter(lambda x: x['instance_id'] not in existing_ids, desc="Filtering existing ids")
+        dataset = dataset.filter(lambda x: x['instance_id'] not in existing_ids, desc="Filtering out existing ids")
     if shard_id is not None and num_shards is not None:
         dataset = dataset.shard(num_shards, shard_id, contiguous=True)
     inference_args = {
@@ -304,10 +383,16 @@ def main(
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        "--dataset_name",
+        "--dataset_name_or_path",
         type=str,
         required=True,
-        help="HuggingFace dataset name, with pre-tokenized inputs",
+        help="HuggingFace dataset name or local path, with pre-tokenized inputs",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="test",
+        help="Dataset split to use",
     )
     parser.add_argument(
         "--model_name_or_path",
