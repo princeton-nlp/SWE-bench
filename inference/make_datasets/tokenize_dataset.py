@@ -1,12 +1,13 @@
 """Provided a source (raw) directory and the final (eval) directory, create a training split by removing all instances that are in the final directory from the source directory.
 """
 
+import os
 import logging
 from argparse import ArgumentParser
 from pathlib import Path
 
 import tiktoken
-from datasets import disable_caching, load_from_disk
+from datasets import disable_caching, load_from_disk, load_dataset
 from tqdm.auto import tqdm
 from transformers import LlamaTokenizer
 
@@ -93,27 +94,35 @@ def add_columns_from_dict(dataset, dict_columns):
 
 
 def main(
-    dataset_path,
+    dataset_name_or_path,
     output_dir,
-    max_length,
     tokenizer_name,
     num_proc,
-    no_map,
+    push_to_hub_user,
 ):
+    if push_to_hub_user is not None:
+        hub_token = os.environ.get("HUGGING_FACE_HUB_TOKEN", None)
+        if hub_token is None:
+            raise ValueError("Must provide HUGGING_FACE_HUB_TOKEN to push to the Hub")
     if not Path(output_dir).exists():
         Path(output_dir).mkdir(parents=True)
 
     if tokenizer_name is not None:
         tokenizer, tokenizer_func = TOKENIZER_FUNCS[tokenizer_name]
         eos_token = getattr(tokenizer, "eos_token", "")
+        if num_proc > 0 and tokenizer_name == 'cl100k':
+            logger.warning('cl100k tokenizer does not support multiprocessing. Ignoring num_proc')
+            num_proc = 0
 
-    dataset = load_from_disk(dataset_path)
-    dataset = dataset.filter(lambda x: len(x["text"]) <= 5_000_000)
-    for split in ["train", "validation"]:
-        if split not in dataset:
-            logger.warning(f"Split {split} not in dataset. Skipping")
+    if Path(dataset_name_or_path).exists():
+        dataset = load_from_disk(dataset_name_or_path)
+    else:
+        dataset = load_dataset(dataset_name_or_path)
+    dataset = dataset.filter(lambda x: len(x["text"]) <= 5_000_000)  # filter out superlong instances
+    for split in dataset.keys():
+        if split == "test":
             continue
-        if not no_map:
+        if num_proc > 0:
             dataset[split] = dataset[split].map(
                 lambda instance: extract_fields(
                     instance,
@@ -140,11 +149,11 @@ def main(
                 )
             )
             dataset[split] = add_columns_from_dict(dataset[split], new_values)
-    for split in ["minitest", "test"]:
+    for split in ["test"]:
         if split not in dataset:
             logger.warning(f"Split {split} not in dataset. Skipping")
             continue
-        if not no_map:
+        if num_proc > 0:
             dataset[split] = dataset[split].map(
                 lambda instance: extract_test_fields(
                     instance,
@@ -171,33 +180,28 @@ def main(
                 )
             )
             dataset[split] = add_columns_from_dict(dataset[split], new_values)
-    if max_length is not None:
-        for split in ["train", "validation"]:
-            if split not in dataset:
-                logger.warning(f"Split {split} not in dataset. Skipping")
-                continue
-        logger.warning(f"Filtering {split} to max length {max_length}")
-        dataset[split] = dataset[split].filter(
-            lambda instance: len(instance["input_ids"]) <= max_length,
-            num_proc=num_proc,
-            batched=False,
-        )
-    output_file = Path(dataset_path).name + f"__tok-{tokenizer_name}"
-    if max_length is not None:
-        output_file += f"__max-{max_length}"
-    output_file = Path(output_dir) / output_file
-    logger.warning(f"Saving to {output_file}")
-    dataset.save_to_disk(output_file)
+    output_file = Path(dataset_name_or_path).name + f"__tok-{tokenizer_name}"
+    if push_to_hub_user is not None:
+        output_file = f"{push_to_hub_user}/{output_file}"
+        dataset.push_to_hub(output_file, use_auth_token=hub_token)
+    else:
+        output_file = Path(output_dir) / output_file
+        dataset.save_to_disk(output_file)
+    logger.warning(f"Saved to {output_file}")
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--dataset_path", type=str, required=True)
+    parser.add_argument("--dataset_name_or_path", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
-    parser.add_argument("--max_length", type=int, default=None)
     parser.add_argument(
         "--tokenizer_name", type=str, required=True, choices=TOKENIZER_FUNCS.keys()
     )
-    parser.add_argument("--num_proc", type=int, default=5)
-    parser.add_argument("--no_map", type=bool, default=False)
+    parser.add_argument("--num_proc", type=int, default=0)
+    parser.add_argument(
+        "--push_to_hub_user",
+        type=str,
+        default=None,
+        help="Push the dataset to the Hub user under this name.",
+    )
     main(**vars(parser.parse_args()))

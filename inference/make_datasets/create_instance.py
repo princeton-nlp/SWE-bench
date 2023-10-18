@@ -163,37 +163,6 @@ def make_code_text_edits_only(files_dict, patch, add_line_numbers=True):
     return all_text.strip("\n")
 
 
-def prompt_style_1(instance):
-    premise = "You will be provided with a partial code base and an issue statement explaining a problem to resolve."
-    readmes_text = make_code_text(instance["readmes"])
-    code_text = make_code_text(instance["file_contents"])
-    instructions = (
-        f"Now I need you to help solve this issue by generating a single patch file that I "
-        + f"can apply directly to this repository using git apply. Please respond with a sing"
-        + f"le patch file in the following format exactly."
-    )
-    problem_statement = instance["problem_statement"]
-    final_text = [
-        premise,
-        "",
-        "<issue>",
-        problem_statement,
-        "</issue>",
-        "",
-        "<code>",
-        readmes_text,
-        code_text,
-        "</code>",
-        "",
-        instructions,
-        "<patch>",
-        PATCH_EXAMPLE,
-        "</patch>",
-    ]
-    final_text = "\n".join(final_text)
-    return final_text
-
-
 def prompt_style_2(instance):
     premise = "You will be provided with a partial code base and an issue statement explaining a problem to resolve."
     readmes_text = make_code_text(instance["readmes"])
@@ -288,7 +257,7 @@ def prompt_style_3(instance):
     return final_text
 
 
-def prompt_style_4(instance):
+def full_file_gen(instance):
     premise = "You will be provided with a partial code base and an issue statement explaining a problem to resolve."
     readmes_text = make_code_text(instance["readmes"], add_line_numbers=False)
     code_text = make_code_text(instance["file_contents"], add_line_numbers=False)
@@ -326,15 +295,17 @@ def ingest_files(filenames):
 
 
 PROMPT_FUNCTIONS = {
-    "style-1": prompt_style_1,
     "style-2": prompt_style_2,
     "style-3": prompt_style_3,
-    "style-4": prompt_style_4,
+    "full_file_gen": full_file_gen,
     "style-2-edits-only": prompt_style_2_edits_only,
 }
 
 
 def add_retrieval_results(input_instances, retrieval_dir, k, file_source):
+    """
+    Adds retrieval results to input_instances in-place
+    """
     retrieval_results = dict()
     for instance_id, instance in tqdm(
         input_instances.items(),
@@ -357,15 +328,16 @@ def add_retrieval_results(input_instances, retrieval_dir, k, file_source):
         ][:k]
 
 
-def get_oracle_filenames(instance, python_only=True):
+def get_oracle_filenames(instance):
+    """
+    Returns the filenames that are changed in the patch
+    """
     source_files = {
         patch_file.source_file.split("a/", 1)[-1]
         for patch_file in unidiff.PatchSet(instance["patch"])
     }
     gold_docs = set()
     for source_file in source_files:
-        if python_only and not source_file.endswith(".py"):
-            continue
         gold_docs.add(source_file)
     return gold_docs
 
@@ -374,12 +346,10 @@ def add_text_inputs(
     input_instances,
     retrieval_dir,
     k,
-    github_token,
     prompt_style,
     file_source,
     max_context_len=None,
     tokenizer_name=None,
-    python_only=True,
     verbose=False,
 ):
     """Adds text inputs context for prediction in-place.
@@ -388,10 +358,8 @@ def add_text_inputs(
     - input_instances: dictionary with unprocessed input instances.
     - retrieval_dir: if using retrieval method for file_contents, specify retrieval_dir to add retrieval results
     - k: if using retrieval, specifies the maximum number of files to included within context
-    - github_token: github token to use for cloning private directories
     - prompt_style: specify the function to generate instructions and prompt provided an instance (from PROMPT_FUNCTIONS)
     - file_source: where to collect file_contents (e.g. oracle or bm25)
-    - python_only: set to True for evaluation but false for training
     - verbose: set ContextManager verbose to True
     """
     if max_context_len is not None:
@@ -399,8 +367,6 @@ def add_text_inputs(
             tokenizer_name is not None
         ), "Must specify tokenizer_name if using max_context_len"
         tokenizer, tokenizer_func = TOKENIZER_FUNCS[tokenizer_name]
-    if github_token is None:
-        github_token = os.environ.get("GITHUB_TOKEN", None)
     input_instances_copy = deepcopy(input_instances)
     if file_source in {"bm25"}:
         add_retrieval_results(input_instances_copy, retrieval_dir, k, file_source)
@@ -415,7 +381,7 @@ def add_text_inputs(
         ):
             try:
                 with AutoContextManager(
-                    instance, root_dir, token=github_token, verbose=verbose
+                    instance, root_dir, verbose=verbose
                 ) as cm:
                     readmes = cm.get_readme_files()
                     instance["readmes"] = ingest_files(readmes)
@@ -427,7 +393,7 @@ def add_text_inputs(
                         )
                     if file_source in {"oracle"}:
                         instance["file_contents"] = ingest_files(
-                            get_oracle_filenames(instance, python_only=python_only)
+                            get_oracle_filenames(instance)
                         )
                     elif file_source in {"bm25"}:
                         instance["file_contents"] = ingest_files(

@@ -173,7 +173,8 @@ def openai_inference(
         "model_name_or_path": model_name_or_path,
     }
     total_cost = 0
-    test_dataset = test_dataset.filter(lambda x: len(x['input_ids']) <= MODEL_LIMITS[model_name_or_path])
+    if 'input_ids' in test_dataset.features:
+        test_dataset = test_dataset.filter(lambda x: len(x['input_ids']) <= MODEL_LIMITS[model_name_or_path])
     print(f"Filtered to {len(test_dataset)} instances")
     with open(output_file, "a+") as f:
         for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
@@ -183,7 +184,7 @@ def openai_inference(
             output_dict = {"instance_id": instance_id}
             output_dict.update(basic_args)
             output_dict["text"] = f"{datum['text']}\n\n"
-            if len(datum['input_ids']) > MODEL_LIMITS[model_name_or_path]:
+            if 'input_ids' in datum and len(datum['input_ids']) > MODEL_LIMITS[model_name_or_path]:
                 output_dict["full_output"] = None
                 output_dict["model_patch"] = None
             else:

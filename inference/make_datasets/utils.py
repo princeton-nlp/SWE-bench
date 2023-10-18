@@ -179,7 +179,9 @@ class ContextManager:
 class AutoContextManager(ContextManager):
     """Automatically clones the repo if it doesn't exist"""
 
-    def __init__(self, instance, root_dir=None, verbose=False, token="git"):
+    def __init__(self, instance, root_dir=None, verbose=False, token=None):
+        if token is None:
+            token = os.environ.get("GITHUB_TOKEN", "git")
         self.tempdir = None
         if root_dir is None:
             self.tempdir = TemporaryDirectory()
