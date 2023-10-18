@@ -38,7 +38,7 @@ You can download the SWE-bench dataset from [source](https://drive.google.com/uc
 Find out more about how to use SWE-bench, such as how to...
 * [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench
 * Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories
-* Train your own models on our pre-tokenized datasets or run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on SWE-Llama models directly.
+* Train your own models on our pre-tokenized datasets or run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on models directly.
 
 | Datasets | Models |
 | - | - |
