@@ -229,7 +229,7 @@ def prompt_style_3(instance):
         + f"A single patch file can contain changes to multiple files."
     )
     final_instruction = (
-        f"I need you to solve the provded issue by generating a single patch file that I can apply "
+        f"I need you to solve the provided issue by generating a single patch file that I can apply "
         + f"directly to this repository using git apply. Please respond with a single patch "
         + f"file in the format shown above."
     )
