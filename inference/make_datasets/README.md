@@ -25,6 +25,7 @@ You can also specify further options:
 - `--max_context_len`: To specify the maximum number of tokens to use for context. For example, `--max_context_len 15000` will limit the context to 15000 tokens.
 - `--tokenizer_name`: To specify the tokenizer to use. You can choose from the available tokenizers defined in `tokenize_dataset.py`. If not specified, the default tokenizer will be used.
 - `--push_to_hub_user`: If you want to push the dataset to the Hugging Face Hub, you can specify your username with this option. If specified, make sure you have set your API key environment variable `HUGGING_FACE_HUB_TOKEN`. You do not need to specify `--output_dir` if you use this option.
+- `--retrieval_dir`: If you want to use BM25 retrieval to create the dataset, you can specify the directory containing the retrieval results with this option. The retrieval results should be in the format produced by `bm25_retrieval.py`. You should specify `--file_source bm25` if you use this option.
 
 The script will create a new dataset in the specified output directory. If you choose to push the dataset to the Hugging Face Hub, it will be available under your username.
 
@@ -42,5 +43,12 @@ python tokenize_dataset.py --dataset_name_or_path ./base_datasets/DATASET_NAME -
 __NOTE:__ The `cl100k` tokenizer does not support multiprocessing.
 
 ## `bm25_retrieval.py`
+This script can be used to perform BM25 retrieval on the SWE-bench dataset. It creates a results file in the specified output directory that can be used in `create_text_dataset.py` with the `--retrieval_dir` option and `--file_source bm25`.
 
-This functionality will be added soon.
+Here's an example of how to call the script to perform BM25 retrieval on the `test` split of the SWE-bench dataset:
+
+```bash
+python bm25_retrieval.py --dataset_name_or_path princeton-nlp/SWE-bench --output_dir ./retrieval_results --splits test
+```
+
+__NOTE:__ The script requires the `pyserini` package to be installed. See the pyserini [installation instructions](https://github.com/castorini/pyserini) for more details.
