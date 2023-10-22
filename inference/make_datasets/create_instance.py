@@ -19,99 +19,129 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 
-PATCH_EXAMPLE = """--- a/file.py
-+++ b/file.py
-@@ -1,27 +1,35 @@
- def euclidean(a, b):
--    while b:
--        a, b = b, a % b
--    return a
-+    if b == 0:
-+        return a
-+    return euclidean(b, a % b)
- 
- 
- def bresenham(x0, y0, x1, y1):
-     points = []
-     dx = abs(x1 - x0)
-     dy = abs(y1 - y0)
--    sx = 1 if x0 < x1 else -1
--    sy = 1 if y0 < y1 else -1
--    err = dx - dy
-+    x, y = x0, y0
-+    sx = -1 if x0 > x1 else 1
-+    sy = -1 if y0 > y1 else 1
- 
--    while True:
--        points.append((x0, y0))
--        if x0 == x1 and y0 == y1:
--            break
--        e2 = 2 * err
--        if e2 > -dy:
-+    if dx > dy:
-+        err = dx / 2.0
-+        while x != x1:
-+            points.append((x, y))
-             err -= dy
--            x0 += sx
--        if e2 < dx:
--            err += dx
--            y0 += sy
-+            if err < 0:
-+                y += sy
-+                err += dx
-+            x += sx
-+    else:
-+        err = dy / 2.0
-+        while y != y1:
-+            points.append((x, y))
-+            err -= dx
-+            if err < 0:
-+                x += sx
-+                err += dy
-+            y += sy
- 
-+    points.append((x, y))
-     return points"""
-
-
-FULL_GENERATION_EXAMPLE = """[start of /src/this_file.py]
-import os
-
+FILE_CONTENTS_EXAMPLE = """[start of euclidean.py]
 def euclidean(a, b):
     if b == 0:
         return a
     return euclidean(b, a % b)
-[end of /src/this_file.py]
-[start of /src/another_file.py]
+[end of euclidean.py]]
+[start of bresenham.py]
 def bresenham(x0, y0, x1, y1):
-    points = []
-    dx = abs(x1 - x0)
-    dy = abs(y1 - y0)
-    x, y = x0, y0
-    sx = -1 if x0 > x1 else 1
-    sy = -1 if y0 > y1 else 1
+    dx = x1 - x0
+    dy = y1 - y0
+
+    xsign = 1 if dx > 0 else -1
+    ysign = 1 if dy > 0 else -1
+
+    dx = abs(dx)
+    dy = abs(dy)
+
     if dx > dy:
-        err = dx / 2.0
-        while x != x1:
-            points.append((x, y))
-            err -= dy
-            if err < 0:
-                y += sy
-                err += dx
-            x += sx
+        xx, xy, yx, yy = xsign, 0, 0, ysign
     else:
-        err = dy / 2.0
-        while y != y1:
-            points.append((x
-            err -= dx
-            if err < 0:
-                x += sx
-                err += dy
-            y += sy
-    points.append((x, y))
-    return points
-[end of /src/another_file.py]"""
+        dx, dy = dy, dx
+        xx, xy, yx, yy = 0, ysign, xsign, 0
+
+    D = 2*dy - dx
+    y = 0
+
+    for x in range(dx + 1):
+        yield x0 + x*xx + y*yx, y0 + x*xy + y*yy
+        if D > 0:
+            y += 1
+            D -= dx
+        D += dy
+[end of bresenham.py]"""
+
+
+PATCH_EXAMPLE = """diff --git a/bresenham.py b/bresenham.py
+--- a/bresenham.py
++++ b/bresenham.py
+@@ -19,7 +19,7 @@
+ 
+     for x in range(dx + 1):
+         yield x0 + x*xx + y*yx, y0 + x*xy + y*yy
+-        if D > 0:
++        if D >= 0:
+             y += 1
+-            D -= dx
+-        D += dy
++            D -= 2*dx
++        D += 2*dy
+diff --git a/euclidean.py b/euclidean.py
+--- a/euclidean.py
++++ b/euclidean.py
+@@ -1,4 +1,4 @@
+ def euclidean(a, b):
+-    if b == 0:
+-        return a
+-    return euclidean(b, a % b)
++    while b != 0:
++        a, b = b, a % b
++    return a
+"""
+
+
+SIMPLE_PATCH_EXAMPLE = """source_file: bresenham.py
+target_file: bresenham.py
+@@ source_start: 19
+* 19
+* 20
+* 21
+- 22
++         if D >= 0:
+* 23
+- 24
+- 25
++             D -= 2*dx
++         D += 2*dy
+@@ ---
+source_file: euclidean.py
+target_file: euclidean.py
+@@ source_start: 1
+* 1
+- 2
+- 3
+- 4
++     while b != 0:
++         a, b = b, a % b
++     return a
+@@ ---"""
+
+
+FULL_GENERATION_EXAMPLE = """[start of bresenham.py]
+def bresenham(x0, y0, x1, y1):
+    dx = x1 - x0
+    dy = y1 - y0
+
+    xsign = 1 if dx > 0 else -1
+    ysign = 1 if dy > 0 else -1
+
+    dx = abs(dx)
+    dy = abs(dy)
+
+    if dx > dy:
+        xx, xy, yx, yy = xsign, 0, 0, ysign
+    else:
+        dx, dy = dy, dx
+        xx, xy, yx, yy = 0, ysign, xsign, 0
+
+    D = 2*dy - dx
+    y = 0
+
+    for x in range(dx + 1):
+        yield x0 + x*xx + y*yx, y0 + x*xy + y*yy
+        if D >= 0:
+            y += 1
+            D -= 2*dx
+        D += 2*dy
+[end of bresenham.py]
+[start of euclidean.py]
+def euclidean(a, b):
+    while b != 0:
+        a, b = b, a % b
+    return a
+[end of euclidean.py]"""
 
 
 def add_lines_list(content):
@@ -285,6 +315,98 @@ def full_file_gen(instance):
     return final_text
 
 
+def prompt_style_5(instance):
+    premise = "You will be provided with a partial code base and an issue from GitHub explaining a problem to resolve."
+    readmes_text = make_code_text(instance["readmes"])
+    code_text = make_code_text(instance["file_contents"])
+    instructions = (
+        f"I need you to solve this issue by generating a specialized patch file that I can apply "
+        + f"directly to this repository using git apply. Please respond with a single patch "
+        + f"file in the following format."
+    )
+    instructions = (
+        f"I need you to solve this issue by generating a specially formatted patch file that I can process and apply "
+        + f"directly to this repository. Your response should be a single patch file in the following format."
+    )
+    format_explanation = (
+        f"In the patch file format, you can specify the source and target file for the following changes using "
+        + f"\nsource_file: <source_file_name>\ntarget_file: <target_file_name>\n"
+        + f"@@ source_start: <source_start_line_number> specifies the beginning of a change in the source file.\n"
+        + f"@@ --- specifies the end of a change in the source file.\n"
+        + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
+        + f"Unchanged or removed lines are specified simply by their line number.\n"
+        + f"You can specify multiple changes per file, and multiple files per patch file.\n"
+    )
+    prompt = 'Respond below:'
+    problem_statement = instance["problem_statement"]
+    final_text = [
+        premise,
+        "<issue>",
+        problem_statement,
+        "</issue>",
+        "<code>",
+        readmes_text,
+        code_text,
+        "</code>",
+        instructions,
+        "<patch>",
+        SIMPLE_PATCH_EXAMPLE,
+        "</patch>",
+        format_explanation,
+        prompt,
+    ]
+    final_text = "\n".join(final_text)
+    return final_text
+
+
+def prompt_style_5_with_hints(instance):
+    premise = "You will be provided with a partial code base and an issue from GitHub explaining a problem to resolve."
+    readmes_text = make_code_text(instance["readmes"])
+    code_text = make_code_text(instance["file_contents"])
+    hints_text = instance['hints_text']
+    instructions = (
+        f"I need you to solve this issue by generating a specialized patch file that I can apply "
+        + f"directly to this repository using git apply. Please respond with a single patch "
+        + f"file in the following format."
+    )
+    instructions = (
+        f"I need you to solve this issue by generating a specially formatted patch file that I can process and apply "
+        + f"directly to this repository. Your response should be a single patch file in the following format."
+    )
+    format_explanation = (
+        f"In the patch file format, you can specify the source and target file for the following changes using "
+        + f"\nsource_file: <source_file_name>\ntarget_file: <target_file_name>\n"
+        + f"@@ source_start: <source_start_line_number> specifies the beginning of a change in the source file.\n"
+        + f"@@ --- specifies the end of a change in the source file.\n"
+        + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
+        + f"Unchanged or removed lines are specified simply by their line number.\n"
+        + f"You can specify multiple changes per file, and multiple files per patch file.\n"
+    )
+    prompt = 'Respond below:'
+    problem_statement = instance["problem_statement"]
+    final_text = [
+        premise,
+        "<issue>",
+        problem_statement,
+        "</issue>",
+        "<hints>",
+        hints_text,
+        "</hints>",
+        "<code>",
+        readmes_text,
+        code_text,
+        "</code>",
+        instructions,
+        "<patch>",
+        SIMPLE_PATCH_EXAMPLE,
+        "</patch>",
+        format_explanation,
+        prompt,
+    ]
+    final_text = "\n".join(final_text)
+    return final_text
+
+
 def ingest_files(filenames):
     files_dict = dict()
     for filename in filenames:
@@ -295,10 +417,12 @@ def ingest_files(filenames):
 
 
 PROMPT_FUNCTIONS = {
-    "style-2": prompt_style_2,
-    "style-3": prompt_style_3,
-    "full_file_gen": full_file_gen,
-    "style-2-edits-only": prompt_style_2_edits_only,
+    # "style-2": prompt_style_2,
+    # "style-3": prompt_style_3,
+    # "full_file_gen": full_file_gen,
+    # "style-2-edits-only": prompt_style_2_edits_only,
+    "style-5": prompt_style_5,
+    "style-5-with-hints": prompt_style_5_with_hints,
 }
 
 

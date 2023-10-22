@@ -3,8 +3,11 @@ import re
 import ast
 import chardet
 import subprocess
+import base64
+import unidiff
 from argparse import ArgumentTypeError
 from git import Repo
+from ghapi.all import GhApi
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -22,21 +25,23 @@ PATCH_HUNK_PATTERN = re.compile(
 
 
 def get_first_idx(charlist):
-    first_min = charlist.index('-')  if '-' in charlist else len(charlist)
-    first_plus = charlist.index('+') if '+' in charlist else len(charlist)
+    first_min = charlist.index("-") if "-" in charlist else len(charlist)
+    first_plus = charlist.index("+") if "+" in charlist else len(charlist)
     return min(first_min, first_plus)
+
 
 def get_last_idx(charlist):
     char_idx = get_first_idx(charlist[::-1])
     last_idx = len(charlist) - char_idx
     return last_idx + 1
 
+
 def strip_content(hunk):
-    first_chars = list(map(lambda x: None if not len(x) else x[0], hunk.split('\n')))
+    first_chars = list(map(lambda x: None if not len(x) else x[0], hunk.split("\n")))
     first_idx = get_first_idx(first_chars)
     last_idx = get_last_idx(first_chars)
-    new_lines = list(map(lambda x: x.rstrip(), hunk.split('\n')[first_idx:last_idx]))
-    new_hunk = '\n' + '\n'.join(new_lines) + '\n'
+    new_lines = list(map(lambda x: x.rstrip(), hunk.split("\n")[first_idx:last_idx]))
+    new_hunk = "\n" + "\n".join(new_lines) + "\n"
     return new_hunk, first_idx - 1
 
 
@@ -95,7 +100,9 @@ def extract_minimal_patch(model_patch):
             new_patch += patch_header + "\n"
         for hunk in PATCH_HUNK_PATTERN.findall(patch):
             pre_start, pre_len, post_start, post_len, content = hunk
-            pre_start, pre_len, post_start, post_len, content = list(map(lambda x: int(x) if x.isnumeric() else x, hunk))
+            pre_start, pre_len, post_start, post_len, content = list(
+                map(lambda x: int(x) if x.isnumeric() else x, hunk)
+            )
             content, adjust_pre_start = strip_content(content)
             pre_start += adjust_pre_start
             pre_start, pre_len, post_start, post_len, total_delta = get_hunk_stats(
@@ -298,3 +305,97 @@ def string_to_bool(v):
         raise ArgumentTypeError(
             f"Truthy value expected: got {v} but expected one of yes/no, true/false, t/f, y/n, 1/0 (case insensitive)."
         )
+
+
+def convert_patch_to_simple_patch(patch):
+    """
+    Converts a patch to a simple patch.
+
+    Args:
+        patch (str): The patch to convert.
+
+    Returns:
+        str: The converted patch.
+    """
+    patchset = unidiff.PatchSet(patch)
+    data = []
+    for file in patchset:
+        source_file = file.source_file.split("a/", 1)[-1]
+        target_file = file.target_file.split("b/", 1)[-1]
+        data.append("source_file: " + source_file)
+        data.append("target_file: " + target_file)
+        for hunk in file:
+            data.append("@@ source_start: " + str(hunk.source_start))
+            for line in hunk:
+                linetype = line.line_type.replace(" ", "*")
+                if linetype in {"*", "-"}:
+                    data.append(linetype + " " + str(line.source_line_no))
+                else:
+                    assert linetype == "+"
+                    data.append(linetype + " " + line.value.rstrip("\n"))
+        data.append("@@ ---")
+    return "\n".join(data)
+
+
+def get_file_from_repo(owner, repo, base_commit_hash, filepath):
+    api = GhApi(token=os.environ.get("GITHUB_TOKEN", None))
+    file_info = api.repos.get_content(owner, repo, filepath, ref=base_commit_hash)
+    file_content = base64.b64decode(file_info.content).decode("utf-8")
+    return file_content
+
+
+def convert_simple_patch_to_patch(simple_patch, instance):
+    """
+    Convert a simple patch to a full patch.
+
+    Args:
+        simple_patch (str): The simple patch to convert.
+        instance (dict): A dictionary containing information about the repository and commit.
+
+    Returns:
+        str: The full patch.
+    """
+    pat = re.compile(
+        r"source_file:\s+(.+?)\ntarget_file:\s+(.+?)\n(.*?)(?=source_file:\s+|@@\ ---|$)",
+        re.DOTALL,
+    )
+    hunk_pattern = re.compile(
+        r"@@\s+source_start:\s+(\d+)\n(.*?)(?=\n@@\s+source_start:\s+|\n@@\ ---|$)",
+        re.DOTALL,
+    )
+    line_pattern = re.compile(r"([\+\-\*])\ (.*)")
+    owner, repo = instance["repo"].split("/")
+    base_commit = instance["base_commit"]
+    diff = list()
+    for filediff in pat.findall(simple_patch):
+        source_file, target_file, content = filediff
+        diff.append(f"diff --git a/{source_file} b/{target_file}")
+        diff.append(f"--- a/{source_file}")
+        diff.append(f"+++ b/{target_file}")
+        source_file_contents = get_file_from_repo(
+            owner, repo, base_commit, source_file
+        ).split("\n")
+        target_offset = 0
+        for start_line, hunk in hunk_pattern.findall(content):
+            source_lines = 0
+            target_lines = 0
+            hunk_data = list()
+            for line_type, line in line_pattern.findall(hunk):
+                if line_type == "*":
+                    lineno = int(line) - 1
+                    hunk_data.append(f" {source_file_contents[lineno]}")
+                    source_lines += 1
+                    target_lines += 1
+                elif line_type == "-":
+                    lineno = int(line) - 1
+                    hunk_data.append(f"-{source_file_contents[lineno]}")
+                    source_lines += 1
+                else:
+                    assert line_type == "+"
+                    hunk_data.append(f"+{line}")
+                    target_lines += 1
+            header = f"@@ -{start_line},{source_lines} +{int(start_line) + target_offset},{target_lines} @@"
+            target_offset += target_lines - source_lines
+            diff.append(header)
+            diff.extend(hunk_data)
+    return "\n".join(diff) + "\n"
