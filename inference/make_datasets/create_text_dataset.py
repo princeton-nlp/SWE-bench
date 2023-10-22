@@ -116,9 +116,6 @@ def main(
     else:
         dataset = load_dataset(dataset_name_or_path)
 
-    dataset['train'] = dataset['train'].select(range(100))
-    dataset['test'] = dataset['test'].select(range(100))
-
     split_instances = dict()
     logger.info(f'Found {set(dataset.keys())} splits')
     if set(splits) - set(dataset.keys()) != set():
@@ -163,7 +160,7 @@ def main(
         logger.info(f"Found {len(split_data[split]['instance_id'])} {split} ids")
         split_data[split] = Dataset.from_dict(split_data[split])
     dataset = DatasetDict(split_data)
-    if validation_ratio > 0:
+    if validation_ratio > 0 and "train" in dataset:
         train_val = dataset["train"].train_test_split(
             test_size=validation_ratio,
             seed=42,
@@ -238,6 +235,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         choices=TOKENIZER_FUNCS.keys(),
+        help="Tokenizer to use for max_context_len. Only needed if max_context_len is specified.",
     )
     parser.add_argument(
         "--push_to_hub_user",
