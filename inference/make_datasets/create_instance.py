@@ -335,7 +335,7 @@ def prompt_style_5(instance):
         + f"@@ --- specifies the end of a change in the source file.\n"
         + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
         + f"Unchanged or removed lines are specified simply by their line number.\n"
-        + f"You can specify multiple changes per file, and multiple files per patch file.\n"
+        + f"You can specify multiple changes per file, and multiple files per patch file."
     )
     prompt = 'Respond below:'
     problem_statement = instance["problem_statement"]
@@ -380,7 +380,7 @@ def prompt_style_5_with_hints(instance):
         + f"@@ --- specifies the end of a change in the source file.\n"
         + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
         + f"Unchanged or removed lines are specified simply by their line number.\n"
-        + f"You can specify multiple changes per file, and multiple files per patch file.\n"
+        + f"You can specify multiple changes per file, and multiple files per patch file."
     )
     prompt = 'Respond below:'
     problem_statement = instance["problem_statement"]
@@ -554,9 +554,7 @@ def add_text_inputs(
                             filename: instance["file_contents"][filename]
                             for filename in include_files
                         }
-                    input_instances[instance_id]["text_inputs"] = PROMPT_FUNCTIONS[
-                        prompt_style
-                    ](instance)
+                    input_instances[instance_id]["text_inputs"] = PROMPT_FUNCTIONS[prompt_style](instance)
             except Exception as e:
                 print(f"Failed on instance {instance_id}", e)
                 traceback.print_exc()
