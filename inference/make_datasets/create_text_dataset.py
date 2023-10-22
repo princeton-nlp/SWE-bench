@@ -156,7 +156,7 @@ def main(
             if datum is None:
                 continue
             for key in columns:
-                split_data[split][key].append(instance[key] if key in instance else "")
+                split_data[split][key].append(datum[key] if key in datum else "")
         logger.info(f"Found {len(split_data[split]['instance_id'])} {split} ids")
         split_data[split] = Dataset.from_dict(split_data[split])
     dataset = DatasetDict(split_data)
