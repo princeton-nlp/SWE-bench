@@ -307,6 +307,32 @@ def string_to_bool(v):
         )
 
 
+def convert_patch_to_context_patch(patch):
+    """
+    Converts a patch to a context patch.
+
+    Args:
+        patch (str): The patch to convert.
+
+    Returns:
+        str: The converted patch.
+    """
+    patchset = unidiff.PatchSet(patch)
+    data = []
+    for file in patchset:
+        source_file = file.source_file.split("a/", 1)[-1]
+        target_file = file.target_file.split("b/", 1)[-1]
+        data.append("source_file: " + source_file)
+        data.append("target_file: " + target_file)
+        for hunk in file:
+            data.append("@@ source_start: " + str(hunk.source_start))
+            for line in hunk:
+                linetype = line.line_type.replace(" ", "*")
+                data.append(linetype + line.value.rstrip("\n"))
+        data.append("@@ ---")
+    return "\n".join(data)
+
+
 def convert_patch_to_simple_patch(patch):
     """
     Converts a patch to a simple patch.
@@ -332,7 +358,7 @@ def convert_patch_to_simple_patch(patch):
                     data.append(linetype + " " + str(line.source_line_no))
                 else:
                     assert linetype == "+"
-                    data.append(linetype + " " + line.value.rstrip("\n"))
+                    data.append(linetype + line.value.rstrip("\n"))
         data.append("@@ ---")
     return "\n".join(data)
 
@@ -342,6 +368,56 @@ def get_file_from_repo(owner, repo, base_commit_hash, filepath):
     file_info = api.repos.get_content(owner, repo, filepath, ref=base_commit_hash)
     file_content = base64.b64decode(file_info.content).decode("utf-8")
     return file_content
+
+
+def convert_context_patch_to_patch(context_patch):
+    """
+    Convert a context patch to a full patch.
+
+    Args:
+        context_patch (str): The context patch to convert.
+        instance (dict): A dictionary containing information about the repository and commit.
+
+    Returns:
+        str: The full patch.
+    """
+    pat = re.compile(
+        r"source_file:\s+(.+?)\ntarget_file:\s+(.+?)\n(.*?)(?=source_file:\s+|@@\ ---|$)",
+        re.DOTALL,
+    )
+    hunk_pattern = re.compile(
+        r"@@\s+source_start:\s+(\d+)\n(.*?)(?=\n@@\s+source_start:\s+|\n@@\ ---|$)",
+        re.DOTALL,
+    )
+    line_pattern = re.compile(r"([\+\-\*])(.*)")
+    diff = list()
+    for filediff in pat.findall(context_patch):
+        source_file, target_file, content = filediff
+        diff.append(f"diff --git a/{source_file} b/{target_file}")
+        diff.append(f"--- a/{source_file}")
+        diff.append(f"+++ b/{target_file}")
+        target_offset = 0
+        for start_line, hunk in hunk_pattern.findall(content):
+            source_lines = 0
+            target_lines = 0
+            hunk_data = list()
+            for line_type, line in line_pattern.findall(hunk):
+                if line_type == "*":
+                    hunk_data.append(f" {line}")
+                    source_lines += 1
+                    target_lines += 1
+                elif line_type == "-":
+                    hunk_data.append(f"-{line}")
+                    source_lines += 1
+                else:
+                    assert line_type == "+"
+                    hunk_data.append(f"+{line}")
+                    target_lines += 1
+            header = f"@@ -{start_line},{source_lines} +{int(start_line) + target_offset},{target_lines} @@"
+            target_offset += target_lines - source_lines
+            diff.append(header)
+            diff.extend(hunk_data)
+    return "\n".join(diff) + "\n"
 
 
 def convert_simple_patch_to_patch(simple_patch, instance):
@@ -363,7 +439,7 @@ def convert_simple_patch_to_patch(simple_patch, instance):
         r"@@\s+source_start:\s+(\d+)\n(.*?)(?=\n@@\s+source_start:\s+|\n@@\ ---|$)",
         re.DOTALL,
     )
-    line_pattern = re.compile(r"([\+\-\*])\ (.*)")
+    line_pattern = re.compile(r"([\+\-\*])(.*)")
     owner, repo = instance["repo"].split("/")
     base_commit = instance["base_commit"]
     diff = list()

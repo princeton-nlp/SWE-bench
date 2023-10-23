@@ -57,8 +57,16 @@ def bresenham(x0, y0, x1, y1):
 PATCH_EXAMPLE = """diff --git a/bresenham.py b/bresenham.py
 --- a/bresenham.py
 +++ b/bresenham.py
-@@ -19,7 +19,7 @@
- 
+@@ -1,6 +1,6 @@
+ def bresenham(x0, y0, x1, y1):
+     dx = x1 - x0
+-    dy = y1 - y0
++    dy = y1 - y0 # add a comment
+
+     xsign = 1 if dx > 0 else -1
+     ysign = 1 if dy > 0 else -1
+@@ -19,7 +19,7 @@ def bresenham(x0, y0, x1, y1):
+
      for x in range(dx + 1):
          yield x0 + x*xx + y*yx, y0 + x*xy + y*yy
 -        if D > 0:
@@ -84,17 +92,25 @@ diff --git a/euclidean.py b/euclidean.py
 
 SIMPLE_PATCH_EXAMPLE = """source_file: bresenham.py
 target_file: bresenham.py
+@@ source_start: 1
+* 1
+* 2
+- 3
++    dy = y1 - y0 # add a comment
+* 4
+* 5
+* 6
 @@ source_start: 19
 * 19
 * 20
 * 21
 - 22
-+         if D >= 0:
++        if D >= 0:
 * 23
 - 24
 - 25
-+             D -= 2*dx
-+         D += 2*dy
++            D -= 2*dx
++        D += 2*dy
 @@ ---
 source_file: euclidean.py
 target_file: euclidean.py
@@ -103,10 +119,47 @@ target_file: euclidean.py
 - 2
 - 3
 - 4
-+     while b != 0:
-+         a, b = b, a % b
-+     return a
-@@ ---"""
++    while b != 0:
++        a, b = b, a % b
++    return a
+@@ ---
+"""
+
+
+CONTEXT_PATCH_EXAMPLE = """source_file: bresenham.py
+target_file: bresenham.py
+@@ source_start: 1
+*def bresenham(x0, y0, x1, y1):
+*    dx = x1 - x0
+-    dy = y1 - y0
++    dy = y1 - y0 # add a comment
+*
+*    xsign = 1 if dx > 0 else -1
+*    ysign = 1 if dy > 0 else -1
+@@ source_start: 19
+*
+*    for x in range(dx + 1):
+*        yield x0 + x*xx + y*yx, y0 + x*xy + y*yy
+-        if D > 0:
++        if D >= 0:
+*            y += 1
+-            D -= dx
+-        D += dy
++            D -= 2*dx
++        D += 2*dy
+@@ ---
+source_file: euclidean.py
+target_file: euclidean.py
+@@ source_start: 1
+*def euclidean(a, b):
+-    if b == 0:
+-        return a
+-    return euclidean(b, a % b)
++    while b != 0:
++        a, b = b, a % b
++    return a
+@@ ---
+"""
 
 
 FULL_GENERATION_EXAMPLE = """[start of bresenham.py]
@@ -326,8 +379,10 @@ def prompt_style_5(instance):
     )
     instructions = (
         f"I need you to solve this issue by generating a specially formatted patch file that I can process and apply "
-        + f"directly to this repository. Your response should be a single patch file in the following format."
+        + f"directly to this repository. Your response should be a single patch file in the following format.\n"
+        + f"Given the following files:"
     )
+    post_instructions = f"You can edit them as follows:"
     format_explanation = (
         f"In the patch file format, you can specify the source and target file for the following changes using "
         + f"\nsource_file: <source_file_name>\ntarget_file: <target_file_name>\n"
@@ -335,7 +390,7 @@ def prompt_style_5(instance):
         + f"@@ --- specifies the end of a change in the source file.\n"
         + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
         + f"Unchanged or removed lines are specified simply by their line number.\n"
-        + f"You can specify multiple changes per file, and multiple files per patch file."
+        + f"You can make multiple changes per file, and multiple files per patch file."
     )
     prompt = 'Respond below:'
     problem_statement = instance["problem_statement"]
@@ -349,6 +404,10 @@ def prompt_style_5(instance):
         code_text,
         "</code>",
         instructions,
+        "<example>",
+        FILE_CONTENTS_EXAMPLE,
+        "</example>",
+        post_instructions,
         "<patch>",
         SIMPLE_PATCH_EXAMPLE,
         "</patch>",
@@ -371,8 +430,10 @@ def prompt_style_5_with_hints(instance):
     )
     instructions = (
         f"I need you to solve this issue by generating a specially formatted patch file that I can process and apply "
-        + f"directly to this repository. Your response should be a single patch file in the following format."
+        + f"directly to this repository. Your response should be a single patch file in the following format.\n"
+        + f"Given the following files:"
     )
+    post_instructions = f"You can edit them as follows:"
     format_explanation = (
         f"In the patch file format, you can specify the source and target file for the following changes using "
         + f"\nsource_file: <source_file_name>\ntarget_file: <target_file_name>\n"
@@ -380,7 +441,7 @@ def prompt_style_5_with_hints(instance):
         + f"@@ --- specifies the end of a change in the source file.\n"
         + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
         + f"Unchanged or removed lines are specified simply by their line number.\n"
-        + f"You can specify multiple changes per file, and multiple files per patch file."
+        + f"You can make multiple changes per file, and multiple files per patch file."
     )
     prompt = 'Respond below:'
     problem_statement = instance["problem_statement"]
@@ -397,8 +458,61 @@ def prompt_style_5_with_hints(instance):
         code_text,
         "</code>",
         instructions,
+        "<example>",
+        FILE_CONTENTS_EXAMPLE,
+        "</example>",
+        post_instructions,
         "<patch>",
         SIMPLE_PATCH_EXAMPLE,
+        "</patch>",
+        format_explanation,
+        prompt,
+    ]
+    final_text = "\n".join(final_text)
+    return final_text
+
+
+def prompt_style_6(instance):
+    premise = "You will be provided with a partial code base and an issue from GitHub explaining a problem to resolve."
+    readmes_text = make_code_text(instance["readmes"])
+    code_text = make_code_text(instance["file_contents"])
+    instructions = (
+        f"I need you to solve this issue by generating a specialized patch file that I can apply "
+        + f"directly to this repository using git apply. Please respond with a single patch "
+        + f"file in the following format."
+    )
+    instructions = (
+        f"I need you to solve this issue by generating a specially formatted patch file that I can process and apply "
+        + f"directly to this repository. Your response should be a single patch file in the following format.\n"
+        + f"Given the following files:"
+    )
+    post_instructions = f"You can edit them as follows:"
+    format_explanation = (
+        f"In the patch file format, you can specify the source and target file for the following changes using "
+        + f"\nsource_file: <source_file_name>\ntarget_file: <target_file_name>\n"
+        + f"@@ source_start: <source_start_line_number> specifies the beginning of a change in the source file.\n"
+        + f"@@ --- specifies the end of a change in the source file.\n"
+        + f"Lines can either be unchanged (prefixed with *), removed (prefixed with -), or added (prefixed with +).\n"
+        + f"You can make multiple changes per file, and multiple files per patch file."
+    )
+    prompt = 'Respond below:'
+    problem_statement = instance["problem_statement"]
+    final_text = [
+        premise,
+        "<issue>",
+        problem_statement,
+        "</issue>",
+        "<code>",
+        readmes_text,
+        code_text,
+        "</code>",
+        instructions,
+        "<example>",
+        FILE_CONTENTS_EXAMPLE,
+        "</example>",
+        post_instructions,
+        "<patch>",
+        CONTEXT_PATCH_EXAMPLE,
         "</patch>",
         format_explanation,
         prompt,
@@ -423,6 +537,7 @@ PROMPT_FUNCTIONS = {
     # "style-2-edits-only": prompt_style_2_edits_only,
     "style-5": prompt_style_5,
     "style-5-with-hints": prompt_style_5_with_hints,
+    "style-6": prompt_style_6,
 }
 
 
