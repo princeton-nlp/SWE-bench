@@ -298,7 +298,7 @@ def get_model_report(
             }
 
         # Check if the model patch exists
-        if p["model_patch"] == None:
+        if p["prediction"] == None:
             report_map[repo]["none"].append(p['instance_id'])
             continue
         report_map[repo]["generated"].append(p['instance_id'])

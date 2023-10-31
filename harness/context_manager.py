@@ -221,12 +221,11 @@ class TestbedContextManager:
                         # `conda create` based installation
                         cmd = f"{exec_cmd} create -c conda-forge -n {env_name} python={install['python']} -y"
                         logger_testbed.info(f"[Testbed] Creating environment {env_name}; Command: {cmd}")
+                        subprocess.run(cmd, shell=True, **self.subprocess_args)
 
                         # Install dependencies
-                        subprocess.run(cmd, shell=True, **self.subprocess_args)
                         cmd = f"{exec_cmd} env update -f {path_to_reqs}"
                         logger_testbed.info(f"[Testbed] Installing dependencies for {env_name}; Command: {cmd}")
-
                         subprocess.run(cmd, shell=True, **self.subprocess_args)
                     else:
                         # `conda env create` based installation

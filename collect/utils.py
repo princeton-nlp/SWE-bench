@@ -373,7 +373,9 @@ def extract_problem_statement_and_hints_django(
         title = issue_desc.find("h1", class_="searchable").get_text()
         title = re.sub(r"\s+", " ", title).strip()
         body = issue_desc.find("div", class_="description").get_text()
-        body = re.sub(r"\s+", " ", body).strip()
+        body = re.sub(r"\n+", "\n", body)
+        body = re.sub(r"    ", "\t", body)
+        body = re.sub(r"[ ]{2,}", " ", body).strip()
         text += f"{title}\n{body}\n"
 
         # Get time of first commit in PR
