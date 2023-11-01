@@ -6,7 +6,7 @@ import sys
 
 from datetime import datetime
 
-sys.path.append("../harness")
+sys.path.append("../../harness")
 from utils import get_instances
 
 PATH_TASKS_MATPLOTLIB = "<path to matplotlib task instances>"

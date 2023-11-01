@@ -142,10 +142,16 @@ def parse_log_sympy(log):
     return test_status_map
 
 
+parse_log_astroid = parse_log_pytest
 parse_log_flask = parse_log_pytest
+parse_log_marshmallow = parse_log_pytest
 parse_log_matplotlib = parse_log_pytest
+parse_log_pydicom = parse_log_pytest
+parse_log_pvlib = parse_log_pytest
 parse_log_pylint = parse_log_pytest
+parse_log_pyvista = parse_log_pytest
 parse_log_requests = parse_log_pytest
+parse_log_sqlfluff = parse_log_pytest
 parse_log_xarray = parse_log_pytest
 
 parse_log_astropy = parse_log_pytest_v2
@@ -156,14 +162,20 @@ parse_log_sphinx = parse_log_pytest_v2
 MAP_REPO_TO_PARSER = {
     "astropy/astropy": parse_log_astropy,
     "django/django": parse_log_django,
+    "marshmallow-code/marshmallow": parse_log_marshmallow,
     "matplotlib/matplotlib": parse_log_matplotlib,
     "mwaskom/seaborn": parse_log_seaborn,
     "pallets/flask": parse_log_flask,
     "psf/requests": parse_log_requests,
+    "pvlib/pvlib-python": parse_log_pvlib,
     "pydata/xarray": parse_log_xarray,
+    "pydicom/pydicom": parse_log_pydicom,
+    "pylint-dev/astroid": parse_log_astroid,
     "pylint-dev/pylint": parse_log_pylint,
     "pytest-dev/pytest": parse_log_pytest,
+    "pyvista/pyvista": parse_log_pyvista,
     "scikit-learn/scikit-learn": parse_log_scikit,
+    "sqlfluff/sqlfluff": parse_log_sqlfluff,
     "sphinx-doc/sphinx": parse_log_sphinx,
     "sympy/sympy": parse_log_sympy,
 }

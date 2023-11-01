@@ -4,7 +4,7 @@ import re
 import sys
 from ghapi.core import GhApi
 
-sys.path.append("../harness")
+sys.path.append("../../harness")
 from utils import get_instances
 
 GITHUB_TOKEN = "<your GitHub token>"
