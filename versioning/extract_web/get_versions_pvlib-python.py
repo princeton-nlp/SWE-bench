@@ -6,33 +6,34 @@ import sys
 
 from datetime import datetime
 
-sys.path.append("../harness")
+sys.path.append("/n/fs/nlp-jy1682/swe-bench/public/harness")
 from utils import get_instances
+sys.path = sys.path[:-1]
 
-PATH_TASKS_ASTROPY = "<path to astropy task instances>"
+PATH_TASKS_PVLIB   = "<path to pvlib-python task instances>"
+PATH_TASKS_PVLIB_V = "<path to pvlib-python task instances with versions>"
+WEBPAGE = "https://pvlib-python.readthedocs.io/en/stable/whatsnew.html"
+PATTERN = r'<a class="reference internal nav-link" href="#(.*)">\n\s+v(.*)\n\s+<\/a>'
+DATE_FORMAT = "%B %d, %Y"
 
 # Get raw astropy dataset
-data_tasks = get_instances(PATH_TASKS_ASTROPY)
+data_tasks = get_instances(PATH_TASKS_PVLIB)
 
 # Get version to date from astropy homepage
-resp = requests.get("https://docs.astropy.org/en/latest/changelog.html")
-pattern = (
-    r'<a class="reference internal nav-link" href="#version-(.*)">Version (.*)</a>'
-)
-matches = re.findall(pattern, resp.text)
+resp = requests.get(WEBPAGE)
+matches = re.findall(PATTERN, resp.text)
 matches = list(set(matches))
 
 # Get (date, version) pairs
-date_format = "%Y-%m-%d"
 keep_major_minor = lambda x, sep: ".".join(x.strip().split(sep)[:2])
 
 # Iterate through matches, construct (version, date) pairs
 times = []
 for match in matches:
-    match_parts = match[1].split(" ")
-    version, date = match_parts[0], match_parts[1].strip(")").strip("(")
-    version = keep_major_minor(version, ".")
-    date_obj = datetime.strptime(date, date_format)
+    match_parts = match[1].split(" (")
+    version = '.'.join(match_parts[0].split('.')[:-1])
+    date = match_parts[1].strip(')').strip('(')
+    date_obj = datetime.strptime(date, DATE_FORMAT)
     times.append((date_obj.strftime("%Y-%m-%d"), version))
 
 # Group times by major/minor version
@@ -66,8 +67,5 @@ for task in data_tasks:
     map_v_to_t[task["version"]].append(t)
 
 # Save matplotlib versioned data to repository
-with open(
-    os.path.join(PATH_TASKS_ASTROPY, "astropy-task-instances_versions.json"),
-    "w",
-) as f:
+with open(PATH_TASKS_PVLIB_V, "w") as f:
     json.dump(data_tasks, fp=f)

@@ -21,5 +21,5 @@ python get_versions.py \
 ```
 
 ## 🌐 Repository Website-Based
-`get_versions_[astropy|matplotlib|xarray].py` files are repository specific scripts that crawl the `astropy`, `matplotlib`, and `xarray` websites respectively to find versions and their cut off dates.
+The `extract_web/get_versions_*.py` files are repository specific scripts that crawl the website of the PyPI package to find versions and their cut off dates.
 This script can be easily adapted to other repositories to check task instances' `creation_date` against the version dates.

@@ -56,11 +56,6 @@ def verify_task_instances(data: Dict):
                 in SKIP_INSTANCES[task_instance["repo"]]
             ):
                 continue
-            if tcm.log_file_exists:
-                print(
-                    f"Skipping {task_instance['instance_id']}, log file ({tcm.log_file}) already exists"
-                )
-                continue
             if (
                 not tcm.reset_task_env(task_instance)
                 or not tcm.run_install_task(task_instance)
