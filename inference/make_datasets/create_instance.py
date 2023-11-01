@@ -302,30 +302,22 @@ PROMPT_FUNCTIONS = {
 }
 
 
-def add_retrieval_results(input_instances, retrieval_dir, k, file_source):
+def add_retrieval_results(input_instances, retrieval_file, k, file_source):
     """
     Adds retrieval results to input_instances in-place
     """
-    retrieval_results = dict()
+    retrieval_results_path = Path(retrieval_file)
+    assert (
+        retrieval_results_path.exists()
+    ), f"Retrieval results not found at {retrieval_results_path}"
+    retrieval_results = [json.loads(line) for line in open(retrieval_results_path)]
+    retrieval_results = {x["instance_id"]: x["hits"] for x in retrieval_results}
     for instance_id, instance in tqdm(
         input_instances.items(),
         total=len(input_instances),
         desc="Adding retrieval results",
     ):
-        retrieval_results_path = Path(
-            retrieval_dir,
-            instance["repo"].split("/")[-1] + "-task-instances.retrieval.jsonl",
-        )
-        assert (
-            retrieval_results_path.exists()
-        ), f"Retrieval results not found at {retrieval_results_path}"
-        if retrieval_results_path not in retrieval_results:
-            d = [json.loads(line) for line in open(retrieval_results_path)]
-            d = {x["instance_id"]: x["hits"] for x in d}
-            retrieval_results[retrieval_results_path.as_posix()] = d
-        instance["hits"] = retrieval_results[retrieval_results_path.as_posix()][
-            instance_id
-        ][:k]
+        instance["hits"] = retrieval_results[instance_id][:k]
 
 
 def get_oracle_filenames(instance):
@@ -344,7 +336,7 @@ def get_oracle_filenames(instance):
 
 def add_text_inputs(
     input_instances,
-    retrieval_dir,
+    retrieval_file,
     k,
     prompt_style,
     file_source,
@@ -356,7 +348,7 @@ def add_text_inputs(
 
     Args:
     - input_instances: dictionary with unprocessed input instances.
-    - retrieval_dir: if using retrieval method for file_contents, specify retrieval_dir to add retrieval results
+    - retrieval_file: if using retrieval method for file_contents, specify retrieval_file to add retrieval results
     - k: if using retrieval, specifies the maximum number of files to included within context
     - prompt_style: specify the function to generate instructions and prompt provided an instance (from PROMPT_FUNCTIONS)
     - file_source: where to collect file_contents (e.g. oracle or bm25)
@@ -369,7 +361,7 @@ def add_text_inputs(
         tokenizer, tokenizer_func = TOKENIZER_FUNCS[tokenizer_name]
     input_instances_copy = deepcopy(input_instances)
     if file_source in {"bm25"}:
-        add_retrieval_results(input_instances_copy, retrieval_dir, k, file_source)
+        add_retrieval_results(input_instances_copy, retrieval_file, k, file_source)
     orig_dir = os.getcwd()
     with TemporaryDirectory(
         dir="/scratch" if os.path.exists("/scratch") else "/tmp"
