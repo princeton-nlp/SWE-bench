@@ -49,6 +49,11 @@ Find out more about how to use SWE-bench, such as how to...
 | [🤗 BM25 Retrieval 27k (cl100k tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_27k_cl100k) | |
 | [🤗 BM25 Retrieval 50k (Llama tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_50k_llama)   | |
 
+## 🍎 Tutorials
+We've also written the following blog posts on how to use different parts of SWE-bench.
+If you'd like to see a post about a particular topic, please let us know via an issue.
+* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/tutorials/collection.md))
+
 ## 💫 Contributions
 We would love to hear from the broader NLP, Machine Learning, and Software Engineering research communities, and we welcome any contributions, pull requests, or issues!
 To do so, please either file a new pull request or issue and fill in the corresponding templates accordingly. We'll be sure to follow up shortly!
