@@ -3,6 +3,8 @@ John Yang &bull; November 1, 2023
 
 In this tutorial, we explain how to use the SWE-Bench repository to collect evaluation task instances from GitHub repositories.
 
+> SWE-bench's collection pipeline is currently designed to target PyPI packages. We hope to expand SWE-bench to more repositories and languages in the future.
+
 <div align="center">
     <img style="width:70%" src="../assets/collection.png">
 </div>
