@@ -117,7 +117,7 @@ def get_eval_report(
 
 def get_eval_reports_for_logs(
     eval_logs: List,
-    swe_bench_path: str,
+    swe_bench_tasks: str,
     callback: callable = None,
     verbose: bool = False,
 ) -> (Dict, Dict):
@@ -126,7 +126,7 @@ def get_eval_reports_for_logs(
 
     Args:
         eval_logs (list): list of paths to evaluation logs
-        swe_bench_path (str): path to eval task instances (swe-bench.json)
+        swe_bench_tasks (str): path to eval task instances (swe-bench.json)
         callback (callable): callback function for evaluation logs
         verbose (bool): whether to print verbose output
     Returns:
@@ -135,7 +135,7 @@ def get_eval_reports_for_logs(
     """
     reports_patch_success = {}
     reports_patch_failure = {}
-    eval_refs = json.load(open(swe_bench_path, "r"))
+    eval_refs = json.load(open(swe_bench_tasks, "r"))
     eval_refs = {t['instance_id']: t for t in eval_refs}
 
     for eval_log in eval_logs:
@@ -172,7 +172,7 @@ def get_eval_reports_for_logs(
 
 
 def get_eval_reports_for_dir(
-    eval_dir: str, swe_bench_path: str, callback: callable = None, verbose=False
+    eval_dir: str, swe_bench_tasks: str, callback: callable = None, verbose=False
 ) -> Dict:
     """
     Wrapper for getting eval report for a directory of evaluation logs.
@@ -184,7 +184,7 @@ def get_eval_reports_for_dir(
     if not os.path.exists(eval_dir):
         raise ValueError(f"Path {eval_dir} does not exist")
     logs_list = [x for x in glob.glob(os.path.join(eval_dir, "*.log"))]
-    return get_eval_reports_for_logs(logs_list, swe_bench_path, callback, verbose)
+    return get_eval_reports_for_logs(logs_list, swe_bench_tasks, callback, verbose)
 
 
 ### MARK - Model Evaluation Summary
@@ -193,7 +193,7 @@ def get_eval_reports_for_dir(
 def get_model_eval_summary(
     predicts_path: str,
     eval_dir: str,
-    swe_bench_path: str,
+    swe_bench_tasks: str,
     repo: str = None,
 ):
     """
@@ -202,7 +202,7 @@ def get_model_eval_summary(
     Args:
         predicts_path (str): path to predictions file
         eval_dir (str): path to directory of evaluation logs
-        swe_bench_path (str): path to eval references (swe-bench-eval-refs.json)
+        swe_bench_tasks (str): path to eval references (swe-bench-eval-refs.json)
         repo (str): if given, repo name to limit evaluation to
     """
     # Load Predictions
@@ -220,7 +220,7 @@ def get_model_eval_summary(
 
     # Get reports
     reports_patch_success, reports_patch_failure = get_eval_reports_for_dir(
-        eval_dir, swe_bench_path, callback=criteria_eval_sm, verbose=False
+        eval_dir, swe_bench_tasks, callback=criteria_eval_sm, verbose=False
     )
 
     # Print reports for different granularities of patch success/failure
@@ -257,7 +257,7 @@ def get_model_eval_summary(
 
 
 def get_model_report(
-    model: str, predict_path: str, swe_bench_path: str, log_dir_path: str
+    model: str, predictions_path: str, swe_bench_tasks: str, log_dir: str
 ):
     """
     Generate a report of model evaluation results from predictions, task instances,
@@ -265,24 +265,24 @@ def get_model_report(
 
     Args:
         model (str): model name
-        predict_path (str): path to predictions file
-        swe_bench_path (str): path to eval references (swe-bench-eval-refs.json)
-        log_dir_path (str): path to directory of evaluation logs
+        predictions_path (str): path to predictions file
+        swe_bench_tasks (str): path to eval references (swe-bench-eval-refs.json)
+        log_dir (str): path to directory of evaluation logs
     Returns:
         report_map (dict): map of repo to report
     """
-    eval_refs = json.load(open(swe_bench_path, "r"))
+    eval_refs = json.load(open(swe_bench_tasks, "r"))
     eval_refs = [{key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]} for t in eval_refs]
     eval_refs = {t['instance_id']: t for t in eval_refs}
 
     # Get predictions
     predictions = []
-    if predict_path.endswith("jsonl"):
-        with open(predict_path, "r") as f:
+    if predictions_path.endswith("jsonl"):
+        with open(predictions_path, "r") as f:
             for line in f.readlines():
                 predictions.append(json.loads(line))
     else:
-        predictions = json.load(open(predict_path, "r"))
+        predictions = json.load(open(predictions_path, "r"))
     report_map = {}
 
     # Iterate through predictions
@@ -304,7 +304,7 @@ def get_model_report(
         report_map[repo]["generated"].append(p['instance_id'])
 
         # Get log file
-        log_path = os.path.join(log_dir_path, f"{p['instance_id']}.{model}.eval.log")
+        log_path = os.path.join(log_dir, f"{p['instance_id']}.{model}.eval.log")
         if not os.path.exists(log_path):
             continue
         report_map[repo]["with_logs"].append(p['instance_id'])
