@@ -22,40 +22,44 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
 
-# The maximum number of tokens that can be processed by each model.
 MODEL_LIMITS = {
-    'gpt-3.5-turbo-16k-0613': 16_385,
-    'gpt-3.5-turbo-16k': 16_385,
-    'gpt-3.5-turbo-0613': 4_097,
-    'gpt-3.5-turbo': 4_097,
-    'gpt-4-32k-0613': 32_768,
-    'gpt-4-32k': 32_768,
-    'gpt-4-0613': 8_192,
-    'gpt-4': 8_192,
+    "claude-instant-1": 100_000,
+    "claude-2": 100_000,
+    "gpt-3.5-turbo-16k-0613": 16_385,
+    "gpt-3.5-turbo-0613": 4_097,
+    "gpt-3.5-turbo-1106": 16_385,
+    "gpt-4-32k-0613": 32_768,
+    "gpt-4-0613": 8_192,
+    "gpt-4-1106-preview": 128_000,
 }
 
 # The cost per token for each model input.
 MODEL_COST_PER_INPUT = {
-    'gpt-3.5-turbo-16k-0613': 0.0000015,
-    'gpt-3.5-turbo-16k': 0.0000015,
-    'gpt-4-0613': 0.00003,
-    'gpt-4': 0.00003,
-    'gpt-4-32k-0613': 0.00006,
-    'gpt-4-32k': 0.00006,
-    'gpt-35-turbo-0613': 0.0000015,
-    'gpt-35-turbo': 0.0000015,
+    "claude-instant-1": 0.00000163,
+    "claude-2": 0.00001102,
+    "gpt-3.5-turbo-16k-0613": 0.0000015,
+    "gpt-3.5-turbo-0613": 0.0000015,
+    "gpt-3.5-turbo-1106": 0.000001,
+    "gpt-35-turbo-0613": 0.0000015,
+    "gpt-35-turbo": 0.0000015,  # probably still 0613
+    "gpt-4-0613": 0.00003,
+    "gpt-4-32k-0613": 0.00006,
+    "gpt-4-1106-preview": 0.00001,
 }
 
 # The cost per token for each model output.
 MODEL_COST_PER_OUTPUT = {
-    'gpt-3.5-turbo-16k-0613': 0.000002,
-    'gpt-3.5-turbo-16k': 0.000002,
-    'gpt-4-0613': 0.00006,
-    'gpt-4': 0.00006,
-    'gpt-4-32k-0613': 0.00012,
-    'gpt-4-32k': 0.00012,
-    'gpt-35-turbo-0613': 0.000002,
-    'gpt-35-turbo': 0.000002,
+    "claude-instant-1": 0.00000551,
+    "claude-2": 0.00003268,
+    "gpt-3.5-turbo-16k-0613": 0.000002,
+    "gpt-3.5-turbo-16k": 0.000002,
+    "gpt-3.5-turbo-1106": 0.000002,
+    "gpt-35-turbo-0613": 0.000002,
+    "gpt-35-turbo": 0.000002,
+    "gpt-4-0613": 0.00006,
+    "gpt-4-32k-0613": 0.00012,
+    "gpt-4-32k": 0.00012,
+    "gpt-4-1106-preview": 0.00003,
 }
 
 # used for azure
@@ -66,7 +70,7 @@ ENGINES = {
 }
 
 
-def calc_cost(response):
+def calc_cost(model_name, input_tokens, output_tokens):
     """
     Calculates the cost of a response from the openai API.
 
@@ -76,9 +80,6 @@ def calc_cost(response):
     Returns:
     float: The cost of the response.
     """
-    model_name = response.model
-    input_tokens = response.usage.prompt_tokens
-    output_tokens = response.usage.completion_tokens
     cost = (
         MODEL_COST_PER_INPUT[model_name] * input_tokens
         + MODEL_COST_PER_OUTPUT[model_name] * output_tokens
@@ -125,7 +126,9 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
                 top_p=top_p,
                 **model_args,
             )
-        cost = calc_cost(response)
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        cost = calc_cost(response.model, input_tokens, output_tokens)
         return response, cost
     except openai.error.InvalidRequestError as e:
         if e.code == 'context_length_exceeded':
@@ -224,7 +227,11 @@ def call_anthropic(inputs, anthropic, model_name_or_path, temperature, top_p, **
             top_p=top_p,
             **model_args,
         )
-        return completion
+        response = completion.completion
+        input_tokens = anthropic.count_tokens(inputs)
+        output_tokens = anthropic.count_tokens(response)
+        cost = calc_cost(model_name_or_path, input_tokens, output_tokens)
+        return completion, cost
     except Exception as e:
         logger.error(e)
         logger.error(f"Inputs: {inputs}")
@@ -255,8 +262,6 @@ def anthropic_inference(
     api_key = os.environ.get("ANTHROPIC_API_KEY", None)
     if api_key is None:
         raise ValueError("Must provide an api key. Expected in ANTHROPIC_API_KEY environment variable.")
-    if max_cost is not None:
-        raise ValueError("max_cost not supported for anthropic yet")
     print(f"Using Anthropic key {'*' * max(0, len(api_key)-5) + api_key[-5:]}")
     anthropic = Anthropic(api_key=api_key)
     temperature = model_args.pop('temperature', 0.2)
@@ -265,6 +270,7 @@ def anthropic_inference(
     basic_args = {
         "model_name_or_path": model_name_or_path,
     }
+    total_cost = 0
     with open(output_file, "a+") as f:
         for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
             instance_id = datum["instance_id"]
@@ -273,10 +279,15 @@ def anthropic_inference(
             output_dict = {"instance_id": instance_id}
             output_dict.update(basic_args)
             output_dict["text_inputs"] = f"{HUMAN_PROMPT} {datum['text']}\n\n{AI_PROMPT}"
-            completion = call_anthropic(output_dict["text_inputs"], anthropic, model_name_or_path, temperature, top_p, **model_args)
+            completion, cost = call_anthropic(output_dict["text_inputs"], anthropic, model_name_or_path, temperature, top_p, **model_args)
+            total_cost += cost
+            print(f"Total Cost: {total_cost:.2f}")
             output_dict["full_output"] = completion.completion
             output_dict["model_patch"] = extract_diff(completion.completion)
             print(json.dumps(output_dict), file=f, flush=True)
+            if max_cost is not None and total_cost >= max_cost:
+                print(f"Reached max cost {max_cost}, exiting")
+                break
 
 
 def parse_model_args(model_args):
@@ -372,7 +383,7 @@ def main(
         "existing_ids": existing_ids,
         "max_cost": max_cost,
     }
-    if model_name_or_path in {"claude-2"}:
+    if model_name_or_path.startswith('claude'):
         anthropic_inference(**inference_args)
     elif model_name_or_path.startswith("gpt"):
         openai_inference(**inference_args)
@@ -398,7 +409,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name_or_path",
         type=str,
-        help="Path to the directory containing a lora or model",
+        help="Name of API model. Update MODEL* constants in this file to add new models.",
+        choices = sorted(list(MODEL_LIMITS.keys())),
     )
     parser.add_argument(
         "--shard_id",
