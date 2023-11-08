@@ -196,6 +196,10 @@ def get_test_directives(instance: Dict) -> List:
     Returns:
         directives (list): List of test directives
     """
+    # For seq2seq code repos, testing command is fixed
+    if instance["repo"] == "swe-bench/humaneval":
+        return ["test.py"]
+
     # Get test directives from test patch and remove non-test files
     diff_pat = r"diff --git a/.* b/(.*)"
     test_patch = instance["test_patch"]
