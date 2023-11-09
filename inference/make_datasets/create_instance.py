@@ -317,7 +317,11 @@ def add_retrieval_results(input_instances, retrieval_file, k, file_source):
         total=len(input_instances),
         desc="Adding retrieval results",
     ):
-        instance["hits"] = retrieval_results[instance_id][:k]
+        try:
+            instance["hits"] = retrieval_results[instance_id][:k]
+        except KeyError:
+            logger.warning(f"Instance {instance_id} not found in retrieval results")
+            instance["hits"] = list()
 
 
 def get_oracle_filenames(instance):
