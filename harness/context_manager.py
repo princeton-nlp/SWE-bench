@@ -418,6 +418,10 @@ class TaskEnvContextManager:
                         f.write(f"\n{INSTALL_FAIL}\n")
                     return False
 
+        # Skip installation if no instructions provided
+        if 'install' not in specifications:
+            return True
+
         cmd_install = f"{self.cmd_activate}; {specifications['install']}"
         logger_taskenv.info(f"[{self.testbed_name}] [{instance[KEY_INSTANCE_ID]}] Installing with command: {cmd_install}")
         try:

@@ -61,9 +61,11 @@ def get_environment_yml(instance: Dict, env_name: str, save_path: str = None) ->
     """
     # Attempt to find environment.yml at each path based on task instance's repo
     path_worked = False
+
+    commit = 'environment_setup_commit' if 'environment_setup_commit' in instance else 'base_commit'
     for req_path in MAP_REPO_TO_ENV_YML_PATHS[instance["repo"]]:
         reqs_url = os.path.join(
-            SWE_BENCH_URL_RAW, instance["repo"], instance['environment_setup_commit'], req_path
+            SWE_BENCH_URL_RAW, instance["repo"], instance[commit], req_path
         )
         reqs = requests.get(reqs_url)
         if reqs.status_code == 200:
@@ -194,6 +196,10 @@ def get_test_directives(instance: Dict) -> List:
     Returns:
         directives (list): List of test directives
     """
+    # For seq2seq code repos, testing command is fixed
+    if instance["repo"] == "swe-bench/humaneval":
+        return ["test.py"]
+
     # Get test directives from test patch and remove non-test files
     diff_pat = r"diff --git a/.* b/(.*)"
     test_patch = instance["test_patch"]
