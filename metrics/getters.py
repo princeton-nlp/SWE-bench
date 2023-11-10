@@ -68,7 +68,7 @@ def get_logs_eval(log_fp: str) -> (Dict, bool):
 
 def get_logs_gold(log_fp: str) -> (str, str):
     """
-    Retrieve pre-patch, post-patch test logs from a log file
+    Retrieve pre-patch, post-patch test logs from a validation log file
 
     Args:
         log_fp (str): path to log file
