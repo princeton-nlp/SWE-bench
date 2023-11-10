@@ -16,7 +16,7 @@ This python script is designed to run inference on a dataset using either the Op
 For instance, to run this script on SWE-bench with the ``Oracle`` context and Anthropic's Claude 2 model, you can run the following command:
 ```bash
 export ANTHROPIC_API_KEY=<your key>
-python run_api.py --dataset_name_or_path princeton-nlp/SWE-bench_oracle_llama --model_name_or_path claude-2 --output_dir ./outputs
+python run_api.py --dataset_name_or_path princeton-nlp/SWE-bench_oracle --model_name_or_path claude-2 --output_dir ./outputs
 ```
 
 You can also specify further options:
@@ -24,7 +24,7 @@ You can also specify further options:
 - `--split`: To specify the dataset split to use (default is "test").
 - `--shard_id` and `--num_shards`: To process only a shard of the data.
 - `--model_args`: A string containing comma-separated key=value pairs for arguments to pass to the model. (e.g. `--model_args="temperature=0.2,top_p=0.95"`)
-- `--max_cost`: The maximum cost to spend on inference (for OpenAI API only).
+- `--max_cost`: The maximum cost to spend on inference total.
 
 
 ## Run live inference on open GitHub issues
@@ -35,6 +35,6 @@ Then run `run_live.py` to try solving a new issue. For example, you can try solv
 
 ```bash
 export OPENAI_API_KEY=<your key>
-python run_live.py --model_name gpt-3.5-turbo-16k \
+python run_live.py --model_name gpt-3.5-turbo-1106 \
     --issue_url https://github.com/huggingface/transformers/issues/26706 
 ```
