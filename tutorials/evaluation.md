@@ -17,6 +17,8 @@ Each prediction must be formatted as follows:
 
 Store multiple predictions in a `.json` file formatted as `[<prediction 1>, <prediction 2>,... <prediction n>]`. It is not necessary to generate predictions for every task instance.
 
+If you're more interested in specifically running evaluation to see how it works, you can download and use this set of [predictions](https://drive.google.com/uc?export=download&id=11a8mtuX6cafsdVDJAo-Bjw8X7zHS8EYx) that is an example of what your predictions should look like.
+
 ## 🔄 Running Evaluation
 To run evalution, modify then run the `harness/run_evaluation.sh` script, which invokes the `run_evaluation.py` script. The following arguments are necessary:
 
