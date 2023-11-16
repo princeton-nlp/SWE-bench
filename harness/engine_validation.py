@@ -17,12 +17,16 @@ def validate_args(args):
         raise ValueError(f"Could not find instances file at {args.instances_path}")
     if not os.path.exists(args.log_dir):
         raise ValueError(f"Could not find log directory at {args.log_dir}")
+
+    # If value is provided, check that the paths exist
     if args.path_conda is not None and not os.path.exists(args.path_conda):
         raise ValueError(f"Could not find conda installation at {args.path_conda}")
     if args.testbed is not None and not os.path.exists(args.testbed):
         raise ValueError(f"Could not find testbed at {args.testbed}")
     if args.temp_dir is not None and not os.path.exists(args.temp_dir):
         raise ValueError(f"Could not find temporary directory at {args.temp_dir}")
+
+    # If value is provided, check that it is valid
     if args.timeout is not None and args.timeout < 0:
         raise ValueError(f"Timeout must be a positive integer")
     if args.num_workers is not None and args.num_workers < 1:

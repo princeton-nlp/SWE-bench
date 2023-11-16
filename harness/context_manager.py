@@ -60,7 +60,7 @@ class TestbedContextManager:
         logger_testbed.propagate = verbose
         self.verbose = verbose
         self.old_dir = os.getcwd()
-        self.log_dir = log_dir
+        self.log_dir = os.path.abspath(log_dir)
         self.timeout = timeout
         self.subprocess_args = {"check": True, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
 
@@ -71,11 +71,12 @@ class TestbedContextManager:
         if temp_dir is not None and not os.path.exists(temp_dir):
             logger_testbed.info(f"[Testbed] Creating temp directory {temp_dir}")
             os.makedirs(temp_dir, exist_ok=True)
+        temp_dir = os.path.abspath(temp_dir) if temp_dir is not None else None
 
         # Set up conda path, create in temp directory if None
         if path_conda is not None:
             self.temp_dir_conda = None
-            self.path_conda = path_conda
+            self.path_conda = os.path.abspath(path_conda)
         else:
             self.temp_dir_conda = TemporaryDirectory(dir=temp_dir)
             self.path_conda = self.temp_dir_conda.name
@@ -84,7 +85,7 @@ class TestbedContextManager:
         # Set up testbed path, create in temp directory if None
         if testbed is not None:
             self.temp_dir_work = None
-            self.testbed = testbed
+            self.testbed = os.path.abspath(testbed)
         else:
             self.temp_dir_work = TemporaryDirectory(dir=temp_dir)
             self.testbed = self.temp_dir_work.name

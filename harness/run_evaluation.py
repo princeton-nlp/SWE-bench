@@ -61,13 +61,13 @@ def main(
         ValueError: If log_dir is not a directory, testbed is not a directory, or swe_bench_tasks does not exist.
     """
     # Validate arguments
-    if not os.path.isdir(log_dir):
-        raise ValueError("--log_dir must be a directory")
-    if not os.path.isdir(testbed):
-        raise ValueError("--testbed must be a directory")
+    if not os.path.exists(log_dir) or not os.path.isdir(log_dir):
+        raise ValueError("--log_dir must exist and point at a directory")
+    if not os.path.exists(testbed) or not os.path.isdir(testbed):
+        raise ValueError("--testbed must exist and point at a directory")
     if not os.path.exists(swe_bench_tasks):
         raise ValueError("--swe_bench_tasks does not exist")
-    tasks = json.load(open(swe_bench_tasks))
+    tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
     tasks_map = {t[KEY_INSTANCE_ID]: t for t in tasks}
     validate_predictions(predictions_path, [t[KEY_INSTANCE_ID] for t in tasks])
 
