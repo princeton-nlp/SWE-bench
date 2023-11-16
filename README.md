@@ -43,11 +43,11 @@ Find out more about how to use SWE-bench, such as how to...
 | Datasets | Models |
 | - | - |
 | [🤗 SWE-bench](https://huggingface.co/datasets/princeton-nlp/SWE-bench) | [🦙 SWE-Llama 13b](https://huggingface.co/princeton-nlp/SWE-Llama-13b) |
-| [🤗 "Oracle" Retrieval (Llama tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_oracle_llama) | [🦙 SWE-Llama 13b (PEFT)](https://huggingface.co/princeton-nlp/SWE-Llama-13b-peft) |
-| [🤗 "Oracle" Retrieval (cl100k tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_oracle_cl100k) | [🦙 SWE-Llama 7b](https://huggingface.co/princeton-nlp/SWE-Llama-7b) |
-| [🤗 BM25 Retrieval 13k (cl100k tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_13k_cl100k) | [🦙 SWE-Llama 7b (PEFT)](https://huggingface.co/princeton-nlp/SWE-Llama-7b-peft) |
-| [🤗 BM25 Retrieval 27k (cl100k tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_27k_cl100k) | |
-| [🤗 BM25 Retrieval 50k (Llama tokenized)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_50k_llama)   | |
+| [🤗 "Oracle" Retrieval](https://huggingface.co/datasets/princeton-nlp/SWE-bench_oracle) | [🦙 SWE-Llama 13b (PEFT)](https://huggingface.co/princeton-nlp/SWE-Llama-13b-peft) |
+| [🤗 BM25 Retrieval 13K](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_13K) | [🦙 SWE-Llama 7b](https://huggingface.co/princeton-nlp/SWE-Llama-7b) |
+| [🤗 BM25 Retrieval 27K](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_27K) | [🦙 SWE-Llama 7b (PEFT)](https://huggingface.co/princeton-nlp/SWE-Llama-7b-peft) |
+| [🤗 BM25 Retrieval 40K](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_40K) | |
+| [🤗 BM25 Retrieval 50K (Llama tokens)](https://huggingface.co/datasets/princeton-nlp/SWE-bench_bm25_50k_llama)   | |
 
 ## 🍎 Tutorials
 We've also written the following blog posts on how to use different parts of SWE-bench.
