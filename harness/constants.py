@@ -509,8 +509,8 @@ MAP_REPO_TO_ENV_YML_PATHS = {
 
 # Constants - Evaluation Keys
 KEY_INSTANCE_ID = "instance_id"
-KEY_MODEL = "model"
-KEY_PREDICTION = "prediction"
+KEY_MODEL = "model_name_or_path"
+KEY_PREDICTION = "model_patch"
 
 # Constants - Logging
 APPLY_PATCH_FAIL = ">>>>> Patch Apply Failed"

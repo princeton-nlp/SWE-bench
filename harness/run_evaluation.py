@@ -24,7 +24,7 @@ def validate_predictions(predictions_path, tasks_ids):
     # Check that predictions are correctly formatted
     for pred in predictions:
         if any([x not in pred for x in [KEY_INSTANCE_ID, KEY_MODEL, KEY_PREDICTION]]):
-            raise ValueError("Every prediction must have instance_id, model, and patch fields")
+            raise ValueError(f"Every prediction must have {KEY_INSTANCE_ID}, {KEY_MODEL}, and {KEY_PREDICTION} fields")
         if pred[KEY_INSTANCE_ID] not in tasks_ids:
             not_in_tasks.append(pred[KEY_INSTANCE_ID])
     # Check that instance IDs specified by predictions exist
