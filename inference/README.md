@@ -27,6 +27,24 @@ You can also specify further options:
 - `--max_cost`: The maximum cost to spend on inference total.
 
 
+## Run inference using Llama models (i.e. SWE-Llama)
+
+You can run inference using [SWE-Llama](https://huggingface.co/princeton-nlp/SWE-Llama-13b) with the `run_llama.py` script.
+This script is similar to `run_api.py`, but it is designed to run inference using Llama models.
+
+For instance, to run this script on SWE-bench with the ``Oracle`` context and SWE-Llama, you can run the following command:
+```bash
+python run_llama.py --dataset_name_or_path princeton-nlp/SWE-bench_oracle --model_name_or_path princeton-nlp/SWE-Llama-13b --output_dir ./outputs --temperature 0
+```
+
+You can also specify further options:
+- `--split`: To specify the dataset split to use (default is "test").
+- `--shard_id` and `--num_shards`: To process only a shard of the data.
+- `--temperature`: The temperature to use for sampling (default is 0).
+- `--top_p`: The top_p to use for sampling (default is 1).
+- `--peft_path`: The path or hf name for the PEFT adapter. 
+
+
 ## Run live inference on open GitHub issues
 
 Follow instructions [here](https://github.com/castorini/pyserini/blob/master/docs/installation.md) to install [Pyserini](https://github.com/castorini/pyserini), to perform BM25 retrieval.
