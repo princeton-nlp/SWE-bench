@@ -36,9 +36,9 @@ To build SWE-bench from source, follow these steps:
 You can download the SWE-bench dataset directly ([dev](https://drive.google.com/uc?export=download&id=1SbOxHiR0eXlq2azPSSOIDZz-Hva0ETpX), [test](https://drive.google.com/uc?export=download&id=164g55i3_B78F6EphCZGtgSrd2GneFyRM) sets) or from [HuggingFace](https://huggingface.co/datasets/princeton-nlp/SWE-bench).
 
 Find out more about how to use SWE-bench, such as how to...
-* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench
-* Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories
-* Train your own models on our pre-processed datasets or run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on models directly.
+1. Train your own models on our pre-processed datasets or run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on models directly.
+2. [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench3.
+3. Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories
 
 | Datasets | Models |
 | - | - |
