@@ -131,8 +131,9 @@ def get_requirements(instance: Dict, save_path: str = None):
     """
     # Attempt to find requirements.txt at each path based on task instance's repo
     path_worked = False
+    commit = 'environment_setup_commit' if 'environment_setup_commit' in instance else 'base_commit'
+
     for req_path in MAP_REPO_TO_REQS_PATHS[instance["repo"]]:
-        commit = 'environment_setup_commit' if 'environment_setup_commit' in instance else 'base_commit'
         reqs_url = os.path.join(
             SWE_BENCH_URL_RAW, instance["repo"], instance[commit], req_path
         )
@@ -161,7 +162,7 @@ def get_requirements(instance: Dict, save_path: str = None):
             reqs_url = os.path.join(
                 SWE_BENCH_URL_RAW,
                 instance["repo"],
-                instance["base_commit"],
+                instance[commit],
                 req_dir,
                 file_name,
             )
