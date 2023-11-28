@@ -10,8 +10,8 @@ Each prediction must be formatted as follows:
 ```json
 {
     "instance_id": "<Unique task instance ID>",
-    "prediction": "<.patch file content string>",
-    "model": "<Model name here (i.e. SWE-Llama-13b)>",
+    "model_patch": "<.patch file content string>",
+    "model_name_or_path": "<Model name here (i.e. SWE-Llama-13b)>",
 }
 ```
 
