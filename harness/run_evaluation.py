@@ -72,7 +72,7 @@ def main(
     validate_predictions(predictions_path, [t[KEY_INSTANCE_ID] for t in tasks])
 
     # Group predictions by model
-    predictions = json.load(open(predictions_path))
+    predictions = get_instances(predictions_path)
     map_model_to_predictions = {}
     for p in predictions:
         model = p[KEY_MODEL]
