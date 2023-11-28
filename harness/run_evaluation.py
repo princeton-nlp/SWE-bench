@@ -69,6 +69,7 @@ def main(
         raise ValueError("--swe_bench_tasks does not exist")
     tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
     tasks_map = {t[KEY_INSTANCE_ID]: t for t in tasks}
+    predictions_path = os.path.abspath(predictions_path)
     validate_predictions(predictions_path, [t[KEY_INSTANCE_ID] for t in tasks])
 
     # Group predictions by model
@@ -106,6 +107,8 @@ def main(
                 os.makedirs(testbed_model_repo_version_dir, exist_ok=True)
                 file_name = f"{model}_{repo}_{version}_{predictions_path.split('/')[-1]}"
                 file_path = os.path.join(testbed_model_repo_version_dir, file_name)
+                if file_path.endswith(".jsonl"):
+                    file_path = file_path[:-1]
                 with open(file_path, "w") as f:
                     args = argparse.Namespace()
                     args.log_dir = os.path.join(log_dir, model)
