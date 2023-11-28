@@ -145,12 +145,16 @@ class TestbedContextManager:
                 miniconda_sh,
             ]
             if platform.system() == "Darwin":
+                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
+                if platform.machine() == "arm64":
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
                 download_cmd = [
                     "curl",
-                    "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh",
+                    cmd_line_install_link,
                     "-o",
                     miniconda_sh,
                 ]
+
             subprocess.run(download_cmd, **self.subprocess_args)
 
             # Install Miniconda
