@@ -35,11 +35,13 @@ To build SWE-bench from source, follow these steps:
 ## 💽 Usage
 You can download the SWE-bench dataset directly ([dev](https://drive.google.com/uc?export=download&id=1SbOxHiR0eXlq2azPSSOIDZz-Hva0ETpX), [test](https://drive.google.com/uc?export=download&id=164g55i3_B78F6EphCZGtgSrd2GneFyRM) sets) or from [HuggingFace](https://huggingface.co/datasets/princeton-nlp/SWE-bench).
 
-Find out more about how to use SWE-bench, such as how to...
-1. Train your own models on our pre-processed datasets or run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on models directly.
-2. [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench3.
-3. Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories
+To use SWE-Bench, you can:
+* Train your own models on our pre-processed datasets  
+* Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on existing models (either models you have on-disk like LLaMA, or models you have access to through an API like GPT-4). The inference step is where you get a repo and an issue and have the model try to generate a fix for it.
+* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench. This is where you take a SWE-Bench task and a model-proposed solution and evaluate its correctness. 
+*  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories, to make new SWE-Bench tasks. 
 
+## ⬇️ Artifacts 
 | Datasets | Models |
 | - | - |
 | [🤗 SWE-bench](https://huggingface.co/datasets/princeton-nlp/SWE-bench) | [🦙 SWE-Llama 13b](https://huggingface.co/princeton-nlp/SWE-Llama-13b) |
