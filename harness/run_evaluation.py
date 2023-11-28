@@ -147,6 +147,10 @@ def main(
                     eval_args.append(args)
                 temp_dirs.append(testbed_model_repo_version_dir)
     
+    if len(eval_args) == 0:
+        logger.info("No predictions to evaluate")
+        return
+
     # Run evaluation on each model/repo
     pool = Pool(processes=len(eval_args))
     pool.map(eval_engine, eval_args)
