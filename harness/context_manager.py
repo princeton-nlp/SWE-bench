@@ -1,4 +1,4 @@
-import logging, os, subprocess
+import logging, os, platform, subprocess
 
 from constants import (
     APPLY_PATCH_FAIL,
@@ -144,6 +144,13 @@ class TestbedContextManager:
                 "-O",
                 miniconda_sh,
             ]
+            if platform.system() == "Darwin":
+                download_cmd = [
+                    "curl",
+                    "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh",
+                    "-o",
+                    miniconda_sh,
+                ]
             subprocess.run(download_cmd, **self.subprocess_args)
 
             # Install Miniconda
