@@ -67,7 +67,7 @@ print(f"\tApplied:   {applied}")
 print(f"\tResolved:  {resolved}")
 ```
 
-Given the model name, he `get_model_report` function returns a dictionary formatted as follows:
+Given the model name, the `get_model_report` function returns a dictionary formatted as follows:
 ```json
 {
     "<repository>": {
