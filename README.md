@@ -41,7 +41,7 @@ To use SWE-Bench, you can:
 * [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench. This is where you take a SWE-Bench task and a model-proposed solution and evaluate its correctness. 
 *  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories, to make new SWE-Bench tasks. 
 
-## ⬇️ Artifacts 
+## ⬇️ Downloads
 | Datasets | Models |
 | - | - |
 | [🤗 SWE-bench](https://huggingface.co/datasets/princeton-nlp/SWE-bench) | [🦙 SWE-Llama 13b](https://huggingface.co/princeton-nlp/SWE-Llama-13b) |
