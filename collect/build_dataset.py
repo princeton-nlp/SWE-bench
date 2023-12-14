@@ -140,7 +140,7 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
                 pull = json.loads(line)
                 if ix % 100 == 0:
                     logger.info(
-                        f"[{pull['base']['repo']['full_name']}] ( {ix} / {total_instances} ) {completed} valid, {with_tests} with tests."
+                        f"[{pull['base']['repo']['full_name']}] ( Up to {ix} checked ) {completed} valid, {with_tests} with tests."
                     )
                 # Construct instance fields
                 instance_id = (

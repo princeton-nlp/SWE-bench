@@ -74,7 +74,7 @@ def main(
     splits,
     validation_ratio,
     output_dir,
-    retrieval_dir,
+    retrieval_file,
     prompt_style,
     file_source,
     k,
@@ -124,7 +124,7 @@ def main(
         split_instances[split] = {x["instance_id"]: x for x in dataset[split]}
         add_text_inputs(
             split_instances[split],
-            retrieval_dir,
+            retrieval_file,
             k,
             prompt_style,
             file_source,
@@ -200,9 +200,9 @@ if __name__ == "__main__":
         "--output_dir", type=str, help="Path to the output directory."
     )
     parser.add_argument(
-        "--retrieval_dir",
+        "--retrieval_file",
         type=str,
-        help="Path to the directory where the retrieval results are stored.",
+        help="Path to the file where the retrieval results are stored.",
     )
     parser.add_argument(
         "--prompt_style",

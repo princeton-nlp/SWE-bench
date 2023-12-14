@@ -6,7 +6,7 @@ from constants import (
     KEY_MODEL,
     KEY_PREDICTION,
 )
-from context_manager import TestbedContextManager, TaskEnvContextManager
+from context_manager import TaskEnvContextManager
 from engine_validation import setup_testbed
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm

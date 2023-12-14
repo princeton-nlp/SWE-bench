@@ -481,7 +481,8 @@ def main(
         dataset = load_dataset(dataset_name_or_path)
         dataset_name = dataset_name_or_path.replace("/", "__")
     if shard_id is not None:
-        dataset = dataset.shard(num_shards, shard_id)
+        for split in splits:
+            dataset[split] = dataset[split].shard(num_shards, shard_id)
     instances = list()
     if set(splits) - set(dataset.keys()) != set():
         raise ValueError(f"Unknown splits {set(splits) - set(dataset.keys())}")

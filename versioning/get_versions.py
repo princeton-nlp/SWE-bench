@@ -34,9 +34,19 @@ def _find_version_in_text(text: str, instance: Dict) -> str:
     Returns:
         str: Version text, if found
     """
+    # Remove comments
+    pattern = r'""".*?"""'
+    text = re.sub(pattern, '', text, flags=re.DOTALL)
+    # Search through all patterns
     for pattern in MAP_REPO_TO_VERSION_PATTERNS[instance["repo"]]:
         matches = re.search(pattern, text)
         if matches is not None:
+            print(instance['repo'])
+            if instance['repo'] == 'pyvista/pyvista':
+                text = matches.group(0)
+                text = text.split('=')[-1].strip() if '=' in text else text.strip()
+                text = '.'.join(text.split(','))
+                return text
             return str(matches.group(1)).replace(" ", "")
 
 

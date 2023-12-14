@@ -7,6 +7,7 @@ from pathlib import Path
 from tqdm.auto import tqdm
 import numpy as np
 import openai
+import tiktoken
 from anthropic import HUMAN_PROMPT, AI_PROMPT, Anthropic
 from tenacity import (
     retry,
@@ -22,51 +23,55 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 dotenv.load_dotenv()
 
-# The maximum number of tokens that can be processed by each model.
 MODEL_LIMITS = {
-    'gpt-3.5-turbo-16k-0613': 16_385,
-    'gpt-3.5-turbo-16k': 16_385,
-    'gpt-3.5-turbo-0613': 4_097,
-    'gpt-3.5-turbo': 4_097,
-    'gpt-4-32k-0613': 32_768,
-    'gpt-4-32k': 32_768,
-    'gpt-4-0613': 8_192,
-    'gpt-4': 8_192,
+    "claude-instant-1": 100_000,
+    "claude-2": 100_000,
+    "gpt-3.5-turbo-16k-0613": 16_385,
+    "gpt-3.5-turbo-0613": 4_097,
+    "gpt-3.5-turbo-1106": 16_385,
+    "gpt-4-32k-0613": 32_768,
+    "gpt-4-0613": 8_192,
+    "gpt-4-1106-preview": 128_000,
 }
 
 # The cost per token for each model input.
 MODEL_COST_PER_INPUT = {
-    'gpt-3.5-turbo-16k-0613': 0.0000015,
-    'gpt-3.5-turbo-16k': 0.0000015,
-    'gpt-4-0613': 0.00003,
-    'gpt-4': 0.00003,
-    'gpt-4-32k-0613': 0.00006,
-    'gpt-4-32k': 0.00006,
-    'gpt-35-turbo-0613': 0.0000015,
-    'gpt-35-turbo': 0.0000015,
+    "claude-instant-1": 0.00000163,
+    "claude-2": 0.00001102,
+    "gpt-3.5-turbo-16k-0613": 0.0000015,
+    "gpt-3.5-turbo-0613": 0.0000015,
+    "gpt-3.5-turbo-1106": 0.000001,
+    "gpt-35-turbo-0613": 0.0000015,
+    "gpt-35-turbo": 0.0000015,  # probably still 0613
+    "gpt-4-0613": 0.00003,
+    "gpt-4-32k-0613": 0.00006,
+    "gpt-4-1106-preview": 0.00001,
 }
 
 # The cost per token for each model output.
 MODEL_COST_PER_OUTPUT = {
-    'gpt-3.5-turbo-16k-0613': 0.000002,
-    'gpt-3.5-turbo-16k': 0.000002,
-    'gpt-4-0613': 0.0006,
-    'gpt-4': 0.0006,
-    'gpt-4-32k-0613': 0.00012,
-    'gpt-4-32k': 0.00012,
-    'gpt-35-turbo-0613': 0.000002,
-    'gpt-35-turbo': 0.000002,
+    "claude-instant-1": 0.00000551,
+    "claude-2": 0.00003268,
+    "gpt-3.5-turbo-16k-0613": 0.000002,
+    "gpt-3.5-turbo-16k": 0.000002,
+    "gpt-3.5-turbo-1106": 0.000002,
+    "gpt-35-turbo-0613": 0.000002,
+    "gpt-35-turbo": 0.000002,
+    "gpt-4-0613": 0.00006,
+    "gpt-4-32k-0613": 0.00012,
+    "gpt-4-32k": 0.00012,
+    "gpt-4-1106-preview": 0.00003,
 }
 
 # used for azure
 ENGINES = {
-    'gpt-3.5-turbo-16k-0613': 'gpt-35-turbo-16k',
-    'gpt-4-0613': 'gpt-4',
-    'gpt-4-32k-0613': 'gpt-4-32k',
+    "gpt-3.5-turbo-16k-0613": "gpt-35-turbo-16k",
+    "gpt-4-0613": "gpt-4",
+    "gpt-4-32k-0613": "gpt-4-32k",
 }
 
 
-def calc_cost(response):
+def calc_cost(model_name, input_tokens, output_tokens):
     """
     Calculates the cost of a response from the openai API.
 
@@ -76,14 +81,13 @@ def calc_cost(response):
     Returns:
     float: The cost of the response.
     """
-    model_name = response.model
-    input_tokens = response.usage.prompt_tokens
-    output_tokens = response.usage.completion_tokens
     cost = (
         MODEL_COST_PER_INPUT[model_name] * input_tokens
         + MODEL_COST_PER_OUTPUT[model_name] * output_tokens
     )
-    logger.info(f'input_tokens={input_tokens}, output_tokens={output_tokens}, cost={cost:.2f}')
+    logger.info(
+        f"input_tokens={input_tokens}, output_tokens={output_tokens}, cost={cost:.2f}"
+    )
     return cost
 
 
@@ -125,13 +129,27 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
                 top_p=top_p,
                 **model_args,
             )
-        cost = calc_cost(response)
+        input_tokens = response.usage.prompt_tokens
+        output_tokens = response.usage.completion_tokens
+        cost = calc_cost(response.model, input_tokens, output_tokens)
         return response, cost
     except openai.error.InvalidRequestError as e:
-        if e.code == 'context_length_exceeded':
+        if e.code == "context_length_exceeded":
             print("Context length exceeded")
             return None
         raise e
+
+
+def gpt_tokenize(string: str, encoding) -> int:
+    """Returns the number of tokens in a text string."""
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+
+def claude_tokenize(string: str, api) -> int:
+    """Returns the number of tokens in a text string."""
+    num_tokens = api.count_tokens(string)
+    return num_tokens
 
 
 def openai_inference(
@@ -153,28 +171,31 @@ def openai_inference(
     existing_ids (set): A set of ids that have already been processed.
     max_cost (float): The maximum cost to spend on inference.
     """
+    encoding = tiktoken.encoding_for_model(model_name_or_path)
+    test_dataset = test_dataset.filter(
+        lambda x: gpt_tokenize(x["text"], encoding) <= MODEL_LIMITS[model_name_or_path],
+        desc="Filtering",
+        load_from_cache_file=False,
+    )
     openai_key = os.environ.get("OPENAI_API_KEY", None)
     if openai_key is None:
-        raise ValueError("Must provide an api key. Expected in OPENAI_API_KEY environment variable.")
+        raise ValueError(
+            "Must provide an api key. Expected in OPENAI_API_KEY environment variable."
+        )
     openai.api_key = openai_key
     print(f"Using OpenAI key {'*' * max(0, len(openai_key)-5) + openai_key[-5:]}")
-
     use_azure = model_args.pop("use_azure", False)
     if use_azure:
         openai.api_type = "azure"
         openai.api_base = "https://pnlpopenai3.openai.azure.com/"
-        openai.api_version = '2023-05-15'
-
-    temperature = model_args.pop('temperature', 0.2)
-    top_p = model_args.pop('top_p', 0.95 if temperature > 0 else 1)
-    print(f'Using temperature={temperature}, top_p={top_p}')
-
+        openai.api_version = "2023-05-15"
+    temperature = model_args.pop("temperature", 0.2)
+    top_p = model_args.pop("top_p", 0.95 if temperature > 0 else 1)
+    print(f"Using temperature={temperature}, top_p={top_p}")
     basic_args = {
         "model_name_or_path": model_name_or_path,
     }
     total_cost = 0
-    if 'input_ids' in test_dataset.features:
-        test_dataset = test_dataset.filter(lambda x: len(x['input_ids']) <= MODEL_LIMITS[model_name_or_path])
     print(f"Filtered to {len(test_dataset)} instances")
     with open(output_file, "a+") as f:
         for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
@@ -184,18 +205,18 @@ def openai_inference(
             output_dict = {"instance_id": instance_id}
             output_dict.update(basic_args)
             output_dict["text"] = f"{datum['text']}\n\n"
-            if 'input_ids' in datum and len(datum['input_ids']) > MODEL_LIMITS[model_name_or_path]:
-                output_dict["full_output"] = None
-                output_dict["model_patch"] = None
-            else:
-                response, cost = call_chat(
-                    output_dict["model_name_or_path"], output_dict["text"], use_azure, temperature, top_p
-                )
-                completion = response.choices[0]['message']['content']
-                total_cost += cost
-                print(f"Total Cost: {total_cost:.2f}")
-                output_dict["full_output"] = completion
-                output_dict["model_patch"] = extract_diff(completion)
+            response, cost = call_chat(
+                output_dict["model_name_or_path"],
+                output_dict["text"],
+                use_azure,
+                temperature,
+                top_p,
+            )
+            completion = response.choices[0]["message"]["content"]
+            total_cost += cost
+            print(f"Total Cost: {total_cost:.2f}")
+            output_dict["full_output"] = completion
+            output_dict["model_patch"] = extract_diff(completion)
             print(json.dumps(output_dict), file=f, flush=True)
             if max_cost is not None and total_cost >= max_cost:
                 print(f"Reached max cost {max_cost}, exiting")
@@ -203,7 +224,9 @@ def openai_inference(
 
 
 @retry(wait=wait_random_exponential(min=60, max=600), stop=stop_after_attempt(6))
-def call_anthropic(inputs, anthropic, model_name_or_path, temperature, top_p, **model_args):
+def call_anthropic(
+    inputs, anthropic, model_name_or_path, temperature, top_p, **model_args
+):
     """
     Calls the anthropic API to generate completions for the given inputs.
 
@@ -224,7 +247,11 @@ def call_anthropic(inputs, anthropic, model_name_or_path, temperature, top_p, **
             top_p=top_p,
             **model_args,
         )
-        return completion
+        response = completion.completion
+        input_tokens = anthropic.count_tokens(inputs)
+        output_tokens = anthropic.count_tokens(response)
+        cost = calc_cost(model_name_or_path, input_tokens, output_tokens)
+        return completion, cost
     except Exception as e:
         logger.error(e)
         logger.error(f"Inputs: {inputs}")
@@ -254,17 +281,25 @@ def anthropic_inference(
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY", None)
     if api_key is None:
-        raise ValueError("Must provide an api key. Expected in ANTHROPIC_API_KEY environment variable.")
-    if max_cost is not None:
-        raise ValueError("max_cost not supported for anthropic yet")
+        raise ValueError(
+            "Must provide an api key. Expected in ANTHROPIC_API_KEY environment variable."
+        )
     print(f"Using Anthropic key {'*' * max(0, len(api_key)-5) + api_key[-5:]}")
     anthropic = Anthropic(api_key=api_key)
-    temperature = model_args.pop('temperature', 0.2)
-    top_p = model_args.pop('top_p', 0.95 if temperature > 0 else 1)
-    print(f'Using temperature={temperature}, top_p={top_p}')
+    test_dataset = test_dataset.filter(
+        lambda x: claude_tokenize(x["text"], anthropic)
+        <= MODEL_LIMITS[model_name_or_path],
+        desc="Filtering",
+        load_from_cache_file=False,
+    )
+    temperature = model_args.pop("temperature", 0.2)
+    top_p = model_args.pop("top_p", 0.95 if temperature > 0 else 1)
+    print(f"Using temperature={temperature}, top_p={top_p}")
     basic_args = {
         "model_name_or_path": model_name_or_path,
     }
+    total_cost = 0
+    print(f"Filtered to {len(test_dataset)} instances")
     with open(output_file, "a+") as f:
         for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
             instance_id = datum["instance_id"]
@@ -272,11 +307,25 @@ def anthropic_inference(
                 continue
             output_dict = {"instance_id": instance_id}
             output_dict.update(basic_args)
-            output_dict["text_inputs"] = f"{HUMAN_PROMPT} {datum['text']}\n\n{AI_PROMPT}"
-            completion = call_anthropic(output_dict["text_inputs"], anthropic, model_name_or_path, temperature, top_p, **model_args)
+            output_dict[
+                "text_inputs"
+            ] = f"{HUMAN_PROMPT} {datum['text']}\n\n{AI_PROMPT}"
+            completion, cost = call_anthropic(
+                output_dict["text_inputs"],
+                anthropic,
+                model_name_or_path,
+                temperature,
+                top_p,
+                **model_args,
+            )
+            total_cost += cost
+            print(f"Total Cost: {total_cost:.2f}")
             output_dict["full_output"] = completion.completion
             output_dict["model_patch"] = extract_diff(completion.completion)
             print(json.dumps(output_dict), file=f, flush=True)
+            if max_cost is not None and total_cost >= max_cost:
+                print(f"Reached max cost {max_cost}, exiting")
+                break
 
 
 def parse_model_args(model_args):
@@ -326,7 +375,9 @@ def main(
     max_cost,
 ):
     if shard_id is None and num_shards is not None:
-        logger.warning(f"Received num_shards={num_shards} but shard_id is None, ignoring")
+        logger.warning(
+            f"Received num_shards={num_shards} but shard_id is None, ignoring"
+        )
     if shard_id is not None and num_shards is None:
         logger.warning(f"Received shard_id={shard_id} but num_shards is None, ignoring")
     model_args = parse_model_args(model_args)
@@ -342,7 +393,7 @@ def main(
     logger.info(f"Will write to {output_file}")
     existing_ids = set()
     if os.path.exists(output_file):
-        with open(output_file, 'r') as f:
+        with open(output_file, "r") as f:
             for line in f:
                 data = json.loads(line)
                 instance_id = data["instance_id"]
@@ -355,13 +406,14 @@ def main(
     if not split in dataset:
         raise ValueError(f"Invalid split {split} for dataset {dataset_name_or_path}")
     dataset = dataset[split]
-    if 'input_ids' in dataset.features:
-        lens = np.array(list(map(len, dataset['input_ids'])))
-    else:
-        lens = np.array(list(map(len, dataset['text'])))
+    lens = np.array(list(map(len, dataset["text"])))
     dataset = dataset.select(np.argsort(lens))
     if len(existing_ids) > 0:
-        dataset = dataset.filter(lambda x: x['instance_id'] not in existing_ids, desc="Filtering out existing ids")
+        dataset = dataset.filter(
+            lambda x: x["instance_id"] not in existing_ids,
+            desc="Filtering out existing ids",
+            load_from_cache_file=False,
+        )
     if shard_id is not None and num_shards is not None:
         dataset = dataset.shard(num_shards, shard_id, contiguous=True)
     inference_args = {
@@ -372,7 +424,7 @@ def main(
         "existing_ids": existing_ids,
         "max_cost": max_cost,
     }
-    if model_name_or_path in {"claude-2"}:
+    if model_name_or_path.startswith("claude"):
         anthropic_inference(**inference_args)
     elif model_name_or_path.startswith("gpt"):
         openai_inference(**inference_args)
@@ -387,7 +439,7 @@ if __name__ == "__main__":
         "--dataset_name_or_path",
         type=str,
         required=True,
-        help="HuggingFace dataset name or local path, with pre-tokenized inputs",
+        help="HuggingFace dataset name or local path",
     )
     parser.add_argument(
         "--split",
@@ -398,7 +450,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_name_or_path",
         type=str,
-        help="Path to the directory containing a lora or model",
+        help="Name of API model. Update MODEL* constants in this file to add new models.",
+        choices=sorted(list(MODEL_LIMITS.keys())),
     )
     parser.add_argument(
         "--shard_id",

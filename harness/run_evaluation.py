@@ -24,7 +24,7 @@ def validate_predictions(predictions_path, tasks_ids):
     # Check that predictions are correctly formatted
     for pred in predictions:
         if any([x not in pred for x in [KEY_INSTANCE_ID, KEY_MODEL, KEY_PREDICTION]]):
-            raise ValueError("Every prediction must have instance_id, model, and patch fields")
+            raise ValueError(f"Every prediction must have {KEY_INSTANCE_ID}, {KEY_MODEL}, and {KEY_PREDICTION} fields")
         if pred[KEY_INSTANCE_ID] not in tasks_ids:
             not_in_tasks.append(pred[KEY_INSTANCE_ID])
     # Check that instance IDs specified by predictions exist
@@ -61,18 +61,19 @@ def main(
         ValueError: If log_dir is not a directory, testbed is not a directory, or swe_bench_tasks does not exist.
     """
     # Validate arguments
-    if not os.path.isdir(log_dir):
-        raise ValueError("--log_dir must be a directory")
-    if not os.path.isdir(testbed):
-        raise ValueError("--testbed must be a directory")
+    if not os.path.exists(log_dir) or not os.path.isdir(log_dir):
+        raise ValueError("--log_dir must exist and point at a directory")
+    if not os.path.exists(testbed) or not os.path.isdir(testbed):
+        raise ValueError("--testbed must exist and point at a directory")
     if not os.path.exists(swe_bench_tasks):
         raise ValueError("--swe_bench_tasks does not exist")
-    tasks = json.load(open(swe_bench_tasks))
+    tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
     tasks_map = {t[KEY_INSTANCE_ID]: t for t in tasks}
+    predictions_path = os.path.abspath(predictions_path)
     validate_predictions(predictions_path, [t[KEY_INSTANCE_ID] for t in tasks])
 
     # Group predictions by model
-    predictions = json.load(open(predictions_path))
+    predictions = get_instances(predictions_path)
     map_model_to_predictions = {}
     for p in predictions:
         model = p[KEY_MODEL]
@@ -106,6 +107,8 @@ def main(
                 os.makedirs(testbed_model_repo_version_dir, exist_ok=True)
                 file_name = f"{model}_{repo}_{version}_{predictions_path.split('/')[-1]}"
                 file_path = os.path.join(testbed_model_repo_version_dir, file_name)
+                if file_path.endswith(".jsonl"):
+                    file_path = file_path[:-1]
                 with open(file_path, "w") as f:
                     args = argparse.Namespace()
                     args.log_dir = os.path.join(log_dir, model)
@@ -144,6 +147,10 @@ def main(
                     eval_args.append(args)
                 temp_dirs.append(testbed_model_repo_version_dir)
     
+    if len(eval_args) == 0:
+        logger.info("No predictions to evaluate")
+        return
+
     # Run evaluation on each model/repo
     pool = Pool(processes=len(eval_args))
     pool.map(eval_engine, eval_args)

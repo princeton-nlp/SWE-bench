@@ -259,19 +259,150 @@ MAP_VERSION_TO_INSTALL_XARRAY = {
     for k in ["0.12", "0.18", "0.19", "0.20", "2022.03", "2022.06", "2022.09"]
 }
 
+MAP_VERSION_TO_INSTALL_TRANSFORMERS = {
+    k: {
+        "python": "3.10",
+        "install": "pip install -e .",
+        "pip_packages": "pytest torch tensorflow flax",
+    }
+    for k in [
+        '4.28', '4.29', '4.30', '4.31', '4.32', '4.16', '4.14', '4.15', '4.17',
+        '4.19', '4.18', '4.22', '4.20', '4.11', '4.13', '4.12', '4.6', '4.7',
+        '4.9', '4.8', '4.10', '3.1', '3.2', '3.4', '3.3', '4.0', '3.5', '4.1',
+        '2.5', '2.8', '2.9', '2.11', '2.10', '3.0', '4.3', '4.2', '4.5', '4.4',
+        '4.21', '4.23', '4.24', '4.26', '4.25', '4.27'
+    ]
+}
+
+MAP_VERSION_TO_INSTALL_SQLFLUFF = {
+    k: {
+        "python": "3.9",
+        "packages": "requirements.txt",
+        "install": "pip install -e .",
+    }
+    for k in [
+        '0.10', '0.11', '0.12', '0.13', '0.4', '0.5', '0.6', '0.8', '0.9',
+        '1.0', '1.1', '1.2', '1.3', '1.4', '2.0', '2.1', '2.2'
+    ]
+}
+
+MAP_VERSION_TO_INSTALL_DBT_CORE = {
+    k: {
+        "python": "3.9",
+        "packages": "requirements.txt",
+        "install": "pip install -e .",
+    }
+    for k in [
+        '0.13', '0.14', '0.15', '0.16', '0.17', '0.18', '0.19', '0.20',
+        '0.21', '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7'
+    ]
+}
+
+MAP_VERSION_TO_INSTALL_PYVISTA = {
+    k: {
+        "python": "3.9",
+        "install": "pip install -e .",
+        "pip_packages": "pytest",
+    }
+    for k in ['0.20', '0.21', '0.22', '0.23']
+}
+MAP_VERSION_TO_INSTALL_PYVISTA.update({
+    k: {
+        "python": "3.9",
+        "packages": "requirements.txt",
+        "install": "pip install -e .",
+        "pip_packages": "pytest",
+    }
+    for k in [
+        '0.24', '0.25', '0.26', '0.27', '0.28', '0.29', '0.30', '0.31',
+        '0.32', '0.33', '0.34', '0.35', '0.36', '0.37', '0.38', '0.39',
+        '0.40', '0.41', '0.42', '0.43'
+    ]
+})
+
+MAP_VERSION_TO_INSTALL_ASTROID = {
+    k: {
+        "python": "3.9",
+        "install": "pip install -e .",
+        "pip_packages": "pytest",
+    }
+    for k in [
+        '2.10', '2.12', '2.13', '2.14', '2.15', '2.16', '2.5', '2.6',
+        '2.7', '2.8', '2.9', '3.0'
+    ]
+}
+
+MAP_VERSION_TO_INSTALL_MARSHMALLOW = {
+    k: {
+        "python": "3.9",
+        "install": "pip install -e '.[dev]'",
+    }
+    for k in [
+        '2.18', '2.19', '2.20', '3.0', '3.1', '3.10', '3.11', '3.12',
+        '3.13', '3.15', '3.16', '3.19', '3.2', '3.4', '3.8', '3.9'
+    ]
+}
+
+MAP_VERSION_TO_INSTALL_PVLIB = {
+    k: {
+        "python": "3.9",
+        "install": "pip install -e .[all]",
+        "packages": "pandas scipy",
+        "pip_packages": "jupyter ipython matplotlib pytest flake8"
+    }
+    for k in [
+        '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9'
+    ]
+}
+
+MAP_VERSION_TO_INSTALL_PYDICOM = {
+    k: {
+        "python": "3.6",
+        "install": "pip install -e .",
+        "packages": "numpy"
+    }
+    for k in [
+        '1.0', '1.1', '1.2', '1.3', '1.4',
+        '2.0', '2.1', '2.2', '2.3', '2.4', '3.0'
+    ]
+}
+MAP_VERSION_TO_INSTALL_PYDICOM.update({
+    k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.8"}
+    for k in ['1.4', '2.0']})
+MAP_VERSION_TO_INSTALL_PYDICOM.update({
+    k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.9"}
+    for k in ['2.1', '2.2']})
+MAP_VERSION_TO_INSTALL_PYDICOM.update({
+    k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.10"}
+    for k in ['2.3']})
+MAP_VERSION_TO_INSTALL_PYDICOM.update({
+    k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.11"}
+    for k in ['2.4', '3.0']})
+
+MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
+
 # Constants - Task Instance Instllation Environment
 MAP_VERSION_TO_INSTALL = {
     "astropy/astropy": MAP_VERSION_TO_INSTALL_ASTROPY,
+    "dbt-labs/dbt-core": MAP_VERSION_TO_INSTALL_DBT_CORE,
     "django/django": MAP_VERSION_TO_INSTALL_DJANGO,
+    "huggingface/transformers": MAP_VERSION_TO_INSTALL_TRANSFORMERS,
     "matplotlib/matplotlib": MAP_VERSION_TO_INSTALL_MATPLOTLIB,
+    "marshmallow-code/marshmallow": MAP_VERSION_TO_INSTALL_MARSHMALLOW,
     "mwaskom/seaborn": MAP_VERSION_TO_INSTALL_SEABORN,
     "pallets/flask": MAP_VERSION_TO_INSTALL_FLASK,
     "psf/requests": MAP_VERSION_TO_INSTALL_REQUESTS,
+    "pvlib/pvlib-python": MAP_VERSION_TO_INSTALL_PVLIB,
     "pydata/xarray": MAP_VERSION_TO_INSTALL_XARRAY,
+    "pydicom/pydicom": MAP_VERSION_TO_INSTALL_PYDICOM,
+    "pylint-dev/astroid": MAP_VERSION_TO_INSTALL_ASTROID,
     "pylint-dev/pylint": MAP_VERSION_TO_INSTALL_PYLINT,
     "pytest-dev/pytest": MAP_VERSION_TO_INSTALL_PYTEST,
+    "pyvista/pyvista": MAP_VERSION_TO_INSTALL_PYVISTA,
     "scikit-learn/scikit-learn": MAP_VERSION_TO_INSTALL_SKLEARN,
     "sphinx-doc/sphinx": MAP_VERSION_TO_INSTALL_SPHINX,
+    "sqlfluff/sqlfluff": MAP_VERSION_TO_INSTALL_SQLFLUFF,
+    "swe-bench/humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
     "sympy/sympy": MAP_VERSION_TO_INSTALL_SYMPY,
 }
 
@@ -282,22 +413,34 @@ MAP_REPO_TO_INSTALL = {}
 TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
 MAP_REPO_TO_TEST_FRAMEWORK = {
     "astropy/astropy": TEST_PYTEST,
+    "dbt-labs/dbt-core": TEST_PYTEST,
     "django/django": "./tests/runtests.py --verbosity 2",
+    "huggingface/transformers": TEST_PYTEST,
+    "marshmallow-code/marshmallow": TEST_PYTEST,
     "matplotlib/matplotlib": TEST_PYTEST,
     "mwaskom/seaborn": "pytest --no-header -rA",
     "pallets/flask": TEST_PYTEST,
     "psf/requests": TEST_PYTEST,
+    "pvlib/pvlib-python": TEST_PYTEST,
     "pydata/xarray": TEST_PYTEST,
+    "pydicom/pydicom": TEST_PYTEST,
+    "pylint-dev/astroid": TEST_PYTEST,
     "pylint-dev/pylint": TEST_PYTEST,
     "pytest-dev/pytest": "pytest -rA",
+    "pyvista/pyvista": TEST_PYTEST,
     "scikit-learn/scikit-learn": TEST_PYTEST,
     "sphinx-doc/sphinx": "tox -epy39 -v --",
+    "sqlfluff/sqlfluff": TEST_PYTEST,
+    "swe-bench/humaneval": "python",
     "sympy/sympy": "bin/test -C --verbose",
 }
 
 # Constants - Task Instance Version Extraction
 MAP_REPO_TO_VERSION_PATHS = {
+    "dbt-labs/dbt-core": ["core/dbt/version.py", "core/dbt/__init__.py"],
     "django/django": ["django/__init__.py"],
+    "huggingface/transformers": ["src/transformers/__init__.py"],
+    "marshmallow-code/marshmallow": ["src/marshmallow/__init__.py"],
     "mwaskom/seaborn": ["seaborn/__init__.py"],
     "pallets/flask": ["src/flask/__init__.py", "flask/__init__.py"],
     "psf/requests": ["requests/__version__.py", "requests/__init__.py"],
@@ -305,8 +448,10 @@ MAP_REPO_TO_VERSION_PATHS = {
         "src/cryptography/__about__.py",
         "src/cryptography/__init__.py",
     ],
+    "pylint-dev/astroid": ["astroid/__pkginfo__.py", "astroid/__init__.py"],
     "pylint-dev/pylint": ["pylint/__pkginfo__.py", "pylint/__init__.py"],
     "pytest-dev/pytest": ["src/_pytest/_version.py", "_pytest/_version.py"],
+    "pyvista/pyvista": ["pyvista/_version.py", "pyvista/__init__.py"],
     "Qiskit/qiskit": ["qiskit/VERSION.txt"],
     "scikit-learn/scikit-learn": ["sklearn/__init__.py"],
     "sphinx-doc/sphinx": ["sphinx/__init__.py"],
@@ -316,15 +461,19 @@ MAP_REPO_TO_VERSION_PATHS = {
 MAP_REPO_TO_VERSION_PATTERNS = {
     k: [r'__version__ = [\'"](.*)[\'"]', r"VERSION = \((.*)\)"]
     for k in [
-        "scikit-learn/scikit-learn",
-        "pallets/flask",
+        "dbt-labs/dbt-core",
         "django/django",
-        "psf/requests",
+        "huggingface/transformers",
+        "marshmallow-code/marshmallow",
         "mwaskom/seaborn",
+        "pallets/flask",
+        "psf/requests",
         "pyca/cryptography",
+        "pylint-dev/astroid",
+        "pylint-dev/pylint",
+        "scikit-learn/scikit-learn",
         "sphinx-doc/sphinx",
         "sympy/sympy",
-        "pylint-dev/pylint",
     ]
 }
 MAP_REPO_TO_VERSION_PATTERNS.update(
@@ -338,13 +487,17 @@ MAP_REPO_TO_VERSION_PATTERNS.update(
     }
 )
 MAP_REPO_TO_VERSION_PATTERNS.update({k: [r"(.*)"] for k in ["Qiskit/qiskit"]})
+MAP_REPO_TO_VERSION_PATTERNS.update({k: [r"version_info = [\d]+,[\d\s]+,"] for k in ["pyvista/pyvista"]})
 
 # Constants - Task Instance Requirements File Paths
 MAP_REPO_TO_REQS_PATHS = {
+    "dbt-labs/dbt-core": ["dev-requirements.txt", "dev_requirements.txt"],
     "django/django": ["tests/requirements/py3.txt"],
     "matplotlib/matplotlib": ["requirements/dev/dev-requirements.txt", "requirements/testing/travis_all.txt"],
     "pallets/flask": ["requirements/dev.txt"],
     "pylint-dev/pylint": ["requirements_test.txt"],
+    "pyvista/pyvista": ["requirements_test.txt", 'requirements.txt'],
+    "sqlfluff/sqlfluff": ["requirements_dev.txt"],
     "sympy/sympy": ["requirements-dev.txt"],
 }
 
@@ -356,8 +509,8 @@ MAP_REPO_TO_ENV_YML_PATHS = {
 
 # Constants - Evaluation Keys
 KEY_INSTANCE_ID = "instance_id"
-KEY_MODEL = "model"
-KEY_PREDICTION = "prediction"
+KEY_MODEL = "model_name_or_path"
+KEY_PREDICTION = "model_patch"
 
 # Constants - Logging
 APPLY_PATCH_FAIL = ">>>>> Patch Apply Failed"
