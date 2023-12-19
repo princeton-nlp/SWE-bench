@@ -285,7 +285,7 @@ class TestbedContextManager:
                     logger_testbed.info(
                         f"[Testbed] Installing dependencies for {env_name}; Command: {cmd}"
                     )
-                    self.exec(cmd.split(" "))
+                    self.exec(cmd, shell=True)
                     os.remove(path_to_reqs)
                 elif pkgs == "environment.yml":
                     # Create environment from yml
