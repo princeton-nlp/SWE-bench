@@ -43,7 +43,8 @@ def main(
     testbed: str,
     skip_existing: bool,
     timeout: int,
-    verbose: bool
+    verbose: bool,
+    num_processes: int = -1,
 ):
     """
     Runs evaluation on predictions for each model/repo/version combination.
@@ -152,14 +153,20 @@ def main(
         return
 
     # Run evaluation on each model/repo
-    pool = Pool(processes=len(eval_args))
-    pool.map(eval_engine, eval_args)
-    pool.close()
-    pool.join()
-
-    # Clean up
-    for temp_dir in temp_dirs:
-        shutil.rmtree(temp_dir)
+    num_processes = min(len(eval_args), num_processes) if num_processes > 0 else len(eval_args)
+    try:
+        if num_processes == 1:
+            for args in eval_args:
+                eval_engine(args)
+        else:
+            pool = Pool(processes=num_processes)
+            pool.map(eval_engine, eval_args)
+            pool.close()
+            pool.join()
+    finally:
+        # Clean up
+        for temp_dir in temp_dirs:
+            shutil.rmtree(temp_dir)
 
 
 if __name__ == "__main__":
@@ -171,6 +178,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
     parser.add_argument("--verbose", action="store_true", help="(Optional) Verbose mode")
+    parser.add_argument("--num_processes", type=int, help="(Optional) Number of processes to use.", default=-1)
     args = parser.parse_args()
     logger.propagate = args.verbose
     main(**vars(args))

@@ -19,7 +19,7 @@ from typing import Dict, List
 load_dotenv()
 
 
-def get_conda_env_names(conda_source: str) -> List:
+def get_conda_env_names(conda_source: str, env: dict = None) -> List:
     """
     Get list of conda environment names for given conda path
 
@@ -29,10 +29,16 @@ def get_conda_env_names(conda_source: str) -> List:
         env_names (list): List of conda environment names
     """
     # Get list of conda environments
-    conda_envs = subprocess.run(
-        f"{conda_source} env list", shell=True, check=True, capture_output=True
-    )
-    output = conda_envs.stdout.decode("utf-8")
+    try:
+        conda_envs = subprocess.run(
+            f"{conda_source} env list".split(" "), check=True, capture_output=True, text=True, env=env,
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+        print(f"Error stdout: {e.stdout}")
+        print(f"Error stderr: {e.stderr}")
+        raise e
+    output = conda_envs.stdout
     lines = output.split("\n")
     # Store environment names to list
     env_names = []

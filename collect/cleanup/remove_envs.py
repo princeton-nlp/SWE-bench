@@ -35,7 +35,7 @@ def delete_folders_with_prefix(prefix, conda_path):
     """
     envs_folder = os.path.join(conda_path, "envs")
     command = f'find {envs_folder} -type d -name "{prefix}*" -exec rm -rf {{}} +'
-    subprocess.run(command, shell=True)
+    subprocess.run(command.split(" "))
 
 
 def remove_environment(env_name, prefix):
@@ -46,8 +46,13 @@ def remove_environment(env_name, prefix):
         print(f"Removing {env_name}")
         conda_cmd = "conda remove -n " + env_name + " --all -y"
         cmd = conda_source + " && " + conda_cmd
-        conda_create_output = subprocess.run(cmd, shell=True, check=True)
-        print(f"Output: {conda_create_output}")
+        try:
+            conda_create_output = subprocess.run(cmd.split(), check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+            print(f"Error output: {e.stderr}")
+            raise e
+        print(f"Output: {conda_create_output.stdout}")
 
 
 if __name__ == "__main__":
@@ -66,7 +71,12 @@ if __name__ == "__main__":
     # Remove conda environments with a specific prefix
     conda_source = "source " + os.path.join(args.conda_path, "etc/profile.d/conda.sh")
     check_env = conda_source + " && " + "conda env list"
-    conda_envs = subprocess.run(check_env, shell=True, check=True, capture_output=True)
+    try:
+        conda_envs = subprocess.run(check_env.split(" "), check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+        print(f"Error output: {e.stderr.decode('utf-8')}")
+        raise e
     conda_envs_names = get_conda_env_names(conda_envs.stdout.decode("utf-8"))
 
     # Remove conda environments in parallel
