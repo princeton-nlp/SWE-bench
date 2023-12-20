@@ -80,7 +80,7 @@ def construct_data_files(data: Dict):
             pass
 
 
-def main(repos, path_prs, path_tasks):
+def main(repos: List, path_prs: str, path_tasks: str):
     """
     Spawns multiple threads given multiple GitHub tokens for collecting fine tuning data
 
@@ -111,9 +111,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--repos", nargs="+", help="List of repositories to create task instances for"
     )
-    parser.add_argument("--path_prs", type=str, help="Path to save PR data files to")
     parser.add_argument(
-        "--path_tasks", type=str, help="Path to save task instance data files to"
+        "--path_prs", type=str, help="Path to folder to save PR data files to"
+    )
+    parser.add_argument(
+        "--path_tasks",
+        type=str,
+        help="Path to folder to save task instance data files to",
     )
     args = parser.parse_args()
     main(**vars(args))
