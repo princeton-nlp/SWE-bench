@@ -94,7 +94,9 @@ def main(repos: List, path_prs: str, path_tasks: str):
     print(f"Will save task instance data to {path_tasks}")
     print(f"Received following repos to create task instances for: {repos}")
 
-    tokens = os.getenv("GITHUB_TOKENS").split(",")
+    tokens = os.getenv("GITHUB_TOKENS")
+    if not tokens: raise Exception("Missing GITHUB_TOKENS, consider rerunning with GITHUB_TOKENS=$(gh auth token)")
+    tokens = tokens.split(",")
     data_task_lists = split_instances(repos, len(tokens))
 
     data_pooled = [
