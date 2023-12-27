@@ -69,6 +69,8 @@ def main(
     if not os.path.exists(swe_bench_tasks):
         raise ValueError("--swe_bench_tasks does not exist")
     tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
+    if not isinstance(tasks, list):
+        raise ValueError(f"{swe_bench_tasks} must contain an array of tasks")
     tasks_map = {t[KEY_INSTANCE_ID]: t for t in tasks}
     predictions_path = os.path.abspath(predictions_path)
     validate_predictions(predictions_path, [t[KEY_INSTANCE_ID] for t in tasks])
@@ -82,7 +84,7 @@ def main(
             map_model_to_predictions[model] = []
         map_model_to_predictions[model].append(p)
     logger.info(f"Found {len(predictions)} predictions across {len(map_model_to_predictions)} model(s) in predictions file")
-    
+
     # For each model, split predictions by repo + save to folder
     eval_args = []
     temp_dirs = []
@@ -99,7 +101,7 @@ def main(
             if version not in map_repo_version_to_predictions[repo]:
                 map_repo_version_to_predictions[repo][version] = []
             map_repo_version_to_predictions[repo][version].append(p)
-        
+
         # For each model/repo/version, create testbed folder and save predictions
         for repo in map_repo_version_to_predictions:
             for version in map_repo_version_to_predictions[repo]:
@@ -135,7 +137,7 @@ def main(
                             continue
                         else:
                             logger.info(
-                                f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(predictions_filtered)} " + 
+                                f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(predictions_filtered)} " +
                                 f"({len(repo_version_predictions) - len(predictions_filtered)} already evaluated)"
                             )
                             repo_version_predictions = predictions_filtered
@@ -147,7 +149,7 @@ def main(
 
                     eval_args.append(args)
                 temp_dirs.append(testbed_model_repo_version_dir)
-    
+
     if len(eval_args) == 0:
         logger.info("No predictions to evaluate")
         return
