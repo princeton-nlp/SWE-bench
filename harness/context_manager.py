@@ -475,11 +475,13 @@ class TaskEnvContextManager:
             self.exec("git restore .".split(" "))
             self.exec("git reset HEAD .".split(" "))
             self.exec("git clean -fdx".split(" "))
+            self.exec("git submodule foreach --recursive git clean -fdx".split(" "))
             self.exec(
-                f"git -c advice.detachedHead=false checkout {instance['base_commit']}".split(
+                f"git -c advice.detachedHead=false checkout --recurse-submodules -f {instance['base_commit']}".split(
                     " "
                 )
             )
+            self.exec("git submodule update --init --recursive".split(" "))
             logger_taskenv.info(
                 f"[{self.testbed_name}] [{instance[KEY_INSTANCE_ID]}] Reset task environment to {instance['base_commit']}"
             )
