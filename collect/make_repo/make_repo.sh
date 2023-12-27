@@ -1,12 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 REPO_TARGET=$1
 
 # Check if the target repository exists
-gh repo view "$REPO_TARGET" > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "The repository $REPO_TARGET does not exist."
-    exit 1
-fi
+gh repo view "$REPO_TARGET" > /dev/null || exit 1
 
 # Set the organization and repository names
 ORG_NAME="swe-bench"
