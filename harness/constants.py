@@ -215,7 +215,7 @@ for k in ["3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "4.0"]:
     ].append("sed -i 's/Jinja2>=2.3/Jinja2<3.1/' setup.py")
 
 MAP_VERSION_TO_INSTALL_ASTROPY = {
-    k: {"python": "3.9", "install": "pip install -e .[test]"}
+    k: {"python": "3.9", "install": "python -m pip install -e .[test] && python -m pip install --force-reinstall 'numpy<1.20' 'pytest<7.2'"}
     for k in
         ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3", "3.0", "3.1", "3.2"] + \
         ["4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]
