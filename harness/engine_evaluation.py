@@ -42,7 +42,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
     # Attempt to set up environment with task + apply test patch
     if not tcm.reset_task_env(task_instance):
         return
-    
+
     filename_pat = re.compile(r'\[start of ([\w\.\-\/]+)\]\n(.+?)\n\[end of \1\]', re.DOTALL)
     # Run installation
     if (
@@ -50,7 +50,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
         or not tcm.apply_patch(task_instance["test_patch"], patch_type="test")
     ):
         return
-    
+
     # overwrite files
     for filename, contents in filename_pat.findall(task_instance['full_output']):
         correct_filename = './' + filename.lstrip('/')
@@ -68,11 +68,11 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
             f.write(contents)
             with open(tcm.log_file, 'a') as f_log:
                 f_log.write(f'Overwrote {correct_filename}\n')
-    
+
     # run testing script
     if not tcm.run_tests_task(task_instance):
         return
-    
+
     return
 
 
@@ -132,6 +132,11 @@ def main(args):
     Splits predictions into multiple groups if num_workers > 1. Each group is
     then evaluated in parallel.
     """
+    # try to figure out conda path, if there is already one installed on the system
+    conda_bin_path = os.getenv('CONDA_EXE')
+    if conda_bin_path is not None:
+        args.conda_path = os.path.dirname(os.path.dirname(conda_bin_path))
+
     if args.num_workers is None:
         args.num_workers = cpu_count()
 
