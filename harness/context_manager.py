@@ -217,7 +217,7 @@ class TestbedContextManager:
         self.path_conda = os.path.abspath(self.path_conda)
         conda_bin_path = os.path.join(self.path_conda, "bin")
         shellenv = os.environ.copy()
-        shellenv["PATH"] = conda_bin_path + os.pathsep + shellenv["PATH"]
+        shellenv["PATH"] = shellenv["PATH"] + os.pathsep + conda_bin_path
         self.exec.subprocess_args["env"] = shellenv
 
         path_activate = os.path.join(self.path_conda, "bin", "activate")
@@ -430,7 +430,7 @@ class TaskEnvContextManager:
 
         shellenv = os.environ.copy()
         condabinpath = os.path.join(self.conda_path, "bin")
-        shellenv["PATH"] = condabinpath + os.pathsep + shellenv["PATH"]
+        shellenv["PATH"] = shellenv["PATH"] + os.pathsep + condabinpath
         self.exec = ExecWrapper(
             subprocess_args={
                 "check": True,
