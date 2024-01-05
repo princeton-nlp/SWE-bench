@@ -247,7 +247,7 @@ def clone_repo(repo_name: str, path: str, token: str = None) -> bool:
             + repo_name.replace("/", "__")
             + ".git"
         )
-        Repo.clone_from(repo_url, path)
+        Repo.clone_from(repo_url, path).submodule_update(init=True, recursive=True)
         return True
     except Exception as e:
         print(e)
