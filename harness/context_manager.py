@@ -281,7 +281,7 @@ class TestbedContextManager:
 
                     # Install dependencies
                     path_to_reqs = get_requirements(setup_ref_instance, self.testbed)
-                    cmd = f"source {path_activate} {env_name} && echo 'activate successful' && pip install -r {path_to_reqs}"
+                    cmd = f". {path_activate} {env_name} && echo 'activate successful' && pip install -r {path_to_reqs}"
                     logger_testbed.info(
                         f"[Testbed] Installing dependencies for {env_name}; Command: {cmd}"
                     )
@@ -326,7 +326,7 @@ class TestbedContextManager:
 
                 # Install additional packages if specified
                 if "pip_packages" in install:
-                    cmd = f"source {path_activate} {env_name} && pip install {install['pip_packages']}"
+                    cmd = f". {path_activate} {env_name} && pip install {install['pip_packages']}"
                     logger_testbed.info(
                         f"[Testbed] Installing pip packages for {env_name}; Command: {cmd}"
                     )
@@ -424,7 +424,7 @@ class TaskEnvContextManager:
             self.log_file = os.path.join(
                 log_dir, f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.eval.log"
             )
-        self.cmd_activate = f"source {os.path.join(self.conda_path, 'bin', 'activate')} {self.venv} && echo 'activate successful'"
+        self.cmd_activate = f". {os.path.join(self.conda_path, 'bin', 'activate')} {self.venv} && echo 'activate successful'"
         self.timeout = timeout
         self.cwd = os.getcwd()
 
