@@ -159,11 +159,11 @@ def main(
             # repo_path has already been setup before, skip
             continue
 
-        logger.info(f"======= Start setting up for {repo_full} {version} =======")
+        logger.info(f"\n======= Start setting up for {repo_full} {version} =======")
         clone_repo(repo_full, repo_path)
         logger.info(f"Cloned {repo_full} to {repo_path}")
         create_conda_env(repo_full, version, repo_path, env_name, task)
-        logger.info(f"Created conda environment {env_name} for {repo_full}{version}")
+        logger.info(f"Created conda environment {env_name} for {repo_full} {version}")
 
     # Done with the actual work. We should dump the two maps to disk,
     # so other clients can use them to find locations of the setup
@@ -206,5 +206,4 @@ if __name__ == "__main__":
         default=-1,
     )
     args = parser.parse_args()
-    logger.propagate = args.verbose
     main(**vars(args))

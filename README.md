@@ -2,9 +2,34 @@
 
 Fork of [SWE-bench](https://github.com/princeton-nlp/SWE-bench) with modifications to use some of its scripts.
 
+
 ## Instructions
 
 _Before everything, install SWE-bench and conda activate._
+
+
+### To install
+
+First, install miniconda:
+
+```
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+```
+
+Create and activate conda environment for the benchmark:
+
+```
+conda env create -f environment.yml
+conda activate swe-bench
+```
+
+In some distro, `/bin/sh` points to dash instead of bash, which can cause issues when `source` is used in the benchmark code. To change it to bash:
+
+```
+sudo dpkg-reconfigure dash
+```
+
 
 ### To evaluate on some task instances
 
