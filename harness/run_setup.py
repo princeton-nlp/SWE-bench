@@ -7,9 +7,9 @@ from multiprocessing import Pool
 from os.path import join as pjoin
 from typing import Dict
 
-from constants import KEY_INSTANCE_ID, MAP_VERSION_TO_INSTALL
+from constants import KEY_INSTANCE_ID, MAP_REPO_TO_INSTALL, MAP_VERSION_TO_INSTALL
 from context_manager import ExecWrapper
-from utils import clone_repo, get_environment_yml, get_requirements
+from utils import clone_repo, get_conda_env_names, get_environment_yml, get_requirements
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -39,9 +39,25 @@ def create_conda_env(
         }
     )
 
-    # (1) figure out which conda to use
+    # figure out which conda to use
     conda_bin_path = os.getenv("CONDA_EXE")  # for calling conda
     activate_path = pjoin(os.path.dirname(conda_bin_path), "activate")  # for activate
+
+    existing_env_list = get_conda_env_names(conda_bin_path)
+    if env_name in existing_env_list:
+        # env_name has already been created.
+        # Don't trust the previous env, remove it.
+        cmd = f"{conda_bin_path} env remove -n {env_name} -y"
+        logger.info(f"Removing old conda env {env_name}.")
+        exec_wrapper(cmd.split(" "))
+
+    # (1) Run any top-level installation commands if provided (currently empty)
+    # TODO: ideally this should only be done once per repo; but now
+    # is done once per version, which means there are duplicated execs
+    if repo_full in MAP_REPO_TO_INSTALL:
+        install_cmd = MAP_REPO_TO_INSTALL[repo_full]
+        logger.info(f"Running custom install command for {repo_full}: {install_cmd}")
+        exec_wrapper(install_cmd, shell=True)
 
     # (2) get install information
     repo_map_version_to_install = MAP_VERSION_TO_INSTALL[repo_full]
@@ -98,13 +114,18 @@ def create_conda_env(
         pip_packages = install["pip_packages"]
         cmd = f"source {activate_path} {env_name} && pip install {pip_packages}"
         logger.info(f"Installing pip packages for {env_name}; Command: {cmd}")
-        exec_wrapper(cmd.split(" "))
+        exec_wrapper(cmd, shell=True)
 
 
 def create_fresh_dir(dir_name: str):
     if os.path.exists(dir_name):
         shutil.rmtree(dir_name)
     os.makedirs(dir_name)
+
+
+def create_if_not_exist(dir_name: str):
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
 
 
 def load_task_instances(swe_bench_tasks: str):
@@ -159,7 +180,8 @@ def main(
             # repo_path has already been setup before, skip
             continue
 
-        logger.info(f"\n======= Start setting up for {repo_full} {version} =======")
+        print("\n")
+        logger.info(f"======= Start setting up for {repo_full} {version} =======")
         clone_repo(repo_full, repo_path)
         logger.info(f"Cloned {repo_full} to {repo_path}")
         create_conda_env(repo_full, version, repo_path, env_name, task)
