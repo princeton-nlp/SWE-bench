@@ -2,7 +2,7 @@ MAP_VERSION_TO_INSTALL_SKLEARN = {
     k: {
         "python": "3.6",
         "packages": "numpy scipy cython pytest pandas matplotlib",
-        "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
+        "install": "python -m pip install -v --no-use-pep517 --no-build-isolation -e .",
     }
     for k in ["0.20", "0.21", "0.22"]
 }
@@ -11,7 +11,7 @@ MAP_VERSION_TO_INSTALL_SKLEARN.update(
         k: {
             "python": "3.7",
             "packages": "numpy scipy cython pytest pandas matplotlib",
-            "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
+            "install": "python -m pip install -v --no-use-pep517 --no-build-isolation -e .",
         }
         for k in ["0.23", "0.24"]
     }
@@ -21,7 +21,7 @@ MAP_VERSION_TO_INSTALL_SKLEARN.update(
         k: {
             "python": "3.9",
             "packages": "numpy scipy cython pytest pandas matplotlib joblib threadpoolctl",
-            "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
+            "install": "python -m pip install -v --no-use-pep517 --no-build-isolation -e .",
         }
         for k in ["1.0", "1.1", "1.2", "1.3", "1.4"]
     }
@@ -38,23 +38,23 @@ MAP_VERSION_TO_INSTALL_FLASK = {
         "python": "3.8",
         "packages": "pytest",
         "pip_packages": "tox",
-        "install": 'pip install -e ".[dev]"',
+        "install": 'python -m pip install -e ".[dev]"',
     },
     "1.1": {
         "python": "3.9",
         "packages": "pytest",
         "pip_packages": "tox",
-        "install": 'pip install -e ".[dev]"',
+        "install": 'python -m pip install -e ".[dev]"',
     },
     "2.0": {
         "python": "3.9",
         "packages": "requirements.txt",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
     },
     "2.1": {
         "python": "3.10",
         "packages": "requirements.txt",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
     },
 }
 MAP_VERSION_TO_INSTALL_FLASK.update(
@@ -63,7 +63,7 @@ MAP_VERSION_TO_INSTALL_FLASK.update(
             "python": "3.6",
             "packages": "pytest",
             "pip_packages": "tox",
-            "install": "pip install -e .",
+            "install": "python -m pip install -e .",
         }
         for k in ["0.11", "0.12", "0.12-dev", "0.13-dev"]
     }
@@ -73,7 +73,7 @@ MAP_VERSION_TO_INSTALL_FLASK.update(
         k: {
             "python": "3.11",
             "packages": "requirements.txt",
-            "install": "pip install -e .",
+            "install": "python -m pip install -e .",
         }
         for k in ["2.2", "2.3"]
     }
@@ -143,15 +143,15 @@ MAP_VERSION_TO_INSTALL_REQUESTS = {
 }
 
 MAP_VERSION_TO_INSTALL_SEABORN = {
-    k: {"python": "3.9", "install": "pip install -e .", "pip_packages": "pytest"}
+    k: {"python": "3.9", "install": "python -m pip install -e .", "pip_packages": "pytest"}
     for k in ["0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.11"]
 }
 MAP_VERSION_TO_INSTALL_SEABORN.update(
-    {k: {"python": "3.9", "install": "pip install -e .[dev]"} for k in ["0.12", "0.13"]}
+    {k: {"python": "3.9", "install": "python -m pip install -e .[dev]"} for k in ["0.12", "0.13"]}
 )
 
 MAP_VERSION_TO_INSTALL_PYTEST = {
-    k: {"python": "3.9", "install": "pip install -e ."}
+    k: {"python": "3.9", "install": "python -m pip install -e ."}
     for k in ["3.10", "6.0", "6.2", "6.3", "8.0"]
     + [
         str(round(0.1 * x, 1))
@@ -202,7 +202,7 @@ MAP_VERSION_TO_INSTALL_SPHINX = {
     k: {
         "python": "3.9",
         "pip_packages": "tox",
-        "install": "pip install -e .[test]",
+        "install": "python -m pip install -e .[test]",
         "pre_install": ["sed -i 's/pytest/pytest -rA/' tox.ini"],
     } for k in
         ["1.5", "1.6", "1.7", "1.8", "2.0", "2.1", "2.2", "2.3", "2.4", "3.0"] + \
@@ -226,7 +226,7 @@ MAP_VERSION_TO_INSTALL_SYMPY = {
         "python": "3.9",
         "packages": "mpmath flake8",
         "pip_packages": "flake8-comprehensions",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
     }
     for k in
         ["0.7", "1.0", "1.1", "1.10", "1.11", "1.12", "1.2", "1.4", "1.5", "1.6"] + \
@@ -237,14 +237,14 @@ MAP_VERSION_TO_INSTALL_SYMPY.update(
         k: {
             "python": "3.9",
             "packages": "requirements.txt",
-            "install": "pip install -e .",
+            "install": "python -m pip install -e .",
         }
         for k in ["1.13"]
     }
 )
 
 MAP_VERSION_TO_INSTALL_PYLINT = {
-    k: {"python": "3.9", "packages": "requirements.txt", "install": "pip install -e ."}
+    k: {"python": "3.9", "packages": "requirements.txt", "install": "python -m pip install -e ."}
     for k in ["2.10", "2.11", "2.13", "2.14", "2.15", "2.16", "2.17", "2.8", "2.9", "3.0"]
 }
 
@@ -252,7 +252,7 @@ MAP_VERSION_TO_INSTALL_XARRAY = {
     k: {
         "python": "3.10",
         "packages": "environment.yml",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
         "pip_packages": "pytest",
         "no_use_env": True,
     }
@@ -262,7 +262,7 @@ MAP_VERSION_TO_INSTALL_XARRAY = {
 MAP_VERSION_TO_INSTALL_TRANSFORMERS = {
     k: {
         "python": "3.10",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
         "pip_packages": "pytest torch tensorflow flax",
     }
     for k in [
@@ -278,7 +278,7 @@ MAP_VERSION_TO_INSTALL_SQLFLUFF = {
     k: {
         "python": "3.9",
         "packages": "requirements.txt",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
     }
     for k in [
         '0.10', '0.11', '0.12', '0.13', '0.4', '0.5', '0.6', '0.8', '0.9',
@@ -290,7 +290,7 @@ MAP_VERSION_TO_INSTALL_DBT_CORE = {
     k: {
         "python": "3.9",
         "packages": "requirements.txt",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
     }
     for k in [
         '0.13', '0.14', '0.15', '0.16', '0.17', '0.18', '0.19', '0.20',
@@ -301,7 +301,7 @@ MAP_VERSION_TO_INSTALL_DBT_CORE = {
 MAP_VERSION_TO_INSTALL_PYVISTA = {
     k: {
         "python": "3.9",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
         "pip_packages": "pytest",
     }
     for k in ['0.20', '0.21', '0.22', '0.23']
@@ -310,7 +310,7 @@ MAP_VERSION_TO_INSTALL_PYVISTA.update({
     k: {
         "python": "3.9",
         "packages": "requirements.txt",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
         "pip_packages": "pytest",
     }
     for k in [
@@ -323,7 +323,7 @@ MAP_VERSION_TO_INSTALL_PYVISTA.update({
 MAP_VERSION_TO_INSTALL_ASTROID = {
     k: {
         "python": "3.9",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
         "pip_packages": "pytest",
     }
     for k in [
@@ -335,7 +335,7 @@ MAP_VERSION_TO_INSTALL_ASTROID = {
 MAP_VERSION_TO_INSTALL_MARSHMALLOW = {
     k: {
         "python": "3.9",
-        "install": "pip install -e '.[dev]'",
+        "install": "python -m pip install -e '.[dev]'",
     }
     for k in [
         '2.18', '2.19', '2.20', '3.0', '3.1', '3.10', '3.11', '3.12',
@@ -346,7 +346,7 @@ MAP_VERSION_TO_INSTALL_MARSHMALLOW = {
 MAP_VERSION_TO_INSTALL_PVLIB = {
     k: {
         "python": "3.9",
-        "install": "pip install -e .[all]",
+        "install": "python -m pip install -e .[all]",
         "packages": "pandas scipy",
         "pip_packages": "jupyter ipython matplotlib pytest flake8"
     }
@@ -358,7 +358,7 @@ MAP_VERSION_TO_INSTALL_PVLIB = {
 MAP_VERSION_TO_INSTALL_PYDICOM = {
     k: {
         "python": "3.6",
-        "install": "pip install -e .",
+        "install": "python -m pip install -e .",
         "packages": "numpy"
     }
     for k in [

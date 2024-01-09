@@ -48,7 +48,7 @@ def create_conda_env(
         # env_name has already been created.
         # Don't trust the previous env, remove it.
         cmd = f"{conda_bin_path} env remove -n {env_name} -y"
-        logger.info(f"Removing old conda env {env_name}.")
+        logger.info(f"Removing old conda env {env_name}")
         exec_wrapper(cmd.split(" "))
 
     # (1) Run any top-level installation commands if provided (currently empty)
