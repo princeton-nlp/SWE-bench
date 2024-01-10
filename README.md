@@ -53,5 +53,5 @@ This is useful if you want to inspect the particular project states.
 To set up all task instances, do:
 
 ```
-python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result
+python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --num_processes 64
 ```

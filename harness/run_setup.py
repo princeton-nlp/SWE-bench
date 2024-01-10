@@ -17,6 +17,17 @@ logging.basicConfig(
 logger = logging.getLogger("run_setup")
 
 
+def create_fresh_dir(dir_name: str):
+    if os.path.exists(dir_name):
+        shutil.rmtree(dir_name)
+    os.makedirs(dir_name)
+
+
+def create_if_not_exist(dir_name: str):
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+
 def create_conda_env(
     repo_full: str, version: str, repo_path: str, env_name: str, instance: Dict
 ):
@@ -41,14 +52,16 @@ def create_conda_env(
 
     # figure out which conda to use
     conda_bin_path = os.getenv("CONDA_EXE")  # for calling conda
-    activate_path = pjoin(os.path.dirname(conda_bin_path), "activate")  # for activate
+    conda_bin_dir = os.path.dirname(conda_bin_path)
+    activate_path = pjoin(conda_bin_dir, "activate")  # for activate
+    deactivate_path = pjoin(conda_bin_dir, "deactivate")  # for deactivate
 
     existing_env_list = get_conda_env_names(conda_bin_path)
     if env_name in existing_env_list:
         # env_name has already been created.
         # Don't trust the previous env, remove it.
         cmd = f"{conda_bin_path} env remove -n {env_name} -y"
-        logger.info(f"Removing old conda env {env_name}")
+        logger.info(f"[{env_name}] Removing old conda env {env_name}")
         exec_wrapper(cmd.split(" "))
 
     # (1) Run any top-level installation commands if provided (currently empty)
@@ -56,7 +69,9 @@ def create_conda_env(
     # is done once per version, which means there are duplicated execs
     if repo_full in MAP_REPO_TO_INSTALL:
         install_cmd = MAP_REPO_TO_INSTALL[repo_full]
-        logger.info(f"Running custom install command for {repo_full}: {install_cmd}")
+        logger.info(
+            f"[{env_name}] Running custom install command for {repo_full}: {install_cmd}"
+        )
         exec_wrapper(install_cmd, shell=True)
 
     # (2) get install information
@@ -74,12 +89,16 @@ def create_conda_env(
     if pkgs == "requirements.txt":
         # create environment
         cmd = f"{conda_bin_path} create -n {env_name} python={python_version} -y"
-        logger.info(f"Creating environment {env_name}; Command: {cmd}")
+        logger.info(f"[{env_name}] Creating environment {env_name}; Command: {cmd}")
         exec_wrapper(cmd.split(" "))
         # install dependencies
         path_to_reqs = get_requirements(instance, temp_dir)
-        cmd = f"source {activate_path} {env_name} && echo 'activate successful' && pip install -r {path_to_reqs}"
-        logger.info(f"Installing dependencies for {env_name}; Command: {cmd}")
+        # Make sure to deactivate so that we can remove the environment.
+        # This is necessary if we are running the setup script multiple times.
+        cmd = f"source {activate_path} {env_name} && echo 'activate successful' && python -m pip install -r {path_to_reqs} && source {deactivate_path}"
+        logger.info(
+            f"[{env_name}] Installing dependencies for {env_name}; Command: {cmd}"
+        )
         exec_wrapper(cmd, shell=True)
         os.remove(path_to_reqs)
 
@@ -89,16 +108,18 @@ def create_conda_env(
         if "no_use_env" in install and install["no_use_env"]:
             # `conda create` based installation
             cmd = f"{conda_bin_path} create -c conda-forge -n {env_name} python={python_version} -y"
-            logger.info(f"Creating environment {env_name}; Command: {cmd}")
+            logger.info(f"[{env_name}] Creating environment {env_name}; Command: {cmd}")
             exec_wrapper(cmd.split(" "))
             # Install dependencies
             cmd = f"{conda_bin_path} env update -f {path_to_reqs}"
-            logger.info(f"Installing dependencies for {env_name}; Command: {cmd}")
+            logger.info(
+                f"[{env_name}] Installing dependencies for {env_name}; Command: {cmd}"
+            )
             exec_wrapper(cmd.split(" "))
         else:
             # `conda env create` based installation
             cmd = f"{conda_bin_path} env create --file {path_to_reqs}"
-            logger.info(f"Creating environment {env_name}; Command: {cmd}")
+            logger.info(f"[{env_name}] Creating environment {env_name}; Command: {cmd}")
             exec_wrapper(cmd.split(" "))
         # Remove environment.yml
         os.remove(path_to_reqs)
@@ -106,26 +127,44 @@ def create_conda_env(
     else:
         # Create environment + install dependencies
         cmd = f"{conda_bin_path} create -n {env_name} python={python_version} {pkgs} -y"
-        logger.info(f"Creating environment {env_name}; Command: {cmd}")
+        logger.info(f"[{env_name}] Creating environment {env_name}; Command: {cmd}")
         exec_wrapper(cmd.split(" "))
 
     # Install additional packages if specified
     if "pip_packages" in install:
         pip_packages = install["pip_packages"]
-        cmd = f"source {activate_path} {env_name} && pip install {pip_packages}"
-        logger.info(f"Installing pip packages for {env_name}; Command: {cmd}")
+        # Make sure to deactivate so that we can remove the environment.
+        # This is necessary if we are running the setup script multiple times.
+        cmd = f"source {activate_path} {env_name} && python -m pip install {pip_packages} && source {deactivate_path}"
+        logger.info(
+            f"[{env_name}] Installing pip packages for {env_name}; Command: {cmd}"
+        )
         exec_wrapper(cmd, shell=True)
 
 
-def create_fresh_dir(dir_name: str):
-    if os.path.exists(dir_name):
-        shutil.rmtree(dir_name)
-    os.makedirs(dir_name)
-
-
-def create_if_not_exist(dir_name: str):
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
+def setup_one_repo_version(
+    repo_full: str, repo_path: str, version: str, env_name: str, task: Dict
+):
+    """
+    Main entry for setting up one repo+version combination.
+    Put all logic in one function so it's easy to parallelize.
+    Args:
+        repo_full: full name of the repo, in the form "user/repo".
+        repo_path: the cloned repo path on disk.
+        version: version of the repo.
+        env_name: name of the conda environment to create.
+        task: Dict containing task instance.
+    """
+    logger.info(
+        f"[{env_name}] ======= Start setting up for {repo_full} {version} ======="
+    )
+    clone_repo(repo_full, repo_path)
+    logger.info(f"[{env_name}] Cloned {repo_full} to {repo_path}")
+    create_conda_env(repo_full, version, repo_path, env_name, task)
+    logger.info(
+        f"[{env_name}] Created conda environment {env_name} for {repo_full} {version}"
+    )
+    # TODO: should we do the "install" and "pre_install" as well?
 
 
 def load_task_instances(swe_bench_tasks: str):
@@ -142,7 +181,7 @@ def main(
     log_dir: str,
     testbed: str,
     result_dir: str,
-    num_processes: int = -1,
+    num_processes: int = 1,
 ):
     """
     Runs set up for each repo/version combination.
@@ -155,6 +194,8 @@ def main(
     Raises:
         ValueError: If log_dir is not a directory, testbed is not a directory, or swe_bench_tasks does not exist.
     """
+    # since we are going to store testbed dirs for others to use, we should use absolute path
+    testbed = os.path.abspath(testbed)
     # Validate arguments
     create_fresh_dir(log_dir)
     create_fresh_dir(testbed)
@@ -165,6 +206,8 @@ def main(
     # map instance_id to setup information
     setup_map = {i: {} for i in tasks_map}
 
+    # keep all information for setting up each entry
+    setup_entries = []
     # iterates all tasks, decide the path for their testbed folder, and save this path to task_map
     for instance_id, task in tasks_map.items():
         repo_full = task["repo"]  # "astropy/astropy"
@@ -174,31 +217,52 @@ def main(
         env_name = f"{repo_short}__{version}"
         repo_path = pjoin(testbed, repo_short, env_name)
         # keys in setup_map
-        setup_map["repo_path"] = repo_path
-        setup_map["env_name"] = env_name
-        if os.path.exists(repo_path):
-            # repo_path has already been setup before, skip
+        setup_map[instance_id]["repo_path"] = repo_path
+        setup_map[instance_id]["env_name"] = env_name
+        collected_entry_env_names = [e[3] for e in setup_entries]
+        if env_name in collected_entry_env_names:
+            # this repo+version combination has been recorded before
             continue
+        # should really do setup
+        setup_entries.append((repo_full, repo_path, version, env_name, task))
 
-        print("\n")
-        logger.info(f"======= Start setting up for {repo_full} {version} =======")
-        clone_repo(repo_full, repo_path)
-        logger.info(f"Cloned {repo_full} to {repo_path}")
-        create_conda_env(repo_full, version, repo_path, env_name, task)
-        logger.info(f"Created conda environment {env_name} for {repo_full} {version}")
+    setup_entries = sorted(setup_entries, key=lambda x: x[3])
+    all_env_names = [e[3] for e in setup_entries]
+    logger.info(f"env_name for all setup entries: {all_env_names}")
 
-    # Done with the actual work. We should dump the two maps to disk,
-    # so other clients can use them to find locations of the setup
-    setup_map_path = pjoin(result_dir, "setup_map.json")
-    tasks_map_path = pjoin(result_dir, "tasks_map.json")
-    with open(setup_map_path, "w") as f:
-        json.dump(setup_map, f)
-    with open(tasks_map_path, "w") as f:
-        json.dump(tasks_map, f)
+    # Now we have all the information for setting up each entry
+    num_setup_entries = len(setup_entries)
+    num_processes = min(num_processes, num_setup_entries)
+    if num_setup_entries == 0:
+        logger.info("No setup needed.")
+        return
 
-    print("Done with setup.")
-    print(f"setup_map is saved to {setup_map_path}")
-    print(f"tasks_map is saved to {tasks_map_path}")
+    logger.info("Starting parallel setup.")
+    logger.info(f"\tNumber of setup tasks: {num_setup_entries}")
+    logger.info(f"\tNumber of processes: {num_processes}")
+    try:
+        if num_processes == 1:
+            for entry in setup_entries:
+                setup_one_repo_version(*entry)
+        else:
+            # parallel
+            pool = Pool(processes=num_processes)
+            pool.starmap(setup_one_repo_version, setup_entries)
+            pool.close()
+            pool.join()
+    finally:
+        # Done with the actual work. We should dump the two maps to disk,
+        # so other clients can use them to find locations of the setup
+        setup_map_path = pjoin(result_dir, "setup_map.json")
+        tasks_map_path = pjoin(result_dir, "tasks_map.json")
+        with open(setup_map_path, "w") as f:
+            json.dump(setup_map, f)
+        with open(tasks_map_path, "w") as f:
+            json.dump(tasks_map, f)
+
+        print("Done with setup.")
+        print(f"setup_map is saved to {setup_map_path}")
+        print(f"tasks_map is saved to {tasks_map_path}")
 
 
 if __name__ == "__main__":
@@ -225,7 +289,7 @@ if __name__ == "__main__":
         "--num_processes",
         type=int,
         help="(Optional) Number of processes to use.",
-        default=-1,
+        default=1,
     )
     args = parser.parse_args()
     main(**vars(args))

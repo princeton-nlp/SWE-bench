@@ -172,3 +172,8 @@ analysis/**/scratch*
 analysis/benchmark/plots/
 analysis/evaluation/*.csv
 analysis/evaluation/*.pdf
+
+# Directories produced by setup script
+setup_result/
+testbed/
+logs/
