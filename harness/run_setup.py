@@ -28,6 +28,38 @@ def create_if_not_exist(dir_name: str):
         os.makedirs(dir_name)
 
 
+def remove_conda_env_and_dir(env_name: str):
+    """
+    Completely remove conda env and its folder on disk.
+    """
+    exec_wrapper = ExecWrapper(
+        subprocess_args={
+            "check": True,
+            "shell": False,
+            "capture_output": True,
+            "text": True,
+        }
+    )
+    # figure out which conda to use
+    conda_bin_path = os.getenv("CONDA_EXE")  # for calling conda
+    conda_bin_dir = os.path.dirname(conda_bin_path)
+    conda_env_dir = pjoin(os.path.dirname(conda_bin_dir), "envs")
+
+    # remove env with conda command
+    existing_env_list = get_conda_env_names(conda_bin_path)
+    if env_name in existing_env_list:
+        # env_name has already been created.
+        cmd = f"{conda_bin_path} remove -n {env_name} --all -y"
+        logger.info(f"[{env_name}] Removing old conda env {env_name}")
+        exec_wrapper(cmd.split(" "), shell=True)
+
+    # remove potential dangling env folder
+    env_dir = pjoin(conda_env_dir, env_name)
+    if os.path.exists(env_dir):
+        logger.info(f"[{env_name}] Removing dangling conda env folder {env_dir}")
+        shutil.rmtree(env_dir)
+
+
 def create_conda_env(
     repo_full: str, version: str, repo_path: str, env_name: str, instance: Dict
 ):
@@ -56,13 +88,8 @@ def create_conda_env(
     activate_path = pjoin(conda_bin_dir, "activate")  # for activate
     deactivate_path = pjoin(conda_bin_dir, "deactivate")  # for deactivate
 
-    existing_env_list = get_conda_env_names(conda_bin_path)
-    if env_name in existing_env_list:
-        # env_name has already been created.
-        # Don't trust the previous env, remove it.
-        cmd = f"{conda_bin_path} remove -n {env_name} --all -y"
-        logger.info(f"[{env_name}] Removing old conda env {env_name}")
-        exec_wrapper(cmd.split(" "), shell=True)
+    # if an old env with the same name exists, remove it
+    remove_conda_env_and_dir(env_name)
 
     # (1) Run any top-level installation commands if provided (currently empty)
     # TODO: ideally this should only be done once per repo; but now
