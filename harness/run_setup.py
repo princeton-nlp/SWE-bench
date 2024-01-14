@@ -62,7 +62,7 @@ def create_conda_env(
         # Don't trust the previous env, remove it.
         cmd = f"{conda_bin_path} remove -n {env_name} --all -y"
         logger.info(f"[{env_name}] Removing old conda env {env_name}")
-        exec_wrapper(cmd.split(" "))
+        exec_wrapper(cmd.split(" "), shell=True)
 
     # (1) Run any top-level installation commands if provided (currently empty)
     # TODO: ideally this should only be done once per repo; but now
