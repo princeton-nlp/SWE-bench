@@ -30,6 +30,12 @@ In some distro, `/bin/sh` points to dash instead of bash, which can cause issues
 sudo dpkg-reconfigure dash
 ```
 
+Also install system level packages required by the benchmark subjects:
+
+```
+sudo apt install libffi-dev
+```
+
 
 ### To evaluate on some task instances
 

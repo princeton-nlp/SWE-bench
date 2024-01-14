@@ -60,7 +60,7 @@ def create_conda_env(
     if env_name in existing_env_list:
         # env_name has already been created.
         # Don't trust the previous env, remove it.
-        cmd = f"{conda_bin_path} env remove -n {env_name} -y"
+        cmd = f"{conda_bin_path} remove -n {env_name} --all -y"
         logger.info(f"[{env_name}] Removing old conda env {env_name}")
         exec_wrapper(cmd.split(" "))
 
@@ -95,7 +95,7 @@ def create_conda_env(
         path_to_reqs = get_requirements(instance, temp_dir)
         # Make sure to deactivate so that we can remove the environment.
         # This is necessary if we are running the setup script multiple times.
-        cmd = f"source {activate_path} {env_name} && echo 'activate successful' && python -m pip install -r {path_to_reqs} && source {deactivate_path}"
+        cmd = f"source {activate_path} {env_name} && echo 'activate successful' && python -m pip install -r {path_to_reqs} ; source {deactivate_path}"
         logger.info(
             f"[{env_name}] Installing dependencies for {env_name}; Command: {cmd}"
         )
@@ -135,7 +135,7 @@ def create_conda_env(
         pip_packages = install["pip_packages"]
         # Make sure to deactivate so that we can remove the environment.
         # This is necessary if we are running the setup script multiple times.
-        cmd = f"source {activate_path} {env_name} && python -m pip install {pip_packages} && source {deactivate_path}"
+        cmd = f"source {activate_path} {env_name} && python -m pip install {pip_packages} ; source {deactivate_path}"
         logger.info(
             f"[{env_name}] Installing pip packages for {env_name}; Command: {cmd}"
         )
