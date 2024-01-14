@@ -51,7 +51,7 @@ def remove_conda_env_and_dir(env_name: str):
         # env_name has already been created.
         cmd = f"{conda_bin_path} remove -n {env_name} --all -y"
         logger.info(f"[{env_name}] Removing old conda env {env_name}")
-        exec_wrapper(cmd.split(" "), shell=True)
+        exec_wrapper(cmd.split(" "))
 
     # remove potential dangling env folder
     env_dir = pjoin(conda_env_dir, env_name)

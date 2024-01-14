@@ -59,5 +59,12 @@ This is useful if you want to inspect the particular project states.
 To set up all task instances, do:
 
 ```
+python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result
+```
+
+You can also use multiple processes for setting up environment. However, note that conda is not
+thread-safe, and doing this may result in deadlock:
+
+```
 python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --num_processes 64
 ```
