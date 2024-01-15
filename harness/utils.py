@@ -47,9 +47,12 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> List:
             continue
         if line.strip() == "":
             continue
-        if " " in line:
-            env_name = line.split(" ")[0]
-            env_names.append(env_name)
+        parts = line.split()
+        if len(parts) == 2:
+            env_name = parts[0]
+        elif len(parts) == 1:
+            env_name = parts[0].split('/')[-1]
+        env_names.append(env_name)
     return env_names
 
 
