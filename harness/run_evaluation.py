@@ -1,10 +1,16 @@
-import argparse, json, logging, os, shutil
+import argparse
+import datasets
+import json
+import logging
+import os
+import shutil
 
 from constants import (
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
 )
+from datasets import load_dataset
 from engine_evaluation import main as eval_engine
 from multiprocessing import Pool
 from utils import get_instances
@@ -51,7 +57,7 @@ def main(
 
     Args:
         predictions_path (str): Path to the predictions file.
-        swe_bench_tasks (str): Path to the SWE-bench tasks file.
+        swe_bench_tasks (str): Path to the SWE-bench tasks file OR [dev|test].
         log_dir (str): Path to the directory where logs will be saved.
         testbed (str): Path to the directory where testbeds will be saved.
         skip_existing (bool): Whether to skip evaluations for predictions that already have logs.
@@ -66,9 +72,27 @@ def main(
         raise ValueError("--log_dir must exist and point at a directory")
     if not os.path.exists(testbed) or not os.path.isdir(testbed):
         raise ValueError("--testbed must exist and point at a directory")
-    if not os.path.exists(swe_bench_tasks):
-        raise ValueError("--swe_bench_tasks does not exist")
-    tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
+
+    if not os.path.exists(swe_bench_tasks) and swe_bench_tasks not in ["dev", "test"]:
+        raise ValueError("--swe_bench_tasks does not exist OR is not [dev|test]")
+
+    tasks = None
+    if os.path.exists(swe_bench_tasks):
+        # If local path is provided, load from path
+        tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
+    else:
+        # If dev/test split is provided, load from HuggingFace datasets
+        temp = load_dataset('princeton-nlp/SWE-bench', split=swe_bench_tasks)
+        assert(temp, datasets.arrow_dataset.Dataset)
+        temp = temp.to_dict()
+        tasks = []
+        for idx in range(len(temp[KEY_INSTANCE_ID])):
+            task_instance = {}
+            for k in temp.keys():
+                task_instance[k] = temp[k][idx]
+            tasks.append(task_instance)
+
+    # Verify arguments are formatted correctly
     if not isinstance(tasks, list):
         raise ValueError(f"{swe_bench_tasks} must contain an array of tasks")
     tasks_map = {t[KEY_INSTANCE_ID]: t for t in tasks}
