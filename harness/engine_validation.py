@@ -53,6 +53,7 @@ def verify_task_instances(data: Dict):
             data_dict.conda_path,
             verbose=data_dict.verbose,
             timeout=data_dict.timeout,
+            log_suffix=data_dict.log_suffix,
         ) as tcm:
             if (
                 task_instance["repo"] in SKIP_INSTANCES
@@ -147,6 +148,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--instances_path", type=str, help="Path to candidate task instances file", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
+    parser.add_argument("--log_suffix", type=str, default=None, help="(Optional) Suffix to append to log file names")
     parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
     parser.add_argument("--testbed", type=str, help="(Optional) Path to testbed directory")
     parser.add_argument("--temp_dir", type=str, help="(Optional) Path to temporary directory for storing virtual envs")

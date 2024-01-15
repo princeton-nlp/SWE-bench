@@ -47,6 +47,7 @@ def main(
     swe_bench_tasks: str,
     log_dir: str,
     testbed: str,
+    log_suffix: str,
     skip_existing: bool,
     timeout: int,
     verbose: bool,
@@ -144,16 +145,17 @@ def main(
                     args.timeout = timeout
                     args.skip_existing = skip_existing
                     args.verbose = verbose
+                    args.log_suffix = log_suffix
 
                     repo_version_predictions = map_repo_version_to_predictions[repo][version]
                     if skip_existing:
                         # Skip logs that already exist
                         predictions_filtered = []
                         for p in repo_version_predictions:
-                            log_file = os.path.join(
-                                args.log_dir,
-                                f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log",
-                            )
+                            log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log"
+                            if args.log_suffix is not None:
+                                log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.{log_suffix}.eval.log"
+                            log_file = os.path.join(args.log_dir, log_file_name)
                             if not os.path.exists(log_file):
                                 predictions_filtered.append(p)
                         if len(predictions_filtered) == 0:
@@ -201,6 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
     parser.add_argument("--swe_bench_tasks", type=str, help="Path to SWE-bench task instances file", required=True)
     parser.add_argument("--testbed", type=str, help="Path to testbed directory", required=True)
+    parser.add_argument("--log_suffix", type=str, help="(Optional) Suffix to append to log file names", default=None)
     parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
     parser.add_argument("--verbose", action="store_true", help="(Optional) Verbose mode")

@@ -397,6 +397,7 @@ class TaskEnvContextManager:
         verbose: bool = False,
         timeout: int = None,
         is_eval: bool = False,
+        log_suffix: str = None,
     ):
         """
         Sets up execution context for a single task instance
@@ -414,19 +415,32 @@ class TaskEnvContextManager:
         """
         logger_taskenv.propagate = verbose
         self.instance = instance
+        self.conda_path = conda_path
+        self.cwd = os.getcwd()
+        self.is_eval = is_eval
         self.testbed = testbed
         self.testbed_name = testbed.split("/")[-1]
         self.venv = venv
-        self.conda_path = conda_path
-        self.log_file = os.path.join(log_dir, f"{instance[KEY_INSTANCE_ID]}.log")
-        self.is_eval = is_eval
-        if is_eval:
-            self.log_file = os.path.join(
-                log_dir, f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.eval.log"
+
+        # Log file naming
+        log_file_name = (
+            f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.eval.log"
+            if self.is_eval
+            else f"{instance[KEY_INSTANCE_ID]}.log"
+        )
+        if log_suffix is not None:
+            log_file_name = (
+                f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.{log_suffix}.eval.log"
+                if self.is_eval
+                else f"{instance[KEY_INSTANCE_ID]}.{log_suffix}.log"
             )
-        self.cmd_activate = f"source {os.path.join(self.conda_path, 'bin', 'activate')} {self.venv} && echo 'activate successful'"
+        self.log_file = os.path.join(log_dir, log_file_name)
+
+        self.cmd_activate = (
+            f"source {os.path.join(self.conda_path, 'bin', 'activate')} "
+            + f"{self.venv} && echo 'activate successful'"
+        )
         self.timeout = timeout
-        self.cwd = os.getcwd()
 
         shellenv = os.environ.copy()
         condabinpath = os.path.join(self.conda_path, "bin")
@@ -638,7 +652,9 @@ class TaskEnvContextManager:
             test_cmd = f"{self.cmd_activate} && {instance['test_cmd']}"
             with open(self.log_file, "a") as f:
                 f.write(f"Test Script: {test_cmd};\n")
-            out_test = self.exec(test_cmd, shell=True, timeout=self.timeout, check=False)
+            out_test = self.exec(
+                test_cmd, shell=True, timeout=self.timeout, check=False
+            )
 
             # Write test results to log file
             with open(self.log_file, "a") as f:
