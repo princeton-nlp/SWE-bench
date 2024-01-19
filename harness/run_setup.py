@@ -5,7 +5,7 @@ import os
 import shutil
 from multiprocessing import Pool
 from os.path import join as pjoin
-from typing import Dict
+from typing import Dict, Optional
 
 from constants import KEY_INSTANCE_ID, MAP_REPO_TO_INSTALL, MAP_VERSION_TO_INSTALL
 from context_manager import ExecWrapper
@@ -209,6 +209,7 @@ def main(
     testbed: str,
     result_dir: str,
     num_processes: int = 1,
+    subset_file: Optional[str] = None,
 ):
     """
     Runs set up for each repo/version combination.
@@ -218,6 +219,8 @@ def main(
         log_dir (str): Path to the directory where logs will be saved.
         testbed (str): Path to the directory where testbeds will be saved.
         result_dir (str): Path to the directory where results are stored.
+        num_processes (int, optional): Number of processes to use.
+        subset_file (str, optional): Path to a file indicating which subset to set up.
     Raises:
         ValueError: If log_dir is not a directory, testbed is not a directory, or swe_bench_tasks does not exist.
     """
@@ -233,10 +236,19 @@ def main(
     # map instance_id to setup information
     setup_map = {i: {} for i in tasks_map}
 
+    # sometimes we just want to setup a subset of instances for quick experiments
+    selected_instances = []  # only used if there is a subset_file
+    if subset_file is not None:
+        with open(subset_file, "r") as f:
+            selected_instances = [line.strip() for line in f.readlines()]
+
     # keep all information for setting up each entry
     setup_entries = []
-    # iterates all tasks, decide the path for their testbed folder, and save this path to task_map
+    # iterates all tasks, decide which ones need setup,
+    # decide the path for their testbed folder, and save this path to task_map
     for instance_id, task in tasks_map.items():
+        if subset_file is not None and instance_id not in selected_instances:
+            continue
         repo_full = task["repo"]  # "astropy/astropy"
         repo_short = instance_id.rsplit("-", 1)[0]  # "astropy"
         version = task["version"]  # "4.2"
@@ -317,6 +329,12 @@ if __name__ == "__main__":
         type=int,
         help="(Optional) Number of processes to use.",
         default=1,
+    )
+    parser.add_argument(
+        "--subset_file",
+        type=str,
+        help="(Optional) Path to a file containing a subset of instances to setup. Each line should contain one instace id to be set up.",
+        default=None,
     )
     args = parser.parse_args()
     main(**vars(args))

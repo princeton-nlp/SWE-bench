@@ -66,5 +66,10 @@ You can also use multiple processes for setting up environment. However, note th
 thread-safe, and doing this may result in deadlock:
 
 ```
-python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --num_processes 64
+python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --num_processes 16
+```
+
+If you only want to set up a subset of tasks, write the list of tasks into a file <subset_file> and do:
+
+```python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --subset_file <subset_file> --num_processes 16
 ```
