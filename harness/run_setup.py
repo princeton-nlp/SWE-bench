@@ -5,7 +5,7 @@ import os
 import shutil
 from multiprocessing import Pool
 from os.path import join as pjoin
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple, List
 
 from constants import KEY_INSTANCE_ID, MAP_REPO_TO_INSTALL, MAP_VERSION_TO_INSTALL
 from context_manager import ExecWrapper
@@ -152,6 +152,7 @@ def create_conda_env(
         os.remove(path_to_reqs)
 
     else:
+        # pkg is a list of packages
         # Create environment + install dependencies
         cmd = f"{conda_bin_path} create -n {env_name} python={python_version} {pkgs} -y"
         logger.info(f"[{env_name}] Creating environment {env_name}; Command: {cmd}")
@@ -168,6 +169,25 @@ def create_conda_env(
         )
         exec_wrapper(cmd, shell=True)
 
+
+def collect_install_instructions(repo_full: str, version: str) -> Tuple[List[str], str]:
+    """
+    Collect install instructions for a repo+version combination.
+
+    Returns:
+        A tuple of (pre_install, install) commands.
+        If a command is not available, it will be an empty list/string.
+    """
+    specification = MAP_VERSION_TO_INSTALL[repo_full][version]
+    pre_install_cmds = []
+    install_cmd = ""
+    if "pre_install" in specification:
+        # pre_install is a list of commands
+        pre_install_cmds = specification["pre_install"]
+    if "install" in specification:
+        # install is just one command
+        install_cmd = specification["install"]
+    return pre_install_cmds, install_cmd
 
 def setup_one_repo_version(
     repo_full: str, repo_path: str, version: str, env_name: str, task: Dict
@@ -191,7 +211,9 @@ def setup_one_repo_version(
     logger.info(
         f"[{env_name}] Created conda environment {env_name} for {repo_full} {version}"
     )
-    # TODO: should we do the "install" and "pre_install" as well?
+    # "install" and "pre_install" steps are per task;
+    # we don't do them here, but instead collects the commands and write them out;
+    # this has already been done at a previous step
 
 
 def load_task_instances(swe_bench_tasks: str):
@@ -255,9 +277,12 @@ def main(
         # name for both conda env and testbed folder
         env_name = f"{repo_short}__{version}"
         repo_path = pjoin(testbed, repo_short, env_name)
+        pre_install_cmds, install_cmd = collect_install_instructions(repo_full, version)
         # keys in setup_map
         setup_map[instance_id]["repo_path"] = repo_path
         setup_map[instance_id]["env_name"] = env_name
+        setup_map[instance_id]["pre_install"] = pre_install_cmds
+        setup_map[instance_id]["install"] = install_cmd
         collected_entry_env_names = [e[3] for e in setup_entries]
         if env_name in collected_entry_env_names:
             # this repo+version combination has been recorded before
