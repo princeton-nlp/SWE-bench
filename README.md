@@ -6,7 +6,7 @@
 
 ---
 <p align="center">
-Code and data for paper "<a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>".
+Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>
     </br>
     </br>
     <a href="https://www.python.org/">
@@ -66,13 +66,12 @@ Contact person: [Carlos E. Jimenez](http://www.carlosejimenez.com/) and [John Ya
 ## ✍️ Citation
 If you find our work helpful, please use the following citations.
 ```
-@misc{jimenez2023swebench,
+@inproceedings{jimenez2024swebench,
       title={SWE-bench: Can Language Models Resolve Real-World GitHub Issues?}, 
       author={Carlos E. Jimenez and John Yang and Alexander Wettig and Shunyu Yao and Kexin Pei and Ofir Press and Karthik Narasimhan},
-      year={2023},
-      eprint={2310.06770},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+      booktitle={The Twelfth International Conference on Learning Representations},
+      year={2024},
+      url={https://openreview.net/forum?id=VTF8yNQM66}
 }
 ```
 
