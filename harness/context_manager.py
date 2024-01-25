@@ -330,7 +330,7 @@ class TestbedContextManager:
                     logger_testbed.info(
                         f"[Testbed] Installing pip packages for {env_name}; Command: {cmd}"
                     )
-                    self.exec(cmd.split(" "))
+                    self.exec(cmd, shell=True)
 
         return self
 
