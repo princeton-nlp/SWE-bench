@@ -71,7 +71,7 @@ def get_eval_report(
             p2p_success.append(test_case)
         elif test_failed(test_case, eval_sm):
             p2p_failure.append(test_case)
-    
+
     results = {
         FAIL_TO_PASS: {
             "success": f2p_success,
@@ -321,3 +321,25 @@ def get_model_report(
             report_map[repo]["resolved"].append(p['instance_id'])
 
     return report_map
+
+
+if __name__ == "__main__":
+    model = "gpt-3.5-turbo-16k-0613"
+    predictions_path = "../reverse-prompt/experiment_24_jan/predictions_for_swebench.json"
+    swe_bench_tasks = "../SWE-bench/data/swe-bench.json"
+    log_dir = f"logs/{model}"
+
+    report = get_model_report(model, predictions_path, swe_bench_tasks, log_dir)
+
+    none = sum([len(v['none']) for k, v in report.items() if isinstance(v, dict)])
+    generated = sum([len(v['generated']) for k, v in report.items() if isinstance(v, dict)])
+    with_logs = sum([len(v['with_logs']) for k, v in report.items() if isinstance(v, dict)])
+    applied = sum([len(v['applied']) for k, v in report.items() if isinstance(v, dict)])
+    resolved = sum([len(v['resolved']) for k, v in report.items() if isinstance(v, dict)])
+
+    print(f"{model} Evaluation Report:")
+    print(f"\tNone:      {none}")
+    print(f"\tGenerated: {generated}")
+    print(f"\tWith Logs: {with_logs}")
+    print(f"\tApplied:   {applied}")
+    print(f"\tResolved:  {resolved}")
