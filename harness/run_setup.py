@@ -275,7 +275,7 @@ def main(
         repo_short = instance_id.rsplit("-", 1)[0]  # "astropy"
         version = task["version"]  # "4.2"
         # name for both conda env and testbed folder
-        env_name = f"{repo_short}__{version}"
+        env_name = f"setup_{repo_short}__{version}"
         repo_path = pjoin(testbed, repo_short, env_name)
         pre_install_cmds, install_cmd = collect_install_instructions(repo_full, version)
         # keys in setup_map
