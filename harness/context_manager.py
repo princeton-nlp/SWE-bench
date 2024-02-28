@@ -184,13 +184,13 @@ class TestbedContextManager:
 
             # Download Miniconda installer
             if platform.system() == "Darwin":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
+                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-x86_64.sh"
                 if is_osx_64:
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-arm64.sh"
             elif platform.system() == "Linux":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-x86_64.sh"
                 if platform.machine() == "aarch64":
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-aarch64.sh"
             else:
                 raise ValueError("Unknown computer platform " + platform.system())
             download_cmd = [
