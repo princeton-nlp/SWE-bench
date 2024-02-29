@@ -7,9 +7,20 @@ from multiprocessing import Pool
 from os.path import join as pjoin
 from typing import Dict, Optional, Tuple, List
 
-from constants import KEY_INSTANCE_ID, MAP_REPO_TO_INSTALL, MAP_VERSION_TO_INSTALL
+from constants import (
+    KEY_INSTANCE_ID,
+    MAP_REPO_TO_INSTALL,
+    MAP_VERSION_TO_INSTALL,
+    MAP_REPO_TO_TEST_FRAMEWORK,
+)
 from context_manager import ExecWrapper
-from utils import clone_repo, get_conda_env_names, get_environment_yml, get_requirements
+from utils import (
+    clone_repo,
+    get_conda_env_names,
+    get_environment_yml,
+    get_requirements,
+    get_test_directives,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -189,6 +200,17 @@ def collect_install_instructions(repo_full: str, version: str) -> Tuple[List[str
         install_cmd = specification["install"]
     return pre_install_cmds, install_cmd
 
+
+def collect_test_exec_cmd(repo_full: str, task_instance: Dict) -> str:
+    """
+    For a task instance, collect a list of instructions for running tests.
+    """
+    test_type = MAP_REPO_TO_TEST_FRAMEWORK[repo_full]
+    test_directives = get_test_directives(task_instance)
+    test_cmd = f"{test_type} {' '.join(test_directives)}"
+    return test_cmd
+
+
 def setup_one_repo_version(
     repo_full: str, repo_path: str, version: str, env_name: str, task: Dict
 ):
@@ -225,6 +247,23 @@ def load_task_instances(swe_bench_tasks: str):
     return tasks
 
 
+def save_setup_json_files(result_dir: str, setup_map: Dict, tasks_map: Dict):
+    """
+    Dump maps containing setup information to disk, so other clients can
+    use them to find locations of the setup.
+    """
+    setup_map_path = pjoin(result_dir, "setup_map.json")
+    tasks_map_path = pjoin(result_dir, "tasks_map.json")
+    with open(setup_map_path, "w") as f:
+        json.dump(setup_map, f)
+    with open(tasks_map_path, "w") as f:
+        json.dump(tasks_map, f)
+
+    print("Done with setup.")
+    print(f"setup_map is saved to {setup_map_path}")
+    print(f"tasks_map is saved to {tasks_map_path}")
+
+
 def main(
     swe_bench_tasks: str,
     log_dir: str,
@@ -232,6 +271,7 @@ def main(
     result_dir: str,
     num_processes: int = 1,
     subset_file: Optional[str] = None,
+    only_dump_files: bool = False,
 ):
     """
     Runs set up for each repo/version combination.
@@ -243,14 +283,14 @@ def main(
         result_dir (str): Path to the directory where results are stored.
         num_processes (int, optional): Number of processes to use.
         subset_file (str, optional): Path to a file indicating which subset to set up.
-    Raises:
-        ValueError: If log_dir is not a directory, testbed is not a directory, or swe_bench_tasks does not exist.
+        only_dump_files (bool, optional): Only dump json files without performing the actual setup.
     """
     # since we are going to store testbed dirs for others to use, we should use absolute path
     testbed = os.path.abspath(testbed)
-    # Validate arguments
-    create_fresh_dir(log_dir)
-    create_fresh_dir(testbed)
+    # if we just want to dump files, do not touch log and testbed dirs
+    if not only_dump_files:
+        create_fresh_dir(log_dir)
+        create_fresh_dir(testbed)
     create_fresh_dir(result_dir)
     tasks = load_task_instances(swe_bench_tasks)
     # map instance_id to the actual task instance Dict
@@ -278,17 +318,24 @@ def main(
         env_name = f"setup_{repo_short}__{version}"
         repo_path = pjoin(testbed, repo_short, env_name)
         pre_install_cmds, install_cmd = collect_install_instructions(repo_full, version)
+        test_cmd = collect_test_exec_cmd(repo_full, task)
         # keys in setup_map
         setup_map[instance_id]["repo_path"] = repo_path
         setup_map[instance_id]["env_name"] = env_name
         setup_map[instance_id]["pre_install"] = pre_install_cmds
         setup_map[instance_id]["install"] = install_cmd
+        setup_map[instance_id]["test_cmd"] = test_cmd
         collected_entry_env_names = [e[3] for e in setup_entries]
         if env_name in collected_entry_env_names:
             # this repo+version combination has been recorded before
             continue
         # should really do setup
         setup_entries.append((repo_full, repo_path, version, env_name, task))
+
+    # check whether we are required to perform the actual setup
+    if only_dump_files:
+        save_setup_json_files(result_dir, setup_map, tasks_map)
+        return
 
     setup_entries = sorted(setup_entries, key=lambda x: x[3])
     all_env_names = [e[3] for e in setup_entries]
@@ -315,18 +362,8 @@ def main(
             pool.close()
             pool.join()
     finally:
-        # Done with the actual work. We should dump the two maps to disk,
-        # so other clients can use them to find locations of the setup
-        setup_map_path = pjoin(result_dir, "setup_map.json")
-        tasks_map_path = pjoin(result_dir, "tasks_map.json")
-        with open(setup_map_path, "w") as f:
-            json.dump(setup_map, f)
-        with open(tasks_map_path, "w") as f:
-            json.dump(tasks_map, f)
-
-        print("Done with setup.")
-        print(f"setup_map is saved to {setup_map_path}")
-        print(f"tasks_map is saved to {tasks_map_path}")
+        # Done with the actual work.
+        save_setup_json_files(result_dir, setup_map, tasks_map)
 
 
 if __name__ == "__main__":
@@ -360,6 +397,12 @@ if __name__ == "__main__":
         type=str,
         help="(Optional) Path to a file containing a subset of instances to setup. Each line should contain one instace id to be set up.",
         default=None,
+    )
+    parser.add_argument(
+        "--only_dump_files",
+        default=False,
+        action="store_true",
+        help="Only dump json files without performing the actual setup.",
     )
     args = parser.parse_args()
     main(**vars(args))
