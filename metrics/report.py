@@ -1,18 +1,23 @@
-import glob, json, os
-
+import argparse
+import glob
+import json
+import os
 from collections import Counter
+from typing import Dict, List
+
 from getters import (
-    get_file_name_from_lp,
-    get_logs_eval,
-    get_id_from_lp,
     FAIL_TO_FAIL,
     FAIL_TO_PASS,
     PASS_TO_FAIL,
     PASS_TO_PASS,
+    get_file_name_from_lp,
+    get_id_from_lp,
+    get_logs_eval,
     test_failed,
     test_passed,
 )
 from log_parsers import TestStatus
+
 from metrics import (
     compute_fail_to_pass_unweighted,
     compute_fail_to_pass_weighted,
@@ -20,16 +25,12 @@ from metrics import (
     compute_pass_to_pass_weighted,
     get_resolution_status,
 )
-from typing import Dict, List
-
 
 ### MARK - Eval Report Generation
 
 
 def get_eval_report(
-    eval_sm: Dict,
-    gold_results: Dict,
-    calculate_to_fail: bool = False
+    eval_sm: Dict, gold_results: Dict, calculate_to_fail: bool = False
 ) -> Dict:
     """
     Create a report based on failure/pass change from gold results to eval results.
@@ -80,7 +81,7 @@ def get_eval_report(
         PASS_TO_PASS: {
             "success": p2p_success,
             "failure": p2p_failure,
-        }
+        },
     }
 
     f2f_success = []
@@ -102,16 +103,18 @@ def get_eval_report(
             elif test_failed(test_case, eval_sm):
                 p2f_failure.append(test_case)
 
-    results.update({
-        FAIL_TO_FAIL: {
-            "success": f2f_success,
-            "failure": f2f_failure,
-        },
-        PASS_TO_FAIL: {
-            "success": p2f_success,
-            "failure": p2f_failure,
+    results.update(
+        {
+            FAIL_TO_FAIL: {
+                "success": f2f_success,
+                "failure": f2f_failure,
+            },
+            PASS_TO_FAIL: {
+                "success": p2f_success,
+                "failure": p2f_failure,
+            },
         }
-    })
+    )
     return results
 
 
@@ -136,7 +139,7 @@ def get_eval_reports_for_logs(
     reports_patch_success = {}
     reports_patch_failure = {}
     eval_refs = json.load(open(swe_bench_tasks, "r"))
-    eval_refs = {t['instance_id']: t for t in eval_refs}
+    eval_refs = {t["instance_id"]: t for t in eval_refs}
 
     for eval_log in eval_logs:
         # Remove task instances that do not satisfy callback
@@ -272,8 +275,11 @@ def get_model_report(
         report_map (dict): map of repo to report
     """
     eval_refs = json.load(open(swe_bench_tasks, "r"))
-    eval_refs = [{key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]} for t in eval_refs]
-    eval_refs = {t['instance_id']: t for t in eval_refs}
+    eval_refs = [
+        {key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]}
+        for t in eval_refs
+    ]
+    eval_refs = {t["instance_id"]: t for t in eval_refs}
 
     # Get predictions
     predictions = []
@@ -299,43 +305,55 @@ def get_model_report(
 
         # Check if the model patch exists
         if p["model_patch"] == None:
-            report_map[repo]["none"].append(p['instance_id'])
+            report_map[repo]["none"].append(p["instance_id"])
             continue
-        report_map[repo]["generated"].append(p['instance_id'])
+        report_map[repo]["generated"].append(p["instance_id"])
 
         # Get log file
         log_path = os.path.join(log_dir, f"{p['instance_id']}.{model}.eval.log")
         if not os.path.exists(log_path):
             continue
-        report_map[repo]["with_logs"].append(p['instance_id'])
+        report_map[repo]["with_logs"].append(p["instance_id"])
 
         # Get evaluation logs
         eval_sm, found = get_logs_eval(log_path)
 
         if not found:
             continue
-        report_map[repo]["applied"].append(p['instance_id'])
+        report_map[repo]["applied"].append(p["instance_id"])
 
         report = get_eval_report(eval_sm, eval_refs[p["instance_id"]])
         if get_resolution_status(report) == "RESOLVED_FULL":
-            report_map[repo]["resolved"].append(p['instance_id'])
+            report_map[repo]["resolved"].append(p["instance_id"])
 
     return report_map
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--predictions", type=str, required=True, help="Path to prediction json file.")
+    parser.add_argument("--task_file", type=str, required=True, help="Path to task file (swe-bench.json).")
+
+    args = parser.parse_args()
+    predictions_path = args.predictions
+    swe_bench_tasks = args.task_file
+
     model = "gpt-3.5-turbo-16k-0613"
-    predictions_path = "../reverse-prompt/experiment_24_jan/predictions_for_swebench.json"
-    swe_bench_tasks = "../SWE-bench/data/swe-bench.json"
     log_dir = f"logs/{model}"
 
     report = get_model_report(model, predictions_path, swe_bench_tasks, log_dir)
 
-    none = sum([len(v['none']) for k, v in report.items() if isinstance(v, dict)])
-    generated = sum([len(v['generated']) for k, v in report.items() if isinstance(v, dict)])
-    with_logs = sum([len(v['with_logs']) for k, v in report.items() if isinstance(v, dict)])
-    applied = sum([len(v['applied']) for k, v in report.items() if isinstance(v, dict)])
-    resolved = sum([len(v['resolved']) for k, v in report.items() if isinstance(v, dict)])
+    none = sum([len(v["none"]) for k, v in report.items() if isinstance(v, dict)])
+    generated = sum(
+        [len(v["generated"]) for k, v in report.items() if isinstance(v, dict)]
+    )
+    with_logs = sum(
+        [len(v["with_logs"]) for k, v in report.items() if isinstance(v, dict)]
+    )
+    applied = sum([len(v["applied"]) for k, v in report.items() if isinstance(v, dict)])
+    resolved = sum(
+        [len(v["resolved"]) for k, v in report.items() if isinstance(v, dict)]
+    )
 
     print(f"{model} Evaluation Report:")
     print(f"\tNone:      {none}")
@@ -343,3 +361,9 @@ if __name__ == "__main__":
     print(f"\tWith Logs: {with_logs}")
     print(f"\tApplied:   {applied}")
     print(f"\tResolved:  {resolved}")
+
+    # get detailed resolved instances
+    for project, v in report.items():
+        resolved = v["resolved"]
+        num_resolved = len(resolved)
+        print(f"{project} resolved ({num_resolved}): {resolved}")
