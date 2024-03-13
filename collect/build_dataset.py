@@ -132,9 +132,11 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
     logger.info(f"{len(seen_prs)} instance_ids previously recorded")
 
     # Write to .all file for all PRs
-    with open(all_output, "a") as all_output:
+    write_mode_all = "w" if not os.path.exists(all_output) else "a"
+    with open(all_output, write_mode_all) as all_output:
         # Write to output file for PRs with test suites
-        with open(output, "w") as output:
+        write_mode = "w" if not os.path.exists(output) else "a"
+        with open(output, write_mode) as output:
             for ix, line in enumerate(open(pr_file)):
                 total_instances += 1
                 pull = json.loads(line)
