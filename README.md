@@ -4,6 +4,13 @@
   </a>
 </p>
 
+<div align="center">
+
+ | [日本語](docs/README_JP.md) | [English](https://github.com/princeton-nlp/SWE-bench) |
+
+</div>
+
+
 ---
 <p align="center">
 Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a>
