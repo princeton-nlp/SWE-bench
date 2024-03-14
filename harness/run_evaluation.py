@@ -1,5 +1,6 @@
 import argparse
 import datasets
+import hashlib
 import json
 import logging
 import os
@@ -19,6 +20,15 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("run_evaluation")
+
+
+def deterministic_hash(input_string: str, length: int = None):
+    input_bytes = input_string.encode('utf-8')
+    sha256_hash = hashlib.sha256(input_bytes)
+    hex_digest = sha256_hash.hexdigest()
+    if length is None:
+        return hex_digest
+    return hex_digest[:length]
 
 
 def validate_predictions(predictions_path, tasks_ids):
@@ -130,50 +140,61 @@ def main(
         # For each model/repo/version, create testbed folder and save predictions
         for repo in map_repo_version_to_predictions:
             for version in map_repo_version_to_predictions[repo]:
-                # Create testbed folder + file for model/repo/version specific predictions
-                testbed_model_repo_version_dir = os.path.join(testbed, model, repo, version)
+                # Create model/repo/version specific testbed folder
+                testbed_model_name = model
+                if len(testbed_model_name) > 50:
+                    # Hash model name for temp_dir path if too long
+                    testbed_model_name = deterministic_hash(testbed_model_name, 10)
+                testbed_model_repo_version_dir = os.path.join(
+                    testbed, testbed_model_name, repo, version)
                 os.makedirs(testbed_model_repo_version_dir, exist_ok=True)
+
+                # Create predictions file for model/repo/version
                 file_name = f"{model}_{repo}_{version}_{predictions_path.split('/')[-1]}"
                 file_path = os.path.join(testbed_model_repo_version_dir, file_name)
                 if file_path.endswith(".jsonl"):
                     file_path = file_path[:-1]
-                with open(file_path, "w") as f:
-                    args = argparse.Namespace()
-                    args.log_dir = os.path.join(log_dir, model)
-                    args.temp_dir = testbed_model_repo_version_dir
-                    args.num_workers = 1
-                    args.timeout = timeout
-                    args.skip_existing = skip_existing
-                    args.verbose = verbose
-                    args.log_suffix = log_suffix
 
-                    repo_version_predictions = map_repo_version_to_predictions[repo][version]
-                    if skip_existing:
-                        # Skip logs that already exist
-                        predictions_filtered = []
-                        for p in repo_version_predictions:
-                            log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log"
-                            if args.log_suffix is not None:
-                                log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.{log_suffix}.eval.log"
-                            log_file = os.path.join(args.log_dir, log_file_name)
-                            if not os.path.exists(log_file):
-                                predictions_filtered.append(p)
-                        if len(predictions_filtered) == 0:
-                            logger.info(f"[{model}/{repo}/{version}] All predictions already exist, skipping")
-                            continue
-                        else:
-                            logger.info(
-                                f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(predictions_filtered)} " +
-                                f"({len(repo_version_predictions) - len(predictions_filtered)} already evaluated)"
-                            )
-                            repo_version_predictions = predictions_filtered
+                # Create evaluation args
+                args = argparse.Namespace()
+                args.log_dir = os.path.join(log_dir, model)
+                args.log_suffix = log_suffix
+                args.num_workers = 1
+                args.predictions_path = file_path
+                args.skip_existing = skip_existing
+                args.temp_dir = testbed_model_repo_version_dir
+                args.timeout = timeout
+                args.verbose = verbose
+
+                # Remove predictions that have already been evaluated
+                repo_version_predictions = map_repo_version_to_predictions[repo][version]
+                if skip_existing:
+                    # Skip logs that already exist
+                    predictions_filtered = []
+                    for p in repo_version_predictions:
+                        log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log"
+                        if args.log_suffix is not None:
+                            log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.{log_suffix}.eval.log"
+                        log_file = os.path.join(args.log_dir, log_file_name)
+                        if not os.path.exists(log_file):
+                            predictions_filtered.append(p)
+                    if len(predictions_filtered) == 0:
+                        logger.info(f"[{model}/{repo}/{version}] All predictions already exist, skipping")
+                        continue
                     else:
-                        logger.info(f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(repo_version_predictions)}")
-
+                        logger.info(
+                            f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(predictions_filtered)} " +
+                            f"({len(repo_version_predictions) - len(predictions_filtered)} already evaluated)"
+                        )
+                        repo_version_predictions = predictions_filtered
+                else:
+                    logger.info(f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(repo_version_predictions)}")
+                
+                # Save predictions to file
+                with open(file_path, "w") as f:
                     json.dump(repo_version_predictions, f, indent=4)
-                    args.predictions_path = file_path
 
-                    eval_args.append(args)
+                eval_args.append(args)
                 temp_dirs.append(testbed_model_repo_version_dir)
 
     if len(eval_args) == 0:
