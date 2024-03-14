@@ -144,6 +144,7 @@ def main(
                 testbed_model_name = model
                 if len(testbed_model_name) > 50:
                     # Hash model name for temp_dir path if too long
+                    # Issue: https://github.com/conda/conda/issues/12250
                     testbed_model_name = deterministic_hash(testbed_model_name, 10)
                 testbed_model_repo_version_dir = os.path.join(
                     testbed, testbed_model_name, repo, version)
