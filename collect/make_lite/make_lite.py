@@ -10,7 +10,7 @@ from criteria import (
     leq_n_hunks,
     leq_n_words,
 )
-from datasets import load_dataset, disable_caching
+from datasets import load_dataset, disable_caching, DatasetDict
 disable_caching()
 
 
@@ -42,25 +42,39 @@ def filter_patch_test(instance):
     return True
 
 
+def apply_filters(dset, filters, name=''):
+    print(f'Starting with {len(dset)} instances', end='')
+    if name:
+        print(f' for {name}.')
+    else:
+        print('.')
+    for _filter in filters:
+        dset = dset.filter(_filter, desc=f'Applying {_filter.__name__}')
+        print(f'After filtering {len(dset)}.')
+    return dset
+
+
+def take_subset(dset, n, name=''):
+    dset = dset.sort("instance_id")
+    print(f'Starting with {len(dset)} instances', end='')
+    if name:
+        print(f' for {name}.')
+    else:
+        print('.')
+    dset = dset.shuffle(seed=42).select(range(n))
+    print(f'Sampled {len(dset)} instances.')
+    return dset
+
+
 if __name__ == "__main__":
     # Load the dataset
+    dev = load_dataset("princeton-nlp/SWE-bench")['dev']
     test = load_dataset("princeton-nlp/SWE-bench")['test']
-    print(f"Original size: {len(test)}")
 
-    # Filter the dataset
-    filtered = test.filter(filter_problem_statement)
-    print(f"➡️\tAfter filtering on problem statement: {len(filtered)}")
-    filtered = filtered.filter(filter_patch)
-    print(f"➡️\tAfter filtering on patch: {len(filtered)}")
-    filtered = filtered.filter(filter_patch_test)
-    print(f"➡️\tAfter filtering on test patch: {len(filtered)}")
-
-    # Sort remaining dataset by instance_id's
-    filtered = filtered.sort("instance_id")
-
-    # Shuffle dataset by random (seed=24) and take the first 300 instances
-    filtered = filtered.shuffle(seed=24).select(range(300))
-
+    test = apply_filters(test, [filter_problem_statement, filter_patch, filter_patch_test], 'test')
+    test = take_subset(test, 300, 'test')
+    dev = apply_filters(dev, [filter_problem_statement, filter_patch, filter_patch_test], 'dev')
+    dset = DatasetDict({'dev': dev, 'test': test})
     # Save the filtered dataset to disk
-    filtered.save_to_disk("swe_bench_lite")
+    dset.save_to_disk("SWE-bench_lite")
 
