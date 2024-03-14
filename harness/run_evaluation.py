@@ -45,6 +45,7 @@ def validate_predictions(predictions_path, tasks_ids):
 def main(
     predictions_path: str,
     swe_bench_tasks: str,
+    path_conda: str,
     log_dir: str,
     testbed: str,
     log_suffix: str,
@@ -76,6 +77,12 @@ def main(
 
     if not os.path.exists(swe_bench_tasks) and swe_bench_tasks not in ["dev", "test"]:
         raise ValueError("--swe_bench_tasks does not exist OR is not [dev|test]")
+    
+    if os.path.exists(path_conda):
+        path_conda = os.path.abspath(path_conda)
+    else:
+        path_conda = None
+    
 
     tasks = None
     if os.path.exists(swe_bench_tasks):
@@ -146,6 +153,7 @@ def main(
                     args.skip_existing = skip_existing
                     args.verbose = verbose
                     args.log_suffix = log_suffix
+                    args.path_conda = path_conda
 
                     repo_version_predictions = map_repo_version_to_predictions[repo][version]
                     if skip_existing:
@@ -208,6 +216,8 @@ if __name__ == "__main__":
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
     parser.add_argument("--verbose", action="store_true", help="(Optional) Verbose mode")
     parser.add_argument("--num_processes", type=int, help="(Optional) Number of processes to use.", default=-1)
+    parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
+
     args = parser.parse_args()
     logger.propagate = args.verbose
     main(**vars(args))
