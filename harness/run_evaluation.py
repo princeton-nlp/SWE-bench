@@ -45,13 +45,13 @@ def validate_predictions(predictions_path, tasks_ids):
 def main(
     predictions_path: str,
     swe_bench_tasks: str,
-    path_conda: str,
     log_dir: str,
     testbed: str,
     log_suffix: str,
     skip_existing: bool,
     timeout: int,
     verbose: bool,
+    path_conda: str,
     num_processes: int = -1,
 ):
     """
@@ -77,12 +77,6 @@ def main(
 
     if not os.path.exists(swe_bench_tasks) and swe_bench_tasks not in ["dev", "test"]:
         raise ValueError("--swe_bench_tasks does not exist OR is not [dev|test]")
-    
-    if os.path.exists(path_conda):
-        path_conda = os.path.abspath(path_conda)
-    else:
-        path_conda = None
-    
 
     tasks = None
     if os.path.exists(swe_bench_tasks):
