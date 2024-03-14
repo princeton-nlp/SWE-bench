@@ -77,4 +77,4 @@ if __name__ == "__main__":
     dset = DatasetDict({'dev': dev, 'test': test})
     # Save the filtered dataset to disk
     dset.save_to_disk("SWE-bench_lite")
-
+    print("Saved to SWE-bench_lite.")
