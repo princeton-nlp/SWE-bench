@@ -111,6 +111,19 @@ def contains_pytest_match_arg(patch_test_text: str) -> bool:
     return False
 
 
+def leq_n_code_lines(patch_text: str, n: int = 25) -> bool:
+    """
+    Returns True if the patch has at most n lines of code changed.
+    """
+    lines = 0
+    patch = PatchSet(patch_text)
+    for file in patch:
+        for hunk in file:
+            lines += hunk.added
+            lines += hunk.removed
+    return lines <= n
+
+
 def leq_n_files(patch_text: str, n: int = 1) -> bool:
     """
     Returns True if the patch has at most n files.
