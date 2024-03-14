@@ -37,8 +37,7 @@ def filter_patch(instance):
 
 def filter_patch_test(instance):
     patch_text = instance["test_patch"]
-    if contains_pytest_match_arg(patch_text) or \
-        not leq_n_code_lines(patch_text, 20):
+    if contains_pytest_match_arg(patch_text):
         return False
     return True
 
@@ -58,6 +57,9 @@ if __name__ == "__main__":
 
     # Sort remaining dataset by instance_id's
     filtered = filtered.sort("instance_id")
+
+    # Shuffle dataset by random (seed=24) and take the first 300 instances
+    filtered = filtered.shuffle(seed=24).select(range(300))
 
     # Save the filtered dataset to disk
     filtered.save_to_disk("swe_bench_lite")

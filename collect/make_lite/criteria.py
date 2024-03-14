@@ -106,6 +106,7 @@ def contains_pytest_match_arg(patch_test_text: str) -> bool:
     if any([x in patch_test_text for x in [
         'assertOutput',
         'assertRaises',
+        'checks.Error',
         ]]):
         return True
     return False
