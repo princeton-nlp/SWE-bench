@@ -172,3 +172,4 @@ analysis/**/scratch*
 analysis/benchmark/plots/
 analysis/evaluation/*.csv
 analysis/evaluation/*.pdf
+*.DS_Store
