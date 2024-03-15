@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shutil
+import pandas as pd
 from multiprocessing import Pool
 from os.path import join as pjoin
 from typing import Dict, Optional, Tuple, List
@@ -238,13 +239,30 @@ def setup_one_repo_version(
     # this has already been done at a previous step
 
 
+def get_pr_link_for_task(task: Dict):
+    task_id = task["instance_id"]
+    repo_long, _, pr_id = task_id.rpartition("-")  # split on the last "-"
+    owner, repo_name = repo_long.split("__")
+    pr_link = f"https://github.com/{owner}/{repo_name}/pull/{pr_id}"
+    return pr_link
+
+
 def load_task_instances(swe_bench_tasks: str):
-    if not os.path.exists(swe_bench_tasks):
-        raise ValueError("--swe_bench_tasks does not exist")
-    tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
-    if not isinstance(tasks, list):
-        raise ValueError(f"{swe_bench_tasks} must contain an array of tasks")
+    # for parquet version
+    df = pd.read_parquet(swe_bench_tasks, engine="pyarrow")
+    tasks = json.loads(df.to_json(orient="records"))
+    # now form a link to PR for each meta data entry
+    for t in tasks:
+        pr_link = get_pr_link_for_task(t)
+        t["pr_link"] = pr_link
     return tasks
+    # this is for the json version, which is deprecated
+    # if not os.path.exists(swe_bench_tasks):
+    #     raise ValueError("--swe_bench_tasks does not exist")
+    # tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
+    # if not isinstance(tasks, list):
+    #     raise ValueError(f"{swe_bench_tasks} must contain an array of tasks")
+    # return tasks
 
 
 def save_setup_json_files(result_dir: str, setup_map: Dict, tasks_map: Dict):
@@ -367,6 +385,13 @@ def main(
 
 
 if __name__ == "__main__":
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    root_dir = os.path.dirname(script_dir)
+    # we always read from this file, so put this as a default instead of required
+    default_tasks_file = pjoin(
+        root_dir, "data", "test-00000-of-00001-dc7762b94638c186.parquet"
+    )
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--log_dir", type=str, help="Path to log directory", required=True
@@ -375,7 +400,7 @@ if __name__ == "__main__":
         "--swe_bench_tasks",
         type=str,
         help="Path to SWE-bench task instances file",
-        required=True,
+        default=default_tasks_file,
     )
     parser.add_argument(
         "--testbed", type=str, help="Path to testbed directory", required=True

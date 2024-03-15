@@ -11,4 +11,6 @@ dependencies:
     - requests
     - rich
     - transformers>=4.34.0
+    - pandas
+    - pyarrow
   - conda-forge::gh
