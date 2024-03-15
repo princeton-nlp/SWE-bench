@@ -3,7 +3,7 @@ import glob
 import json
 import os
 from collections import Counter
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from getters import (
     FAIL_TO_FAIL,
@@ -123,7 +123,7 @@ def get_eval_reports_for_logs(
     swe_bench_tasks: str,
     callback: callable = None,
     verbose: bool = False,
-) -> (Dict, Dict):
+) -> Tuple[Dict, Dict]:
     """
     Wrapper for getting eval report for a list of evaluation log paths.
 
@@ -333,13 +333,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--predictions", type=str, required=True, help="Path to prediction json file.")
     parser.add_argument("--task_file", type=str, required=True, help="Path to task file (swe-bench.json).")
+    parser.add_argument("--logs", type=str, required=True, help="Path to directory of evaluation logs.")
+    parser.add_argument("--model", type=str, required=True, help="Model name used for evaluation.")
 
     args = parser.parse_args()
     predictions_path = args.predictions
     swe_bench_tasks = args.task_file
+    log_dir = args.logs
+    model = args.logs
 
-    model = "gpt-3.5-turbo-16k-0613"
-    log_dir = f"logs/{model}"
+    # model = "gpt-3.5-turbo-16k-0613"
+    # model = "claude-2"
+    log_dir = os.path.join(log_dir, model)
 
     report = get_model_report(model, predictions_path, swe_bench_tasks, log_dir)
 
