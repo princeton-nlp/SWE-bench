@@ -255,6 +255,13 @@ def load_task_instances(swe_bench_tasks: str):
     for t in tasks:
         pr_link = get_pr_link_for_task(t)
         t["pr_link"] = pr_link
+    # fields that are supposed to be list, are encoded as string in parquet
+    # fix them here
+    for t in tasks:
+        fail_to_pass = t["FAIL_TO_PASS"]
+        t["FAIL_TO_PASS"] = json.loads(fail_to_pass)
+        pass_to_pass = t["PASS_TO_PASS"]
+        t["PASS_TO_PASS"] = json.loads(pass_to_pass)
     return tasks
     # this is for the json version, which is deprecated
     # if not os.path.exists(swe_bench_tasks):
