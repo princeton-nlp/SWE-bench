@@ -335,12 +335,14 @@ if __name__ == "__main__":
     parser.add_argument("--task_file", type=str, required=True, help="Path to task file (swe-bench.json).")
     parser.add_argument("--logs", type=str, required=True, help="Path to directory of evaluation logs.")
     parser.add_argument("--model", type=str, required=True, help="Model name used for evaluation.")
+    parser.add_argument("--out", type=str, required=True, help="Path to output report file (json).")
 
     args = parser.parse_args()
     predictions_path = args.predictions
     swe_bench_tasks = args.task_file
     log_dir = args.logs
-    model = args.logs
+    model = args.model
+    output_file = args.out
 
     # model = "gpt-3.5-turbo-16k-0613"
     # model = "claude-2"
@@ -360,6 +362,13 @@ if __name__ == "__main__":
         [len(v["resolved"]) for k, v in report.items() if isinstance(v, dict)]
     )
 
+    stats = dict()
+    stats["generated"] = generated
+    stats["with_logs"] = with_logs
+    stats["applied"] = applied
+    stats["resolved"] = resolved
+
+    # print to screen just for info
     print(f"{model} Evaluation Report:")
     print(f"\tNone:      {none}")
     print(f"\tGenerated: {generated}")
@@ -367,8 +376,23 @@ if __name__ == "__main__":
     print(f"\tApplied:   {applied}")
     print(f"\tResolved:  {resolved}")
 
-    # get detailed resolved instances
+    all_resolved = []
+    resolved_per_project = dict()
+
     for project, v in report.items():
         resolved = v["resolved"]
+        all_resolved.extend(resolved)
+        resolved_per_project[project] = resolved
+        # print to screen just for info
         num_resolved = len(resolved)
         print(f"{project} resolved ({num_resolved}): {resolved}")
+
+    # form json report and write to file
+    final_report = {
+        "stats": stats,
+        "resolved": all_resolved,
+        "resolved_per_project": resolved_per_project,
+    }
+
+    with open(output_file, "w") as f:
+        json.dump(final_report, f, indent=4)
