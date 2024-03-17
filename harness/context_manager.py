@@ -63,11 +63,12 @@ class TestbedContextManager:
         self,
         task_instances: List,
         log_dir: str,
+        conda_link: str = None,
         path_conda: str = None,
-        testbed: str = None,
-        verbose: bool = False,
-        timeout: int = None,
         temp_dir: str = None,
+        testbed: str = None,
+        timeout: int = None,
+        verbose: bool = False,
     ):
         """
         Initialize testbed context. Creates temporary directories and groups task instances
@@ -83,10 +84,11 @@ class TestbedContextManager:
             temp_dir (str): Path to temporary directory
         """
         logger_testbed.propagate = verbose
-        self.verbose = verbose
-        self.old_dir = os.getcwd()
+        self.conda_link = conda_link
         self.log_dir = os.path.abspath(log_dir)
+        self.old_dir = os.getcwd()
         self.timeout = timeout
+        self.verbose = verbose
         self.exec = ExecWrapper(
             subprocess_args={
                 "check": True,
@@ -183,7 +185,9 @@ class TestbedContextManager:
             )
 
             # Download Miniconda installer
-            if platform.system() == "Darwin":
+            if self.conda_link is not None:
+                cmd_line_install_link = self.conda_link
+            elif platform.system() == "Darwin":
                 cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-x86_64.sh"
                 if is_osx_64:
                     cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-arm64.sh"

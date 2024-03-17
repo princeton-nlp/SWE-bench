@@ -178,6 +178,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--predictions_path", type=str, help="Path to predictions instances file", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
     parser.add_argument("--log_suffix", type=str, default=None, help="(Optional) Suffix to append to log file names")
     parser.add_argument("--num_workers", type=int, default=1, help="(Optional) Number of workers")
     parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
