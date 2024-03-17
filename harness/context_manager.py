@@ -585,6 +585,14 @@ class TaskEnvContextManager:
             with open(self.log_file, "a") as f:
                 f.write(f"\n{INSTALL_TIMEOUT}\n")
             return False
+        except Exception as e:
+            # Installation failed
+            logger_taskenv.error(
+                f"[{self.testbed_name}] [{instance[KEY_INSTANCE_ID]}] Installation failed"
+            )
+            with open(self.log_file, "a") as f:
+                f.write(f"\n{INSTALL_FAIL}: {e}\n")
+            return False
 
     def apply_patch(
         self, patch: str, patch_type: str = "", revert: bool = False
