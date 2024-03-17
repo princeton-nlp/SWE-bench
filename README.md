@@ -2,11 +2,9 @@
 
 Fork of [SWE-bench](https://github.com/princeton-nlp/SWE-bench) with modifications to use some of its scripts.
 
-
 ## Instructions
 
 _Before everything, install SWE-bench and conda activate._
-
 
 ### To install
 
@@ -33,50 +31,49 @@ sudo dpkg-reconfigure dash
 Also install system level packages required by the benchmark subjects:
 
 ```
-sudo apt install libffi-dev python3-pytest
+sudo apt install libffi-dev python3-pytest libqhull-dev
 ```
 
-
-### To evaluate on some task instances
-
-- Prepare a prediction file in json. This `prediction.json` file should contain the model's output
-in the field 'model_patch', which will be used for evaluation.
-If just want to evaluate on one instance, you can put only that entry's answer in this file.
-- Prepare the big json file `swe-bench.json` that contains all the task instance definitions.
-This can be downloaded from the original Github repo.
-- Create directories `logs` and `clone` for storing logs and the temporarily cloned projects.
-- Run the script like this:
-
-```
-python harness/run_evaluation.py --predictions_path ../astropy-6938-prediction.json --swe_bench_tasks ./data/swe-bench.json --log_dir ../logs --testbed ../clone --conda_path  ~/miniconda3 --timeout 900 --verbose
-```
-
-### To only setup projects for some instances
+### To set up task instances for other tools
 
 Sometimes you may want to only set up the projects' environments without running any evaluation.
 This is useful if you want to inspect the particular project states.
 
-To set up all task instances, do:
+**To set up all task instances, do:**
 
 ```
-python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result
+python harness/run_setup.py --log_dir logs --testbed testbed --result_dir setup_result
 ```
 
-You can also use multiple processes for setting up environment. However, note that conda is not
-thread-safe, and doing this may result in deadlock:
+**You can also use multiple processes for setting up environment. However, note that conda is not thread-safe, and doing this may result in deadlock:**
 
 ```
-python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --num_processes 16
+python harness/run_setup.py --log_dir logs --testbed testbed --result_dir setup_result --num_processes 16
 ```
 
-If you only want to set up a subset of tasks, write the list of tasks into a file <subset_file> and do:
+**If you only want to set up a subset of tasks, write the list of tasks into a file <subset_file> and do:**
 
 ```
-python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --subset_file <subset_file> --num_processes 16
+python harness/run_setup.py --log_dir logs --testbed testbed --result_dir setup_result --subset_file <subset_file> --num_processes 16
 ```
 
-If you only want to write out the setup json files without actually cloning the repos and perform the actual setup, do:
+**If you only want to write out the setup json files without actually cloning the repos and perform the actual setup, do:**
 
 ```
-python harness/run_setup.py --log_dir logs --swe_bench_tasks ./data/swe-bench.json --testbed testbed --result_dir setup_result --only_dump_files
+python harness/run_setup.py --log_dir logs --testbed testbed --result_dir setup_result --only_dump_files
+```
+
+### To evaluate on some task instances
+
+1. Prepare a prediction file in json. This `prediction.json` file should contain the model's output
+   in the field 'model_patch', which will be used for evaluation.
+   If just want to evaluate on one instance, you can put only that entry's answer in this file.
+2. Prepare the big json file `swe-bench.json` that contains all the task instance definitions.
+   This can be downloaded from the original Github repo.
+3. Create directories `logs` and `eval-testbed` for storing logs and the temporarily cloned projects.
+
+- Run the script like this:
+
+```
+python harness/run_evaluation.py --predictions_path ../astropy-6938-prediction.json --swe_bench_tasks ./data/swe-bench.json --log_dir ../logs --testbed ../clone --conda_path  ~/miniconda3 --timeout 900 --verbose
 ```
