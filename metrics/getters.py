@@ -124,8 +124,24 @@ def log_path_to_sms(log_fp: str, log_parser) -> (List, bool):
     return [sm_before, sm_after], True
 
 
-test_passed = lambda case, sm: case in sm and sm[case] == TestStatus.PASSED.value
+# test_passed = lambda case, sm: case in sm and sm[case] == TestStatus.PASSED.value
+# overrode with correct function
 
-test_failed = lambda case, sm: case not in sm or any(
-    [sm[case] == status for status in [TestStatus.FAILED.value, TestStatus.ERROR.value]]
-)
+def test_passed(case, sm):
+    # fails for comparison between:
+    # test_repr (view_tests.tests.test_debug.CallableSettingWrapperTests.test_repr) (our runner's output)
+    # test_repr (view_tests.tests.test_debug.CallableSettingWrapperTests) (the dataset's output)
+    # because the test case is not in the status map due to the extra _test_repo
+    sm_stripped_parentheses = {k.split('(')[0].strip(): v for k, v in sm.items()}
+    case_stripped_parentheses = case.split('(')[0].strip()
+    return case_stripped_parentheses in sm_stripped_parentheses and sm_stripped_parentheses[case_stripped_parentheses] == TestStatus.PASSED.value
+
+# test_failed = lambda case, sm: case not in sm or any(
+#     [sm[case] == status for status in [TestStatus.FAILED.value, TestStatus.ERROR.value]]
+# )
+
+def test_failed(case, sm):
+    # doing the same as test_passed above
+    sm_stripped_parentheses = {k.split('(')[0].strip(): v for k, v in sm.items()}
+    case_stripped_parentheses = case.split('(')[0].strip()
+    return case_stripped_parentheses not in sm_stripped_parentheses or any([sm_stripped_parentheses[case_stripped_parentheses] == status for status in [TestStatus.FAILED.value, TestStatus.ERROR.value]])

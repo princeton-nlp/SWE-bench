@@ -6,6 +6,8 @@ import logging
 import os
 import shutil
 
+from tqdm import tqdm
+
 from constants import (
     KEY_INSTANCE_ID,
     KEY_MODEL,
@@ -94,7 +96,7 @@ def main(
     else:
         # If dev/test split is provided, load from HuggingFace datasets
         temp = load_dataset('princeton-nlp/SWE-bench', split=swe_bench_tasks)
-        assert(temp, datasets.arrow_dataset.Dataset)
+        # assert(temp, datasets.arrow_dataset.Dataset)
         temp = temp.to_dict()
         tasks = []
         for idx in range(len(temp[KEY_INSTANCE_ID])):
@@ -206,7 +208,7 @@ def main(
     num_processes = min(len(eval_args), num_processes) if num_processes > 0 else len(eval_args)
     try:
         if num_processes == 1:
-            for args in eval_args:
+            for args in tqdm(eval_args):
                 eval_engine(args)
         else:
             pool = Pool(processes=num_processes)
@@ -232,4 +234,10 @@ if __name__ == "__main__":
     parser.add_argument("--num_processes", type=int, help="(Optional) Number of processes to use.", default=-1)
     args = parser.parse_args()
     logger.propagate = args.verbose
-    main(**vars(args))
+    import pdb
+    try:
+        main(**vars(args))
+    except Exception as e:
+        logger.error(e)
+        pdb.post_mortem()
+        raise e
