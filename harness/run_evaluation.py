@@ -57,6 +57,7 @@ def main(
     swe_bench_tasks: str,
     log_dir: str,
     testbed: str,
+    conda_link: str,
     log_suffix: str,
     skip_existing: bool,
     timeout: int,
@@ -166,6 +167,7 @@ def main(
                 args.temp_dir = testbed_model_repo_version_dir
                 args.timeout = timeout
                 args.verbose = verbose
+                args.conda_link = conda_link
 
                 # Remove predictions that have already been evaluated
                 repo_version_predictions = map_repo_version_to_predictions[repo][version]
@@ -225,6 +227,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
     parser.add_argument("--swe_bench_tasks", type=str, help="Path to SWE-bench task instances file", required=True)
     parser.add_argument("--testbed", type=str, help="Path to testbed directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
     parser.add_argument("--log_suffix", type=str, help="(Optional) Suffix to append to log file names", default=None)
     parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
