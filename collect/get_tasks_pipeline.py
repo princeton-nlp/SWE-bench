@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from build_dataset import main as build_dataset
 from print_pulls import main as print_pulls
 from multiprocessing import Pool
-from typing import Dict, List
 
 
 load_dotenv()
@@ -77,7 +76,6 @@ def construct_data_files(data: dict):
                 )
         except Exception as e:
             print(f"Something went wrong for {repo}, skipping: {e}")
-            pass
 
 
 def main(repos: list, path_prs: str, path_tasks: str):

@@ -1,7 +1,6 @@
 import re
 
 from log_parsers import MAP_REPO_TO_PARSER, TestStatus
-from typing import Dict, List
 
 
 # Evaluation Log Constants

@@ -20,7 +20,6 @@ from metrics import (
     compute_pass_to_pass_weighted,
     get_resolution_status,
 )
-from typing import Dict, List
 
 
 ### MARK - Eval Report Generation

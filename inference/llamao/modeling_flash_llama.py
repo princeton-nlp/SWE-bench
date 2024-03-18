@@ -17,7 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ PyTorch LLaMA model."""
-from typing import List, Optional, Tuple, Union, Any
+from typing import Optional, Union, Any
 
 import torch
 import torch.nn.functional as F

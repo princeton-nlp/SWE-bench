@@ -19,7 +19,6 @@ from constants import (
 )
 from tempfile import TemporaryDirectory
 from traceback import format_exc
-from typing import Dict, List
 from utils import (
     clone_repo,
     get_conda_env_names,

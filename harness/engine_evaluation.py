@@ -10,7 +10,6 @@ from context_manager import TaskEnvContextManager
 from engine_validation import setup_testbed
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
-from typing import Dict
 from utils import (
     extract_minimal_patch,
     get_instances,

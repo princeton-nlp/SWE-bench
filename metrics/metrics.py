@@ -1,7 +1,6 @@
 from enum import Enum
 from getters import FAIL_TO_FAIL, FAIL_TO_PASS, PASS_TO_FAIL, PASS_TO_PASS
 from statistics import mean
-from typing import List, Dict
 
 
 class ResolvedStatus(Enum):

@@ -1,7 +1,6 @@
 import json, os
 
 from log_parsers import MAP_REPO_TO_PARSER, TestStatus
-from typing import Dict, List
 from getters import (
     get_file_name_from_lp,
     get_repo_from_lp,

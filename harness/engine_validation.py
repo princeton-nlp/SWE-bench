@@ -2,7 +2,6 @@ import argparse, os
 
 from context_manager import TaskEnvContextManager, TestbedContextManager
 from multiprocessing import Pool, cpu_count
-from typing import Dict
 from utils import get_instances, split_instances, DotDict
 
 

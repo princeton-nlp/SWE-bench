@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 
 from utils import Repo, extract_patches, extract_problem_statement_and_hints

@@ -1,5 +1,4 @@
 import json
-from typing import List
 
 
 def get_instances(instance_path: str) -> list:

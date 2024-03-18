@@ -1,7 +1,6 @@
 import glob
 import os
 
-from typing import List
 
 from log_parsers import MAP_REPO_TO_PARSER
 from getters import (

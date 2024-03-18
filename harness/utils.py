@@ -13,7 +13,6 @@ from constants import (
 from datetime import datetime
 from dotenv import load_dotenv
 from git import Repo
-from typing import Dict, List
 
 
 load_dotenv()

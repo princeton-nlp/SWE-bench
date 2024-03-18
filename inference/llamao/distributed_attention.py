@@ -5,7 +5,7 @@
 
 import torch
 
-from typing import Any, Tuple
+from typing import Any
 from torch import Tensor
 from torch.nn import Module
 

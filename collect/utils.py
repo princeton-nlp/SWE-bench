@@ -6,7 +6,7 @@ import time
 from bs4 import BeautifulSoup
 from ghapi.core import GhApi
 from fastcore.net import HTTP404NotFoundError, HTTP403ForbiddenError
-from typing import Dict, List, Tuple, Optional
+from typing import Optional
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

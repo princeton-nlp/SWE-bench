@@ -6,7 +6,7 @@ import shutil
 import traceback
 import subprocess
 from filelock import FileLock
-from typing import Any, Dict, List
+from typing import Any
 from datasets import load_from_disk, load_dataset
 from pyserini.search.lucene import LuceneSearcher
 from git import Repo

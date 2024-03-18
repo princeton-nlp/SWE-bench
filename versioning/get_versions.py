@@ -8,7 +8,6 @@ from constants import (
     MAP_REPO_TO_VERSION_PATHS,
     MAP_REPO_TO_VERSION_PATTERNS,
 )
-from typing import Dict
 from utils import get_instances, split_instances
 
 logging.basicConfig(
