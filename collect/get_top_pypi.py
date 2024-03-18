@@ -1,4 +1,5 @@
 import os, json
+import argparse
 
 from bs4 import BeautifulSoup
 from ghapi.core import GhApi
@@ -88,6 +89,10 @@ def get_package_stats(data_tasks, f):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-repos", help="Maximum number of repos to get", type=int, default=5000)
+    args = parser.parse_args()
+
     # Start selenium driver to get top 5000 pypi page
     url_top_pypi = "https://hugovk.github.io/top-pypi-packages/"
     driver = webdriver.Chrome()
@@ -100,4 +105,4 @@ if __name__ == "__main__":
     package_list = soup.find("div", {"class": "list"})
     packages = package_list.find_all("a", class_="ng-scope")
 
-    get_package_stats(packages, "pypi_rankings.jsonl")
+    get_package_stats(packages[:args.max_repos], "pypi_rankings.jsonl")
