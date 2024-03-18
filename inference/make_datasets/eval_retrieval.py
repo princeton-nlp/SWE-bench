@@ -1,4 +1,7 @@
+
 #!/usr/bin/env python
+
+"""This script can be used to evaluate the BM25 retrieval results for a dataset created with create_text_dataset.py with the --retrieval_file option and --file_source bm25."""
 
 import re
 import numpy as np
@@ -49,7 +52,7 @@ def main(dataset_name_or_path, split):
     
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument('--dataset_name_or_path', type=str, default='princeton-nlp/SWE-bench_bm25_13K')
     parser.add_argument('--split', type=str, default='test')
     args = parser.parse_args()

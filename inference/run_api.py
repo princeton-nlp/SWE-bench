@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+"""This python script is designed to run inference on a dataset using either the OpenAI or Anthropic API, depending on the model specified. 
+It sorts instances by length and continually writes the outputs to a specified file, so that the script can be stopped and restarted without losing progress.
+"""
+
 import json
 import os
 import time
@@ -436,7 +440,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset_name_or_path",
         type=str,

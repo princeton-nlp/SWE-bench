@@ -193,7 +193,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument("--dataset_name_or_path", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
     parser.add_argument(

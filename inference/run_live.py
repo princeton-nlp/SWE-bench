@@ -255,7 +255,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument("--model_name", type=str)
     parser.add_argument(
         "--prompt_style", type=str, choices=PROMPT_FUNCTIONS.keys(), default="style-3"
