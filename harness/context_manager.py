@@ -638,7 +638,9 @@ class TaskEnvContextManager:
         logger_taskenv.info(
             f"[{self.testbed_name}] [{self.instance[KEY_INSTANCE_ID]}] {log_cmd} patch successful ({patch_type})"
         )
-        if not log_apply_patch_success: # don't log this if we're reverting the patch
+        # don't log a pass if we're testing whether the patch is valid
+        # otherwise the monitor code sees 4 APPLY_PATCH_PASS on line 55 https://github.com/sweepai/SWE-bench/blob/sweep/swe-bench-fixes/metrics/monitor.py#L43-L55
+        if log_apply_patch_success:
             with open(self.log_file, "a") as f:
                 f.write(f"{APPLY_PATCH_PASS} ({patch_type})\n")
         return True
