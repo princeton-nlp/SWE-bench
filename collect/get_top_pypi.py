@@ -88,7 +88,7 @@ if __name__ == "__main__":
     url_top_pypi = "https://hugovk.github.io/top-pypi-packages/"
     driver = webdriver.Chrome()
     driver.get(url_top_pypi)
-    button = driver.find_element(By.CSS_SELECTOR, 'button[ng-click="show(5000)"]')
+    button = driver.find_element(By.CSS_SELECTOR, 'button[ng-click="show(8000)"]')
     button.click()
 
     # Retrieve HTML for packages from page
