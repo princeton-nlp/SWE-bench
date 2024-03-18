@@ -10,7 +10,7 @@ class ResolvedStatus(Enum):
     FULL = "RESOLVED_FULL"
 
 
-def compute_fail_to_pass(report: Dict) -> float:
+def compute_fail_to_pass(report: dict) -> float:
     """
     Compute fail-to-pass metric. Accepts single report as argument.
     """
@@ -20,7 +20,7 @@ def compute_fail_to_pass(report: Dict) -> float:
     return len(report[FAIL_TO_PASS]["success"]) / total
 
 
-def compute_pass_to_pass(report: Dict) -> float:
+def compute_pass_to_pass(report: dict) -> float:
     """
     Compute pass-to-pass metric. Accepts single report as argument.
     """
@@ -31,7 +31,7 @@ def compute_pass_to_pass(report: Dict) -> float:
     return len(report[PASS_TO_PASS]["success"]) / total
 
 
-def compute_fail_to_pass_unweighted(reports: List[Dict]) -> float:
+def compute_fail_to_pass_unweighted(reports: list[dict]) -> float:
     """
     Compute unweighted fail-to-pass metric. Accepts list of reports as argument.
     """
@@ -40,7 +40,7 @@ def compute_fail_to_pass_unweighted(reports: List[Dict]) -> float:
     return mean([compute_fail_to_pass(r) for r in reports])
 
 
-def compute_pass_to_pass_unweighted(reports: List[Dict]) -> float:
+def compute_pass_to_pass_unweighted(reports: list[dict]) -> float:
     """
     Compute unweighted pass-to-pass metric. Accepts list of reports as argument.
     """
@@ -49,7 +49,7 @@ def compute_pass_to_pass_unweighted(reports: List[Dict]) -> float:
     return mean([compute_pass_to_pass(r) for r in reports])
 
 
-def compute_fail_to_pass_weighted(reports: List[Dict]) -> float:
+def compute_fail_to_pass_weighted(reports: list[dict]) -> float:
     """
     Compute weighted fail-to-pass metric. Accepts list of reports as argument.
     """
@@ -62,7 +62,7 @@ def compute_fail_to_pass_weighted(reports: List[Dict]) -> float:
     return compute_fail_to_pass(report_all)
 
 
-def compute_pass_to_pass_weighted(reports: List[Dict]) -> float:
+def compute_pass_to_pass_weighted(reports: list[dict]) -> float:
     """
     Compute weighted pass-to-pass metric. Accepts list of reports as argument.
     """
@@ -75,7 +75,7 @@ def compute_pass_to_pass_weighted(reports: List[Dict]) -> float:
     return compute_pass_to_pass(report_all)
 
 
-def get_resolution_status(report: Dict) -> str:
+def get_resolution_status(report: dict) -> str:
     """
     Determine resolved status of an evaluation instance
 

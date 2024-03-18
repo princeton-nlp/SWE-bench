@@ -155,10 +155,8 @@ def parse_issue_url(issue_url):
     match = issue_pat.search(issue_url)
     if not match:
         raise ValueError(
-            (
                 f"issue_url ({issue_url}) does not seem to be a valid issue url."
                 + "\nPlease use url like https://github.com/owner/repo/issues/12345"
-            )
         )
     owner, repo, issue_num = match.groups()
     return owner, repo, issue_num

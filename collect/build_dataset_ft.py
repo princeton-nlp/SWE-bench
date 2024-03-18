@@ -29,7 +29,7 @@ def main(instances_path: str, output_path: str, eval_path: str, seed: int):
     # Gather Evaluation Set Task Instances
     eval_instances = []
     for x in glob.glob(os.path.join(eval_path, "*-task-instances.jsonl")):
-        with open(x, "r") as f:
+        with open(x) as f:
             eval_instances.extend(f.readlines())
     eval_instances = set(eval_instances)
 
@@ -39,7 +39,7 @@ def main(instances_path: str, output_path: str, eval_path: str, seed: int):
             glob.glob(os.path.join(instances_path, "*-task-instances.jsonl.all"))
         ):
             total_repos += 1
-            with open(dataset_path, "r") as f:
+            with open(dataset_path) as f:
                 lines = f.readlines()
 
                 # Remove data from evaluation dataset

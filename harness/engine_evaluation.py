@@ -19,7 +19,7 @@ from utils import (
 )
 
 
-def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
+def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: dict):
     """
     Code for running ablation experiment to compare generating full files vs patches
 
@@ -76,7 +76,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
     return
 
 
-def evaluate_predictions(data: Dict):
+def evaluate_predictions(data: dict):
     """
     Sets up task environment context manager. Each prediction is then
     evaluated within the context manager.

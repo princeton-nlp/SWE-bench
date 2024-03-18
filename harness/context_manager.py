@@ -37,7 +37,7 @@ logger_testbed = logging.getLogger("testbed_context_manager")
 class ExecWrapper:
     def __init__(
         self,
-        subprocess_args: Dict = None,
+        subprocess_args: dict = None,
     ):
         if subprocess_args is None:
             self.subprocess_args = {}
@@ -61,7 +61,7 @@ class ExecWrapper:
 class TestbedContextManager:
     def __init__(
         self,
-        task_instances: List,
+        task_instances: list,
         log_dir: str,
         conda_link: str = None,
         path_conda: str = None,
@@ -338,7 +338,7 @@ class TestbedContextManager:
 
         return self
 
-    def get_distributed_tasks(self) -> List:
+    def get_distributed_tasks(self) -> list:
         """
         Create task group (instances + keywords) for each repo/version
 
@@ -393,7 +393,7 @@ logger_taskenv = logging.getLogger("taskenv_context_manager")
 class TaskEnvContextManager:
     def __init__(
         self,
-        instance: Dict,
+        instance: dict,
         testbed: str,
         venv: str,
         log_dir: str,
@@ -472,7 +472,7 @@ class TaskEnvContextManager:
                 f.write(f"\t- Evaluation Model: {self.instance[KEY_MODEL]}\n")
         return self
 
-    def reset_task_env(self, instance: Dict):
+    def reset_task_env(self, instance: dict):
         """
         Reset task environment + testbed and checkout base commit of given task instance
 
@@ -509,7 +509,7 @@ class TaskEnvContextManager:
                 f.write(err_msg)
             return False
 
-    def run_install_task(self, instance: Dict) -> bool:
+    def run_install_task(self, instance: dict) -> bool:
         """
         Run installation for task instance
 
@@ -650,7 +650,7 @@ class TaskEnvContextManager:
             f.write(f"{APPLY_PATCH_PASS} ({patch_type})\n")
         return True
 
-    def run_tests_task(self, instance: Dict):
+    def run_tests_task(self, instance: dict):
         """
         Run tests for task instance
 
