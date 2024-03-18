@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Create a dataset for text-to-text training from the raw task instance outputs.
 """

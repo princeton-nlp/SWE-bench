@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Provided a source (raw) directory and the final (eval) directory, create a training split by removing all instances that are in the final directory from the source directory.
 """
 

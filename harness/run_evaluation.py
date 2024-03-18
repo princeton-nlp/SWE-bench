@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+"""Run evaluation"""
 import argparse
 import datasets
 import hashlib

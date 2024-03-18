@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import re
 import numpy as np
 from datasets import load_dataset, disable_caching, load_from_disk

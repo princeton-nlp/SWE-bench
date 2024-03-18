@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 This module contains functions for running a live inference session on a GitHub issue.
 It clones the repository associated with the issue, builds a BM25 retrieval index, and
