@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Create a dataset for text-to-text training from the raw task instance outputs.
 """
@@ -177,7 +179,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset_name_or_path",
         type=str,

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+"""Run evaluation"""
 import argparse
 import datasets
 import hashlib
@@ -222,7 +225,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file (must be .json)", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
     parser.add_argument("--swe_bench_tasks", type=str, help="Path to SWE-bench task instances file", required=True)

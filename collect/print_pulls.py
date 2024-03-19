@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+"""Given the `<owner/name>` of a GitHub repo, this script writes the raw information for all the repo's PRs to a single `.jsonl` file."""
+
 import argparse
 import json
 import logging
@@ -44,7 +48,7 @@ def main(repo_name: str, output: str, token: Optional[str] = None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo_name", type=str, help="Name of the repository")
     parser.add_argument("output", type=str, help="Output file name")
     parser.add_argument("--token", type=str, help="GitHub token")
