@@ -5,7 +5,7 @@ SWE-bench lite consists of 300 test instances and 23 development instances; both
 - We remove instances with images, external hyperlinks, references to specific commit shas and references to other pull requests or issues.
 - We remove instances that have fewer than 40 words in the problem statement.
 - We remove instances that edit more than 1 file.
-- We remove instances that have more than 3 edit hunks (see [patch](https://man7.org/linux/man-pages/man1/patch.1.html)).
+- We remove instances where the gold patch has more than 3 edit hunks (see [patch](https://man7.org/linux/man-pages/man1/patch.1.html)).
 - We remove instances that create or remove files.
 - We remove instances that contain tests with error message checks.
 - Finally, we sample 300 test instances and 23 development instances from the remaining instances.
