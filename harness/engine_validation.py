@@ -2,7 +2,6 @@ import argparse, os
 
 from context_manager import TaskEnvContextManager, TestbedContextManager
 from multiprocessing import Pool, cpu_count
-from typing import Dict
 from utils import get_instances, split_instances, DotDict
 
 
@@ -33,7 +32,7 @@ def validate_args(args):
         raise ValueError(f"Number of workers must be a positive integer")
 
 
-def verify_task_instances(data: Dict):
+def verify_task_instances(data: dict):
     """
     Sets up task environment context manager. Each task instance is then
     installed and validated within the context manager.
@@ -72,7 +71,7 @@ def verify_task_instances(data: Dict):
                 continue
 
 
-def setup_testbed(data: Dict):
+def setup_testbed(data: dict):
     """
     Creates testbed context manager and runs verify_task_instances in parallel
 

@@ -23,7 +23,7 @@ def get_package_stats(data_tasks, f):
     content = None
     access_type = "w"
     if os.path.exists(f):
-        with open(f, "r") as fp_:
+        with open(f) as fp_:
             content = fp_.read()
             access_type = "a"
             fp_.close()

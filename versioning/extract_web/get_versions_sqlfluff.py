@@ -91,4 +91,4 @@ with open(
 
 # Print all versions
 versioned = json.load(open(os.path.join(PATH_TO_SAVE, versioned_path)))
-print(sorted(list(set([t['version'] for t in versioned if t['version'] is not None]))))
+print(sorted(list({t['version'] for t in versioned if t['version'] is not None})))

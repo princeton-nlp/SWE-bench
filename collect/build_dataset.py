@@ -4,7 +4,7 @@ import argparse
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 
 from utils import Repo, extract_patches, extract_problem_statement_and_hints
@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_instance(repo: Repo, pull: Dict) -> Dict:
+def create_instance(repo: Repo, pull: dict) -> dict:
     """
     Create a single task instance from a pull request, where task instance is:
 
@@ -45,7 +45,7 @@ def create_instance(repo: Repo, pull: Dict) -> Dict:
     }
 
 
-def is_valid_pull(pull: Dict) -> bool:
+def is_valid_pull(pull: dict) -> bool:
     """
     Check whether PR has an associated issue and is merged
 
@@ -61,7 +61,7 @@ def is_valid_pull(pull: Dict) -> bool:
     return True
 
 
-def is_valid_instance(instance: Dict) -> bool:
+def is_valid_instance(instance: dict) -> bool:
     """
     Check whether task instance has all required fields for task instance creation
 
@@ -77,7 +77,7 @@ def is_valid_instance(instance: Dict) -> bool:
     return True
 
 
-def has_test_patch(instance: Dict) -> bool:
+def has_test_patch(instance: dict) -> bool:
     """
     Check whether task instance has a test suite
 

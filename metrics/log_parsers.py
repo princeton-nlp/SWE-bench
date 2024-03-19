@@ -1,7 +1,6 @@
 import re
 
 from enum import Enum
-from typing import Dict
 
 
 class TestStatus(Enum):
@@ -11,7 +10,7 @@ class TestStatus(Enum):
     ERROR = "ERROR"
 
 
-def parse_log_pytest(log: str) -> Dict:
+def parse_log_pytest(log: str) -> dict:
     """
     Parser for test logs generated with PyTest framework
 
@@ -33,7 +32,7 @@ def parse_log_pytest(log: str) -> Dict:
     return test_status_map
 
 
-def parse_log_django(log: str) -> Dict:
+def parse_log_django(log: str) -> dict:
     """
     Parser for test logs generated with Django tester framework
 

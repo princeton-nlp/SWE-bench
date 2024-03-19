@@ -8,7 +8,6 @@ from constants import (
     MAP_REPO_TO_VERSION_PATHS,
     MAP_REPO_TO_VERSION_PATTERNS,
 )
-from typing import Dict
 from utils import get_instances, split_instances
 
 logging.basicConfig(
@@ -24,7 +23,7 @@ INSTALL_CMD = {
 }
 
 
-def _find_version_in_text(text: str, instance: Dict) -> str:
+def _find_version_in_text(text: str, instance: dict) -> str:
     """
     Helper function for applying regex patterns to look for versions in text
 
@@ -77,7 +76,7 @@ def get_version(instance, is_build=False, path_repo=None):
             version_path_abs = os.path.join(path_repo, path_to_version)
             if os.path.exists(version_path_abs):
                 logger.info(f"Found version file at {path_to_version}")
-                with open(path_to_version, "r") as f:
+                with open(path_to_version) as f:
                     init_text = f.read()
         else:
             url = os.path.join(
@@ -93,12 +92,12 @@ def get_version(instance, is_build=False, path_repo=None):
                 version = keep_major_minor(version, ".")
             if "," in version:
                 version = keep_major_minor(version, ",")
-            version = re.sub("[^0-9\.]", "", version)
+            version = re.sub(r"[^0-9\.]", "", version)
             return version
     return version
 
 
-def map_version_to_task_instances(task_instances: list) -> Dict:
+def map_version_to_task_instances(task_instances: list) -> dict:
     """
     Create a map of version key to list of task instances
 
@@ -123,7 +122,7 @@ def map_version_to_task_instances(task_instances: list) -> Dict:
     return return_map
 
 
-def get_versions_from_build(data: Dict):
+def get_versions_from_build(data: dict):
     """
     Logic for looking up versions by building the repo at the instance's base
     commit and looking for the version according to repo-specific paths.
@@ -189,7 +188,7 @@ def get_versions_from_build(data: Dict):
     os.chdir(cwd)
 
 
-def get_versions_from_web(data: Dict):
+def get_versions_from_web(data: dict):
     """
     Logic for looking up versions by searching GitHub at the instance's base
     commit and looking for the version according to repo-specific paths.
@@ -226,7 +225,7 @@ def merge_results(instances_path: str, repo_prefix: str, output_dir: str = None)
     # Merge values from result JSON files into a single list
     merged = []
     for task_with_version_path in glob.glob(f"{repo_prefix}_versions_*.json"):
-        with open(task_with_version_path, "r") as f:
+        with open(task_with_version_path) as f:
             task_with_version = json.load(f)
             merged.extend(task_with_version)
         os.remove(task_with_version_path)

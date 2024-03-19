@@ -1,7 +1,6 @@
 import glob
 import os
 
-from typing import List
 
 from log_parsers import MAP_REPO_TO_PARSER
 from getters import (
@@ -12,7 +11,7 @@ from getters import (
 
 def monitor_validation(
     path_to_logs: str, log_prefix: str = None
-) -> (List, List, List, List):
+) -> (list, list, list, list):
     """
     Check log files generated from a `check_instances` run to see how many instances were successfully
     installed and/or tested.
@@ -36,7 +35,7 @@ def monitor_validation(
     # Iterate through all logs with prefix in path_to_logs
     file_format = f"{log_prefix}*.log" if log_prefix else "*.log"
     for x in glob.glob(os.path.join(path_to_logs, file_format)):
-        with open(x, "r") as f:
+        with open(x) as f:
             content = f.read()
             if any([x in content for x in [APPLY_PATCH_FAIL, APPLY_PATCH_PASS]]):
                 # Count number of successful patch applies

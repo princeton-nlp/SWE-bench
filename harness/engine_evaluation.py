@@ -10,7 +10,6 @@ from context_manager import TaskEnvContextManager
 from engine_validation import setup_testbed
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
-from typing import Dict
 from utils import (
     extract_minimal_patch,
     get_instances,
@@ -19,7 +18,7 @@ from utils import (
 )
 
 
-def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
+def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: dict):
     """
     Code for running ablation experiment to compare generating full files vs patches
 
@@ -76,7 +75,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
     return
 
 
-def evaluate_predictions(data: Dict):
+def evaluate_predictions(data: dict):
     """
     Sets up task environment context manager. Each prediction is then
     evaluated within the context manager.

@@ -399,7 +399,7 @@ def main(
     logger.info(f"Will write to {output_file}")
     existing_ids = set()
     if os.path.exists(output_file):
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             for line in f:
                 data = json.loads(line)
                 instance_id = data["instance_id"]
