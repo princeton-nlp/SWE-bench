@@ -1,7 +1,6 @@
 import re
 
 from log_parsers import MAP_REPO_TO_PARSER, TestStatus
-from typing import Dict, List
 
 
 # Evaluation Log Constants
@@ -20,7 +19,7 @@ PASS_TO_PASS = "PASS_TO_PASS"
 PASS_TO_FAIL = "PASS_TO_FAIL"
 
 
-def get_diffs(sm_1: Dict, sm_2: Dict) -> Dict:
+def get_diffs(sm_1: dict, sm_2: dict) -> dict:
     """
     Get differences between two test status maps
 
@@ -42,7 +41,7 @@ def get_diffs(sm_1: Dict, sm_2: Dict) -> Dict:
     return diff_map
 
 
-def get_logs_eval(log_fp: str) -> (Dict, bool):
+def get_logs_eval(log_fp: str) -> (dict, bool):
     """
     Retrieve evaluation results for a task instance from its corresponding log file
 
@@ -55,7 +54,7 @@ def get_logs_eval(log_fp: str) -> (Dict, bool):
     repo = get_repo_from_lp(log_fp)
     log_parser = MAP_REPO_TO_PARSER[repo]
 
-    with open(log_fp, "r") as f:
+    with open(log_fp) as f:
         content = f.read()
         if any([x in content for x in [APPLY_PATCH_FAIL, RESET_FAILED, TESTS_ERROR, TESTS_TIMEOUT, "Failed to reset task environment"]]) or APPLY_PATCH_PASS not in content:
             # Eval patch was not applied successfully
@@ -75,7 +74,7 @@ def get_logs_gold(log_fp: str) -> (str, str):
     Returns:
         str: pre-patch, post-patch test logs
     """
-    with open(log_fp, "r") as f:
+    with open(log_fp) as f:
         content = f.read()
         if len(re.findall(APPLY_PATCH_PASS, content)) != 2:
             return None, None
@@ -93,7 +92,7 @@ get_id_from_lp = lambda x: get_file_name_from_lp(x).split(".")[0]
 get_repo_from_lp = lambda x: get_id_from_lp(x).rsplit("-", 1)[0].replace("__", "/")
 
 
-def log_path_to_sms(log_fp: str, log_parser) -> (List, bool):
+def log_path_to_sms(log_fp: str, log_parser) -> (list, bool):
     """
     Wrapper for getting log data from log_parser file
 

@@ -52,3 +52,14 @@ python bm25_retrieval.py --dataset_name_or_path princeton-nlp/SWE-bench --output
 ```
 
 __NOTE:__ The script requires the `pyserini` package to be installed. See the pyserini [installation instructions](https://github.com/castorini/pyserini) for more details.
+
+
+## `eval_retrieval.py`
+This script can be used to evaluate the BM25 retrieval results for a dataset created with `create_text_dataset.py` with the `--retrieval_file` option and `--file_source bm25`.
+__NOTE__: The script assumes that the `text` field in the dataset specifies files using the "\[start of filename\]" and "\[end of filename\]" tags used by the default DOCUMENT_ENCODING_FUNCTIONS in `bm25_retrieval.py`. If you change that format, you need to modify the `instance_file_pattern` in `eval_retrieval.py` accordingly.
+
+Here's an example of how to call the script to evaluate the BM25 retrieval results for a dataset:
+
+```bash
+python eval_retrieval.py --dataset_name_or_path princeton-nlp/SWE-bench_bm25_13K --split test
+```
