@@ -531,7 +531,7 @@ def ingest_files(filenames):
 
 
 PROMPT_FUNCTIONS = {
-    # "style-2": prompt_style_2,
+    "style-2": prompt_style_2,
     # "style-3": prompt_style_3,
     # "full_file_gen": full_file_gen,
     # "style-2-edits-only": prompt_style_2_edits_only,
@@ -551,6 +551,7 @@ def add_retrieval_results(input_instances, retrieval_file, k, file_source):
     ), f"Retrieval results not found at {retrieval_results_path}"
     retrieval_results = [json.loads(line) for line in open(retrieval_results_path)]
     retrieval_results = {x["instance_id"]: x["hits"] for x in retrieval_results}
+    missing_keys = 0
     for instance_id, instance in tqdm(
         input_instances.items(),
         total=len(input_instances),
@@ -559,8 +560,10 @@ def add_retrieval_results(input_instances, retrieval_file, k, file_source):
         try:
             instance["hits"] = retrieval_results[instance_id][:k]
         except KeyError:
-            logger.warning(f"Instance {instance_id} not found in retrieval results")
+            missing_keys += 1
             instance["hits"] = list()
+    if missing_keys > 0:
+        logger.warning(f"Missing {missing_keys} keys from retrieval results")
 
 
 def get_oracle_filenames(instance):
@@ -583,9 +586,11 @@ def add_text_inputs(
     k,
     prompt_style,
     file_source,
+    tmpdir='/tmp',
     max_context_len=None,
     tokenizer_name=None,
     verbose=False,
+    progress_file=None,
 ):
     """Adds text inputs context for prediction in-place.
 
@@ -595,82 +600,103 @@ def add_text_inputs(
     - k: if using retrieval, specifies the maximum number of files to included within context
     - prompt_style: specify the function to generate instructions and prompt provided an instance (from PROMPT_FUNCTIONS)
     - file_source: where to collect file_contents (e.g. oracle or bm25)
+    - tmpdir: directory to use for temporary files
+    - max_context_len: maximum number of tokens to include in context
+    - tokenizer_name: name of tokenizer to use if max_context_len is not None
     - verbose: set ContextManager verbose to True
+    - progress_file: file to save progress to
     """
     if max_context_len is not None:
         assert (
             tokenizer_name is not None
         ), "Must specify tokenizer_name if using max_context_len"
         tokenizer, tokenizer_func = TOKENIZER_FUNCS[tokenizer_name]
-    input_instances_copy = deepcopy(input_instances)
+    if progress_file is not None and Path(progress_file).exists():
+        with open(progress_file) as pfile:
+            data = json.load(pfile)
+            if set(data.keys()) != set(input_instances.keys()):
+                raise ValueError(f'Found mismatched progress file: {progress_file}')
+            input_instances_copy = data
+    else:
+        input_instances_copy = deepcopy(input_instances)
     if file_source in {"bm25"}:
         add_retrieval_results(input_instances_copy, retrieval_file, k, file_source)
     orig_dir = os.getcwd()
     with TemporaryDirectory(
-        dir="/scratch" if os.path.exists("/scratch") else "/tmp"
+        dir=tmpdir,
     ) as root_dir:
-        for instance_id, instance in tqdm(
-            input_instances_copy.items(),
-            total=len(input_instances_copy),
+        progress_counter = 0
+        instance_ids = list(sorted(input_instances_copy.keys()))
+        for instance_id in tqdm(
+            instance_ids,
             desc="Adding text inputs",
         ):
             try:
-                with AutoContextManager(
-                    instance, root_dir, verbose=verbose
-                ) as cm:
-                    readmes = cm.get_readme_files()
-                    instance["readmes"] = ingest_files(readmes)
-                    if max_context_len is not None:
-                        instance["file_contents"] = dict()
-                        base_text_inputs = PROMPT_FUNCTIONS[prompt_style](instance)
-                        base_text_input_length = len(
-                            tokenizer_func(base_text_inputs, tokenizer)
-                        )
-                    if file_source in {"oracle"}:
-                        instance["file_contents"] = ingest_files(
-                            get_oracle_filenames(instance)
-                        )
-                    elif file_source in {"bm25"}:
-                        instance["file_contents"] = ingest_files(
-                            [x["docid"] for x in instance["hits"]]
-                        )
-                    elif file_source in {"all"}:
-                        instance["file_contents"] = ingest_directory_contents(
-                            cm.repo_path
-                        )
-                    elif file_source in {"none"}:
-                        instance["file_contents"] = dict()
-                    else:
-                        raise ValueError(f"Invalid file source {file_source}")
-                    if max_context_len is not None:
-                        cur_input_len = base_text_input_length
-                        include_files = list()
-                        for filename in [x["docid"] for x in instance["hits"]]:
-                            content = make_code_text(
-                                {filename: instance["file_contents"][filename]}
+                instance = input_instances_copy[instance_id]
+                if 'file_contents' not in instance:
+                    with AutoContextManager(
+                        instance, root_dir, verbose=verbose
+                    ) as cm:
+                        readmes = cm.get_readme_files()
+                        instance["readmes"] = ingest_files(readmes)
+                        if max_context_len is not None:
+                            instance["file_contents"] = dict()
+                            base_text_inputs = PROMPT_FUNCTIONS[prompt_style](instance)
+                            base_text_input_length = len(
+                                tokenizer_func(base_text_inputs, tokenizer)
                             )
-                            if tokenizer_name in {"llama"}:
-                                tokens = tokenizer_func("\n" + content, tokenizer)
-                                idx = tokens.index(13)
-                                assert (
-                                    idx <= 2
-                                ), "Expected newline token id (13) to be one of the first three tokens"
-                                tokens = tokens[idx + 1 :]  # remove newline tokens
-                            else:
-                                tokens = tokenizer_func(content, tokenizer)
-                            if cur_input_len + len(tokens) < max_context_len:
-                                include_files.append(filename)
-                                cur_input_len += len(tokens)
-                        instance["file_contents"] = {
-                            filename: instance["file_contents"][filename]
-                            for filename in include_files
-                        }
-                    input_instances[instance_id]["text_inputs"] = PROMPT_FUNCTIONS[prompt_style](instance)
+                        if file_source in {"oracle"}:
+                            instance["file_contents"] = ingest_files(
+                                get_oracle_filenames(instance)
+                            )
+                        elif file_source in {"bm25"}:
+                            instance["file_contents"] = ingest_files(
+                                [x["docid"] for x in instance["hits"]]
+                            )
+                        elif file_source in {"all"}:
+                            instance["file_contents"] = ingest_directory_contents(
+                                cm.repo_path
+                            )
+                        elif file_source in {"none"}:
+                            instance["file_contents"] = dict()
+                        else:
+                            raise ValueError(f"Invalid file source {file_source}")
+                        if max_context_len is not None:
+                            cur_input_len = base_text_input_length
+                            include_files = list()
+                            for filename in [x["docid"] for x in instance["hits"]]:
+                                content = make_code_text(
+                                    {filename: instance["file_contents"][filename]}
+                                )
+                                if tokenizer_name in {"llama"}:
+                                    tokens = tokenizer_func("\n" + content, tokenizer)
+                                    idx = tokens.index(13)
+                                    assert (
+                                        idx <= 2
+                                    ), "Expected newline token id (13) to be one of the first three tokens"
+                                    tokens = tokens[idx + 1 :]  # remove newline tokens
+                                else:
+                                    tokens = tokenizer_func(content, tokenizer)
+                                if cur_input_len + len(tokens) < max_context_len:
+                                    include_files.append(filename)
+                                    cur_input_len += len(tokens)
+                            instance["file_contents"] = {
+                                filename: instance["file_contents"][filename]
+                                for filename in include_files
+                            }
+                input_instances[instance_id]["text_inputs"] = PROMPT_FUNCTIONS[prompt_style](instance)
+                if progress_file is not None and (progress_counter + 1) % 500 == 0:
+                    logger.info(f'Saving progress...')
+                    with open(progress_file, 'w') as pfile:
+                        json.dump(input_instances_copy, pfile)
             except Exception as e:
                 print(f"Failed on instance {instance_id}", e)
                 traceback.print_exc()
                 input_instances[instance_id]["text_inputs"] = None
             finally:
+                progress_counter += 1
                 # if AutoContextManager fails to exit properly future exits will return the wrong directory
                 os.chdir(orig_dir)
+    if progress_file is not None and Path(progress_file).exists():
+        Path(progress_file).unlink()
     os.chdir(orig_dir)

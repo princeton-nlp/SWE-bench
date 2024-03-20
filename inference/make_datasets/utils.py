@@ -5,6 +5,7 @@ import chardet
 import subprocess
 import base64
 import unidiff
+import time
 from argparse import ArgumentTypeError
 from git import Repo
 from ghapi.all import GhApi
@@ -166,7 +167,6 @@ class ContextManager:
                 shell=True,
                 check=True,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
             )
         return self
 
@@ -183,6 +183,21 @@ class ContextManager:
         os.chdir(self.old_dir)
 
 
+def clone_repo_with_retries(repo_url, repo_dir, retries=5, time_interval=300):
+    num_retried = 0
+    while True:
+        try:
+            Repo.clone_from(repo_url, repo_dir)
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"Retrying in {time_interval} seconds...")
+            time.sleep(time_interval)
+            num_retried += 1
+            if num_retried > retries:
+                raise e
+            
+
 class AutoContextManager(ContextManager):
     """Automatically clones the repo if it doesn't exist"""
 
@@ -197,13 +212,14 @@ class AutoContextManager(ContextManager):
         repo_dir = os.path.join(self.root_dir, instance["repo"].replace("/", "__"))
         if not os.path.exists(repo_dir):
             repo_url = (
-                f"https://{token}@github.com/swe-bench/"
-                + instance["repo"].replace("/", "__")
+                f"https://{token}@github.com/"
+                + instance["repo"]
                 + ".git"
             )
             if verbose:
                 print(f"Cloning {instance['repo']} to {root_dir}")
-            Repo.clone_from(repo_url, repo_dir)
+            clone_repo_with_retries(repo_url, repo_dir)
+            assert os.path.exists(repo_dir), f"Failed to clone {instance['repo']}"
         super().__init__(repo_dir, instance["base_commit"], verbose=verbose)
         self.instance = instance
 

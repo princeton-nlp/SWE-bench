@@ -81,6 +81,7 @@ def main(
     max_context_len,
     tokenizer_name,
     push_to_hub_user,
+    tmpdir,
 ):
     if push_to_hub_user is not None:
         hub_token = os.environ.get("HUGGING_FACE_HUB_TOKEN", None)
@@ -90,7 +91,7 @@ def main(
         assert tokenizer_name is not None
     if push_to_hub_user is None and not Path(output_dir).exists():
         Path(output_dir).mkdir(parents=True)
-    output_file = f"SWE-bench__{prompt_style}__fs-{file_source}"
+    output_file = f"{dataset_name_or_path.split('/')[-1]}__{prompt_style}__fs-{file_source}"
     if k is not None:
         assert file_source not in {
             "all",
@@ -106,6 +107,11 @@ def main(
             tokenizer_name is not None
         ), "Must provide tokenizer_name if max_context_len is not None"
         output_file += f"__mcc-{max_context_len}-{tokenizer_name}"
+    if not Path(tmpdir).exists():
+        raise ValueError((
+            f"Temporary directory {tmpdir} does not exist. "
+            "Please provide a valid temporary directory for storing intermediate files."
+        ))
     if push_to_hub_user is None:
         output_file = Path(output_dir, output_file)
         if output_file.exists():
@@ -128,8 +134,10 @@ def main(
             k,
             prompt_style,
             file_source,
+            tmpdir=tmpdir,
             max_context_len=max_context_len,
             tokenizer_name=tokenizer_name,
+            progress_file=str(output_file) + f'.{split}.progress'
         )
     columns = [
         "instance_id",
@@ -236,6 +244,12 @@ if __name__ == "__main__":
         default=None,
         choices=TOKENIZER_FUNCS.keys(),
         help="Tokenizer to use for max_context_len. Only needed if max_context_len is specified.",
+    )
+    parser.add_argument(
+        "--tmpdir",
+        type=str,
+        default='/tmp',
+        help="Temporary directory to use for storing intermediate files.",
     )
     parser.add_argument(
         "--push_to_hub_user",
