@@ -10,7 +10,6 @@ from context_manager import TaskEnvContextManager
 from engine_validation import setup_testbed
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
-from typing import Dict
 from utils import (
     extract_minimal_patch,
     get_instances,
@@ -19,7 +18,7 @@ from utils import (
 )
 
 
-def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
+def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: dict):
     """
     Code for running ablation experiment to compare generating full files vs patches
 
@@ -76,7 +75,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
     return
 
 
-def evaluate_predictions(data: Dict):
+def evaluate_predictions(data: dict):
     """
     Sets up task environment context manager. Each prediction is then
     evaluated within the context manager.
@@ -178,6 +177,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--predictions_path", type=str, help="Path to predictions instances file", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
     parser.add_argument("--log_suffix", type=str, default=None, help="(Optional) Suffix to append to log file names")
     parser.add_argument("--num_workers", type=int, default=1, help="(Optional) Number of workers")
     parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")

@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 import os, json
+import argparse
 
 from bs4 import BeautifulSoup
 from ghapi.core import GhApi
@@ -6,7 +9,11 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 
-api = GhApi(token="GITHUB TOKEN HERE")
+gh_token = os.environ.get("GITHUB_TOKEN")
+if not gh_token:
+    msg = "Please set the GITHUB_TOKEN environment variable."
+    raise ValueError(msg)
+api = GhApi(token="gh_token")
 
 
 def get_package_stats(data_tasks, f):
@@ -21,7 +28,7 @@ def get_package_stats(data_tasks, f):
     content = None
     access_type = "w"
     if os.path.exists(f):
-        with open(f, "r") as fp_:
+        with open(f) as fp_:
             content = fp_.read()
             access_type = "a"
             fp_.close()
@@ -84,11 +91,15 @@ def get_package_stats(data_tasks, f):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-repos", help="Maximum number of repos to get", type=int, default=5000)
+    args = parser.parse_args()
+
     # Start selenium driver to get top 5000 pypi page
     url_top_pypi = "https://hugovk.github.io/top-pypi-packages/"
     driver = webdriver.Chrome()
     driver.get(url_top_pypi)
-    button = driver.find_element(By.CSS_SELECTOR, 'button[ng-click="show(5000)"]')
+    button = driver.find_element(By.CSS_SELECTOR, 'button[ng-click="show(8000)"]')
     button.click()
 
     # Retrieve HTML for packages from page
@@ -96,4 +107,4 @@ if __name__ == "__main__":
     package_list = soup.find("div", {"class": "list"})
     packages = package_list.find_all("a", class_="ng-scope")
 
-    get_package_stats(packages, "pypi_rankings.jsonl")
+    get_package_stats(packages[:args.max_repos], "pypi_rankings.jsonl")

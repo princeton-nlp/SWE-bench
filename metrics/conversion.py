@@ -1,7 +1,6 @@
 import json, os
 
 from log_parsers import MAP_REPO_TO_PARSER, TestStatus
-from typing import Dict, List
 from getters import (
     get_file_name_from_lp,
     get_repo_from_lp,
@@ -16,8 +15,8 @@ from getters import (
 
 
 def convert_log_to_ground_truth(
-    log_fp: List, save_dir: str = None, verbose: bool = False
-) -> Dict:
+    log_fp: list, save_dir: str = None, verbose: bool = False
+) -> dict:
     """
     Convert log file generated from check instances into ground truth dict
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 This module contains functions for running a live inference session on a GitHub issue.
 It clones the repository associated with the issue, builds a BM25 retrieval index, and
@@ -5,7 +7,6 @@ generates a prompt for the user to interact with the model. The output is saved 
 specified directory.
 """
 import json
-import shutil
 import subprocess
 from pathlib import Path
 from ghapi.all import GhApi
@@ -14,7 +15,6 @@ import re
 import time
 from datetime import datetime
 from tqdm.auto import tqdm
-from tempfile import TemporaryDirectory
 from make_datasets.utils import ContextManager, string_to_bool, extract_diff, extract_minimal_patch
 from make_datasets.bm25_retrieval import (
     make_index,
@@ -155,10 +155,8 @@ def parse_issue_url(issue_url):
     match = issue_pat.search(issue_url)
     if not match:
         raise ValueError(
-            (
-                f"issue_url ({issue_url}) does not seem to be a valid issue url."
-                + "\nPlease use url like https://github.com/owner/repo/issues/12345"
-            )
+            f"issue_url ({issue_url}) does not seem to be a valid issue url."
+            + "\nPlease use url like https://github.com/owner/repo/issues/12345"
         )
     owner, repo, issue_num = match.groups()
     return owner, repo, issue_num
@@ -253,7 +251,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument("--model_name", type=str)
     parser.add_argument(
         "--prompt_style", type=str, choices=PROMPT_FUNCTIONS.keys(), default="style-3"

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+"""Run evaluation"""
 import argparse
 import datasets
 import hashlib
@@ -57,6 +60,7 @@ def main(
     swe_bench_tasks: str,
     log_dir: str,
     testbed: str,
+    conda_link: str,
     log_suffix: str,
     skip_existing: bool,
     timeout: int,
@@ -222,11 +226,12 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file (must be .json)", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
     parser.add_argument("--swe_bench_tasks", type=str, help="Path to SWE-bench task instances file", required=True)
     parser.add_argument("--testbed", type=str, help="Path to testbed directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
     parser.add_argument("--log_suffix", type=str, help="(Optional) Suffix to append to log file names", default=None)
     parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)

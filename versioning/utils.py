@@ -1,8 +1,7 @@
 import json
-from typing import List
 
 
-def get_instances(instance_path: str) -> List:
+def get_instances(instance_path: str) -> list:
     """
     Get task instances from given path
 
@@ -23,7 +22,7 @@ def get_instances(instance_path: str) -> List:
     return task_instances
 
 
-def split_instances(input_list: List, n: int) -> List:
+def split_instances(input_list: list, n: int) -> list:
     """
     Split a list into n approximately equal length sublists
 

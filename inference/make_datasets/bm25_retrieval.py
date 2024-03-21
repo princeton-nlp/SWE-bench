@@ -6,7 +6,7 @@ import shutil
 import traceback
 import subprocess
 from filelock import FileLock
-from typing import Any, Dict, List
+from typing import Any
 from datasets import load_from_disk, load_dataset
 from pyserini.search.lucene import LuceneSearcher
 from git import Repo
@@ -78,7 +78,7 @@ class ContextManager:
 
 def file_name_and_contents(filename, relative_path):
     text = relative_path + "\n"
-    with open(filename, "r") as f:
+    with open(filename) as f:
         text += f.read()
     return text
 
@@ -86,7 +86,7 @@ def file_name_and_contents(filename, relative_path):
 def file_name_and_documentation(filename, relative_path):
     text = relative_path + "\n"
     try:
-        with open(filename, "r") as f:
+        with open(filename) as f:
             node = ast.parse(f.read())
         data = ast.get_docstring(node)
         if data:
@@ -101,14 +101,14 @@ def file_name_and_documentation(filename, relative_path):
     except Exception as e:
         logger.error(e)
         logger.error(f"Failed to parse file {str(filename)}. Using simple filecontent.")
-        with open(filename, "r") as f:
+        with open(filename) as f:
             text += f.read()
     return text
 
 
 def file_name_and_docs_jedi(filename, relative_path):
     text = relative_path + "\n"
-    with open(filename, "r") as f:
+    with open(filename) as f:
         source_code = f.read()
     try:
         script = jedi.Script(source_code, path=filename)
@@ -293,7 +293,7 @@ def get_remaining_instances(instances, output_file):
     remaining_instances = list()
     if output_file.exists():
         with FileLock(output_file.as_posix() + ".lock"):
-            with open(output_file, "r") as f:
+            with open(output_file) as f:
                 for line in f:
                     instance = json.loads(line)
                     instance_id = instance["instance_id"]
@@ -374,7 +374,7 @@ def search_indexes(remaining_instance, output_file, all_index_paths):
 
 
 def get_missing_ids(instances, output_file):
-    with open(output_file, "r") as f:
+    with open(output_file) as f:
         written_ids = set()
         for line in f:
             instance = json.loads(line)
@@ -418,13 +418,13 @@ def get_index_paths_worker(
 
 
 def get_index_paths(
-    remaining_instances: List[Dict[str, Any]],
+    remaining_instances: list[dict[str, Any]],
     root_dir_name: str,
     document_encoding_func: Any,
     python: str,
     token: str,
     output_file: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Retrieves the index paths for the given instances using multiple processes.
 

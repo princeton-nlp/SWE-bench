@@ -207,7 +207,7 @@ class AutoContextManager(ContextManager):
 
 
 def get_imported_modules(filename):
-    with open(filename, "rt") as file:
+    with open(filename) as file:
         tree = ast.parse(file.read(), filename)
     return [
         node
@@ -279,7 +279,7 @@ def ingest_directory_contents(root_dir, include_tests=False):
             content = "[BINARY DATA FILE]"
         else:
             try:
-                with open(filename, "r", encoding=encoding) as file:
+                with open(filename, encoding=encoding) as file:
                     content = file.read()
             except (UnicodeDecodeError, LookupError):
                 content = "[BINARY DATA FILE]"
