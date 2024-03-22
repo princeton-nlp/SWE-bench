@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+
+"""This python script is designed to run inference on a dataset using either the OpenAI or Anthropic API, depending on the model specified. 
+It sorts instances by length and continually writes the outputs to a specified file, so that the script can be stopped and restarted without losing progress.
+"""
+
 import json
 import os
 import time
@@ -26,18 +32,25 @@ dotenv.load_dotenv()
 MODEL_LIMITS = {
     "claude-instant-1": 100_000,
     "claude-2": 100_000,
+    "claude-3-opus-20240229": 200_000,
+    "claude-3-sonnet-20240229": 200_000,
+    "claude-3-haiku-20240307": 200_000,
     "gpt-3.5-turbo-16k-0613": 16_385,
     "gpt-3.5-turbo-0613": 4_097,
     "gpt-3.5-turbo-1106": 16_385,
     "gpt-4-32k-0613": 32_768,
     "gpt-4-0613": 8_192,
     "gpt-4-1106-preview": 128_000,
+    "gpt-4-0125-preview": 128_000,
 }
 
 # The cost per token for each model input.
 MODEL_COST_PER_INPUT = {
     "claude-instant-1": 0.00000163,
     "claude-2": 0.00001102,
+    "claude-3-opus-20240229": 0.000015,
+    "claude-3-sonnet-20240229": 0.000003,
+    "claude-3-haiku-20240307": 0.00000025,
     "gpt-3.5-turbo-16k-0613": 0.0000015,
     "gpt-3.5-turbo-0613": 0.0000015,
     "gpt-3.5-turbo-1106": 0.000001,
@@ -45,13 +58,18 @@ MODEL_COST_PER_INPUT = {
     "gpt-35-turbo": 0.0000015,  # probably still 0613
     "gpt-4-0613": 0.00003,
     "gpt-4-32k-0613": 0.00006,
+    "gpt-4-32k": 0.00006,
     "gpt-4-1106-preview": 0.00001,
+    "gpt-4-0125-preview": 0.00001,
 }
 
 # The cost per token for each model output.
 MODEL_COST_PER_OUTPUT = {
     "claude-instant-1": 0.00000551,
     "claude-2": 0.00003268,
+    "claude-3-opus-20240229": 0.000075,
+    "claude-3-sonnet-20240229": 0.000015,
+    "claude-3-haiku-20240307": 0.00000125,
     "gpt-3.5-turbo-16k-0613": 0.000002,
     "gpt-3.5-turbo-16k": 0.000002,
     "gpt-3.5-turbo-1106": 0.000002,
@@ -61,6 +79,7 @@ MODEL_COST_PER_OUTPUT = {
     "gpt-4-32k-0613": 0.00012,
     "gpt-4-32k": 0.00012,
     "gpt-4-1106-preview": 0.00003,
+    "gpt-4-0125-preview": 0.00003,
 }
 
 # used for azure
@@ -258,6 +277,47 @@ def call_anthropic(
         traceback.print_exc()
         time.sleep(20)
         return None
+    
+
+@retry(wait=wait_random_exponential(min=60, max=600), stop=stop_after_attempt(6))
+def call_anthropic_v2(
+    inputs, anthropic, model_name_or_path, temperature, top_p, **model_args
+):
+    """
+    Calls the anthropic API to generate completions for the given inputs.
+
+    Args:
+    inputs list(str): The inputs to generate completions for.
+    anthropic (Anthropic): The anthropic API object.
+    model_name_or_path (str): The name or path of the model to use.
+    temperature (float): The temperature to use.
+    top_p (float): The top_p to use.
+    model_args (dict): A dictionary of model arguments.
+    """
+    system_messages = inputs.split("\n", 1)[0]
+    user_message = inputs.split("\n", 1)[1]
+    try:
+        messages = [
+            {"role": "user", "content": user_message},
+        ]
+        response = anthropic.messages.create(
+            messages=messages,
+            max_tokens=4096,
+            model=model_name_or_path,
+            temperature=temperature,
+            top_p=top_p,
+            system=system_messages,
+        )
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
+        cost = calc_cost(response.model, input_tokens, output_tokens)
+        return response, cost
+    except Exception as e:
+        logger.error(e)
+        logger.error(f"Inputs: {inputs}")
+        traceback.print_exc()
+        time.sleep(20)
+        return None
 
 
 def anthropic_inference(
@@ -300,6 +360,10 @@ def anthropic_inference(
     }
     total_cost = 0
     print(f"Filtered to {len(test_dataset)} instances")
+    if 'claude-3' in model_name_or_path.lower():
+        call_api = call_anthropic_v2
+    else:
+        call_api = call_anthropic
     with open(output_file, "a+") as f:
         for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
             instance_id = datum["instance_id"]
@@ -307,21 +371,32 @@ def anthropic_inference(
                 continue
             output_dict = {"instance_id": instance_id}
             output_dict.update(basic_args)
-            output_dict[
-                "text_inputs"
-            ] = f"{HUMAN_PROMPT} {datum['text']}\n\n{AI_PROMPT}"
-            completion, cost = call_anthropic(
-                output_dict["text_inputs"],
-                anthropic,
-                model_name_or_path,
-                temperature,
-                top_p,
-                **model_args,
-            )
+            if 'claude-3' in model_name_or_path.lower():
+                output_dict["text_inputs"] = f"{datum['text']}\n"
+            else:
+                output_dict[
+                    "text_inputs"
+                ] = f"{HUMAN_PROMPT} {datum['text']}\n\n{AI_PROMPT}"
+            try:
+                completion, cost = call_api(
+                    output_dict["text_inputs"],
+                    anthropic,
+                    model_name_or_path,
+                    temperature,
+                    top_p,
+                    **model_args,
+                )
+            except Exception as e:
+                logger.error(e)
+                traceback.print_exc()
+                continue
             total_cost += cost
             print(f"Total Cost: {total_cost:.2f}")
-            output_dict["full_output"] = completion.completion
-            output_dict["model_patch"] = extract_diff(completion.completion)
+            if "claude-3" in model_name_or_path.lower():
+                output_dict["full_output"] = completion.content[0].text
+            else:
+                output_dict["full_output"] = completion.completion
+            output_dict["model_patch"] = extract_diff(output_dict["full_output"])
             print(json.dumps(output_dict), file=f, flush=True)
             if max_cost is not None and total_cost >= max_cost:
                 print(f"Reached max cost {max_cost}, exiting")
@@ -393,7 +468,7 @@ def main(
     logger.info(f"Will write to {output_file}")
     existing_ids = set()
     if os.path.exists(output_file):
-        with open(output_file, "r") as f:
+        with open(output_file) as f:
             for line in f:
                 data = json.loads(line)
                 instance_id = data["instance_id"]
@@ -434,7 +509,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset_name_or_path",
         type=str,

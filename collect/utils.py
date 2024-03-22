@@ -6,7 +6,7 @@ import time
 from bs4 import BeautifulSoup
 from ghapi.core import GhApi
 from fastcore.net import HTTP404NotFoundError, HTTP403ForbiddenError
-from typing import Dict, List, Tuple, Optional
+from typing import Optional
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -30,7 +30,7 @@ class Repo:
         self.api = GhApi(token=token)
         self.repo = self.call_api(self.api.repos.get, owner=owner, repo=name)
 
-    def call_api(self, func: callable, **kwargs) -> Dict:
+    def call_api(self, func: callable, **kwargs) -> dict:
         """
         API call wrapper with rate limit handling (checks every 5 minutes if rate limit is reset)
 
@@ -57,7 +57,7 @@ class Repo:
                 logger.info(f"[{self.owner}/{self.name}] Resource not found {kwargs}")
                 return None
 
-    def extract_resolved_issues(self, pull: Dict) -> List[str]:
+    def extract_resolved_issues(self, pull: dict) -> list[str]:
         """
         Extract list of issues referenced by a PR
 
@@ -108,7 +108,7 @@ class Repo:
         num_pages: Optional[int] = None,
         quiet: bool = False,
         **kwargs,
-    ) -> List:
+    ) -> list:
         """
         Return all values from a paginated API endpoint.
         
@@ -130,8 +130,7 @@ class Repo:
             try:
                 # Get values from API call
                 values = func(**args, page=page)
-                for value in values:
-                    yield value
+                yield from values
                 if len(values) == 0:
                     break
                 if not quiet:
@@ -166,7 +165,7 @@ class Repo:
         sort: str = "created",
         state: str = "closed",
         quiet: bool = False,
-    ) -> List:
+    ) -> list:
         """
         Wrapper for API call to get all issues from repo
 
@@ -197,7 +196,7 @@ class Repo:
         sort: str = "created",
         state: str = "closed",
         quiet: str = False,
-    ) -> List:
+    ) -> list:
         """
         Wrapper for API call to get all PRs from repo
 
@@ -221,7 +220,7 @@ class Repo:
         return pulls
 
 
-def extract_problem_statement_and_hints(pull: Dict, repo: Repo) -> Tuple[str, str]:
+def extract_problem_statement_and_hints(pull: dict, repo: Repo) -> tuple[str, str]:
     """
     Extract problem statement from issues associated with a pull request
 
@@ -255,7 +254,7 @@ def extract_problem_statement_and_hints(pull: Dict, repo: Repo) -> Tuple[str, st
     return text, "\n".join(all_hint_texts) if all_hint_texts else ""
 
 
-def _extract_hints(pull: dict, repo: Repo, issue_number: int) -> List[str]:
+def _extract_hints(pull: dict, repo: Repo, issue_number: int) -> list[str]:
     """
     Extract hints from comments associated with a pull request (before first commit)
 
@@ -298,7 +297,7 @@ def _extract_hints(pull: dict, repo: Repo, issue_number: int) -> List[str]:
     return comments
 
 
-def extract_patches(pull: Dict, repo: Repo) -> Tuple[str, str]:
+def extract_patches(pull: dict, repo: Repo) -> tuple[str, str]:
     """
     Get patch and test patch from PR
 
@@ -348,7 +347,7 @@ def extract_patches(pull: Dict, repo: Repo) -> Tuple[str, str]:
 ### MARK: Repo Specific Parsing Functions ###
 def extract_problem_statement_and_hints_django(
     pull: dict, repo: Repo
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """
     Get problem statement and hints from issues associated with a pull request
 

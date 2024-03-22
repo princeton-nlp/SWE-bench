@@ -13,13 +13,12 @@ from constants import (
 from datetime import datetime
 from dotenv import load_dotenv
 from git import Repo
-from typing import Dict, List
 
 
 load_dotenv()
 
 
-def get_conda_env_names(conda_source: str, env: dict = None) -> List:
+def get_conda_env_names(conda_source: str, env: dict = None) -> list:
     """
     Get list of conda environment names for given conda path
 
@@ -47,13 +46,16 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> List:
             continue
         if line.strip() == "":
             continue
-        if " " in line:
-            env_name = line.split(" ")[0]
-            env_names.append(env_name)
+        parts = line.split()
+        if len(parts) == 2:
+            env_name = parts[0]
+        elif len(parts) == 1:
+            env_name = parts[0].split('/')[-1]
+        env_names.append(env_name)
     return env_names
 
 
-def get_environment_yml(instance: Dict, env_name: str, save_path: str = None) -> str:
+def get_environment_yml(instance: dict, env_name: str, save_path: str = None) -> str:
     """
     Get environment.yml for given task instance
 
@@ -103,7 +105,7 @@ def get_environment_yml(instance: Dict, env_name: str, save_path: str = None) ->
     return path_to_reqs
 
 
-def get_instances(instance_path: str) -> List:
+def get_instances(instance_path: str) -> list:
     """
     Get task instances from given path
 
@@ -124,7 +126,7 @@ def get_instances(instance_path: str) -> List:
     return task_instances
 
 
-def get_requirements(instance: Dict, save_path: str = None):
+def get_requirements(instance: dict, save_path: str = None):
     """
     Get requirements.txt for given task instance
 
@@ -194,7 +196,7 @@ def get_requirements(instance: Dict, save_path: str = None):
     return path_to_reqs
 
 
-def get_test_directives(instance: Dict) -> List:
+def get_test_directives(instance: dict) -> list:
     """
     Get test directives from the test_patch of a task instance
 
@@ -254,7 +256,7 @@ def clone_repo(repo_name: str, path: str, token: str = None) -> bool:
         return False
 
 
-def split_instances(input_list: List, n: int) -> List:
+def split_instances(input_list: list, n: int) -> list:
     """
     Split a list into n approximately equal length sublists
 

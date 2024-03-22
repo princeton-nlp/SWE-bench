@@ -2,7 +2,6 @@ import argparse, os
 
 from context_manager import TaskEnvContextManager, TestbedContextManager
 from multiprocessing import Pool, cpu_count
-from typing import Dict
 from utils import get_instances, split_instances, DotDict
 
 
@@ -33,7 +32,7 @@ def validate_args(args):
         raise ValueError(f"Number of workers must be a positive integer")
 
 
-def verify_task_instances(data: Dict):
+def verify_task_instances(data: dict):
     """
     Sets up task environment context manager. Each task instance is then
     installed and validated within the context manager.
@@ -53,6 +52,7 @@ def verify_task_instances(data: Dict):
             data_dict.conda_path,
             verbose=data_dict.verbose,
             timeout=data_dict.timeout,
+            log_suffix=data_dict.log_suffix,
         ) as tcm:
             if (
                 task_instance["repo"] in SKIP_INSTANCES
@@ -71,12 +71,13 @@ def verify_task_instances(data: Dict):
                 continue
 
 
-def setup_testbed(data: Dict):
+def setup_testbed(data: dict):
     """
     Creates testbed context manager and runs verify_task_instances in parallel
 
     Args:
         data: Dict containing task instances and other data
+            conda_link: URL to conda installation to use
             task_instances: List of task instances
             log_dir: Path to log directory
             path_conda: Path to miniconda3 or anaconda installation
@@ -89,6 +90,7 @@ def setup_testbed(data: Dict):
     with TestbedContextManager(
         data_dict.task_instances,
         data_dict.log_dir,
+        conda_link=data_dict.conda_link,
         path_conda=data_dict.path_conda,
         testbed=data_dict.testbed,
         temp_dir=data_dict.temp_dir,
@@ -147,6 +149,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--instances_path", type=str, help="Path to candidate task instances file", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
+    parser.add_argument("--log_suffix", type=str, default=None, help="(Optional) Suffix to append to log file names")
     parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
     parser.add_argument("--testbed", type=str, help="(Optional) Path to testbed directory")
     parser.add_argument("--temp_dir", type=str, help="(Optional) Path to temporary directory for storing virtual envs")

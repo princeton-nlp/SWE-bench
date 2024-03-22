@@ -5,7 +5,7 @@
 
 import torch
 
-from typing import Any, Tuple
+from typing import Any
 from torch import Tensor
 from torch.nn import Module
 
@@ -27,7 +27,7 @@ class SeqAllToAll(torch.autograd.Function):
         return torch.cat(output_list, dim=gather_idx).contiguous()
 
     @staticmethod
-    def backward(ctx: Any, *grad_output: Tensor) -> Tuple[Tensor, None, None, None]:
+    def backward(ctx: Any, *grad_output: Tensor) -> tuple[Tensor, None, None, None]:
         return (SeqAllToAll.apply(*grad_output, ctx.gather_idx, ctx.scatter_idx, ctx.group), None, None, None)
 
 
@@ -47,7 +47,7 @@ class DistributedAttention(torch.nn.Module):
         gather_idx: int = 1,
     ) -> None:
 
-        super(DistributedAttention, self).__init__()
+        super().__init__()
         self.local_attn = local_attention
         self.scatter_idx = scatter_idx  # head axis
         self.gather_idx = gather_idx  # seq axis

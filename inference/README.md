@@ -4,6 +4,7 @@ In particular, we provide the following important scripts and sub-packages:
 
 - `make_datasets`, this sub-package contains scripts to generate new datasets for SWE-bench inference with your own prompts and issues.
 - `run_api.py`, this script is used to generate API model generations for a given dataset.
+- `run_llama.py`, this script is used to run inference using Llama models, i.e. SWE-Llama.
 - `run_live.py`, this script is used to generate model generations for new issues on GitHub in real time.
 
 ## `make_datasets`

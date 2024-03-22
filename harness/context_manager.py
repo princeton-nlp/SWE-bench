@@ -19,7 +19,6 @@ from constants import (
 )
 from tempfile import TemporaryDirectory
 from traceback import format_exc
-from typing import Dict, List
 from utils import (
     clone_repo,
     get_conda_env_names,
@@ -37,7 +36,7 @@ logger_testbed = logging.getLogger("testbed_context_manager")
 class ExecWrapper:
     def __init__(
         self,
-        subprocess_args: Dict = None,
+        subprocess_args: dict = None,
     ):
         if subprocess_args is None:
             self.subprocess_args = {}
@@ -61,13 +60,14 @@ class ExecWrapper:
 class TestbedContextManager:
     def __init__(
         self,
-        task_instances: List,
+        task_instances: list,
         log_dir: str,
+        conda_link: str = None,
         path_conda: str = None,
-        testbed: str = None,
-        verbose: bool = False,
-        timeout: int = None,
         temp_dir: str = None,
+        testbed: str = None,
+        timeout: int = None,
+        verbose: bool = False,
     ):
         """
         Initialize testbed context. Creates temporary directories and groups task instances
@@ -83,10 +83,11 @@ class TestbedContextManager:
             temp_dir (str): Path to temporary directory
         """
         logger_testbed.propagate = verbose
-        self.verbose = verbose
-        self.old_dir = os.getcwd()
+        self.conda_link = conda_link
         self.log_dir = os.path.abspath(log_dir)
+        self.old_dir = os.getcwd()
         self.timeout = timeout
+        self.verbose = verbose
         self.exec = ExecWrapper(
             subprocess_args={
                 "check": True,
@@ -183,14 +184,16 @@ class TestbedContextManager:
             )
 
             # Download Miniconda installer
-            if platform.system() == "Darwin":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
+            if self.conda_link is not None:
+                cmd_line_install_link = self.conda_link
+            elif platform.system() == "Darwin":
+                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-x86_64.sh"
                 if is_osx_64:
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-arm64.sh"
             elif platform.system() == "Linux":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-x86_64.sh"
                 if platform.machine() == "aarch64":
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
+                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-aarch64.sh"
             else:
                 raise ValueError("Unknown computer platform " + platform.system())
             download_cmd = [
@@ -334,7 +337,7 @@ class TestbedContextManager:
 
         return self
 
-    def get_distributed_tasks(self) -> List:
+    def get_distributed_tasks(self) -> list:
         """
         Create task group (instances + keywords) for each repo/version
 
@@ -389,7 +392,7 @@ logger_taskenv = logging.getLogger("taskenv_context_manager")
 class TaskEnvContextManager:
     def __init__(
         self,
-        instance: Dict,
+        instance: dict,
         testbed: str,
         venv: str,
         log_dir: str,
@@ -397,6 +400,7 @@ class TaskEnvContextManager:
         verbose: bool = False,
         timeout: int = None,
         is_eval: bool = False,
+        log_suffix: str = None,
     ):
         """
         Sets up execution context for a single task instance
@@ -414,19 +418,32 @@ class TaskEnvContextManager:
         """
         logger_taskenv.propagate = verbose
         self.instance = instance
+        self.conda_path = conda_path
+        self.cwd = os.getcwd()
+        self.is_eval = is_eval
         self.testbed = testbed
         self.testbed_name = testbed.split("/")[-1]
         self.venv = venv
-        self.conda_path = conda_path
-        self.log_file = os.path.join(log_dir, f"{instance[KEY_INSTANCE_ID]}.log")
-        self.is_eval = is_eval
-        if is_eval:
-            self.log_file = os.path.join(
-                log_dir, f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.eval.log"
+
+        # Log file naming
+        log_file_name = (
+            f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.eval.log"
+            if self.is_eval
+            else f"{instance[KEY_INSTANCE_ID]}.log"
+        )
+        if log_suffix is not None:
+            log_file_name = (
+                f"{instance[KEY_INSTANCE_ID]}.{instance[KEY_MODEL]}.{log_suffix}.eval.log"
+                if self.is_eval
+                else f"{instance[KEY_INSTANCE_ID]}.{log_suffix}.log"
             )
-        self.cmd_activate = f"source {os.path.join(self.conda_path, 'bin', 'activate')} {self.venv} && echo 'activate successful'"
+        self.log_file = os.path.join(log_dir, log_file_name)
+
+        self.cmd_activate = (
+            f"source {os.path.join(self.conda_path, 'bin', 'activate')} "
+            + f"{self.venv} && echo 'activate successful'"
+        )
         self.timeout = timeout
-        self.cwd = os.getcwd()
 
         shellenv = os.environ.copy()
         condabinpath = os.path.join(self.conda_path, "bin")
@@ -454,7 +471,7 @@ class TaskEnvContextManager:
                 f.write(f"\t- Evaluation Model: {self.instance[KEY_MODEL]}\n")
         return self
 
-    def reset_task_env(self, instance: Dict):
+    def reset_task_env(self, instance: dict):
         """
         Reset task environment + testbed and checkout base commit of given task instance
 
@@ -491,7 +508,7 @@ class TaskEnvContextManager:
                 f.write(err_msg)
             return False
 
-    def run_install_task(self, instance: Dict) -> bool:
+    def run_install_task(self, instance: dict) -> bool:
         """
         Run installation for task instance
 
@@ -567,6 +584,14 @@ class TaskEnvContextManager:
             with open(self.log_file, "a") as f:
                 f.write(f"\n{INSTALL_TIMEOUT}\n")
             return False
+        except Exception as e:
+            # Installation failed
+            logger_taskenv.error(
+                f"[{self.testbed_name}] [{instance[KEY_INSTANCE_ID]}] Installation failed"
+            )
+            with open(self.log_file, "a") as f:
+                f.write(f"\n{INSTALL_FAIL}: {e}\n")
+            return False
 
     def apply_patch(
         self, patch: str, patch_type: str = "", revert: bool = False
@@ -624,7 +649,7 @@ class TaskEnvContextManager:
             f.write(f"{APPLY_PATCH_PASS} ({patch_type})\n")
         return True
 
-    def run_tests_task(self, instance: Dict):
+    def run_tests_task(self, instance: dict):
         """
         Run tests for task instance
 
@@ -638,7 +663,9 @@ class TaskEnvContextManager:
             test_cmd = f"{self.cmd_activate} && {instance['test_cmd']}"
             with open(self.log_file, "a") as f:
                 f.write(f"Test Script: {test_cmd};\n")
-            out_test = self.exec(test_cmd, shell=True, timeout=self.timeout, check=False)
+            out_test = self.exec(
+                test_cmd, shell=True, timeout=self.timeout, check=False
+            )
 
             # Write test results to log file
             with open(self.log_file, "a") as f:

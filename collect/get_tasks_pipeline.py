@@ -4,13 +4,12 @@ from dotenv import load_dotenv
 from build_dataset import main as build_dataset
 from print_pulls import main as print_pulls
 from multiprocessing import Pool
-from typing import Dict, List
 
 
 load_dotenv()
 
 
-def split_instances(input_list: List, n: int) -> List:
+def split_instances(input_list: list, n: int) -> list:
     """
     Split a list into n approximately equal length sublists
 
@@ -33,7 +32,7 @@ def split_instances(input_list: List, n: int) -> List:
     return result
 
 
-def construct_data_files(data: Dict):
+def construct_data_files(data: dict):
     """
     Logic for combining multiple .all PR files into a single fine tuning dataset
 
@@ -77,10 +76,9 @@ def construct_data_files(data: Dict):
                 )
         except Exception as e:
             print(f"Something went wrong for {repo}, skipping: {e}")
-            pass
 
 
-def main(repos: List, path_prs: str, path_tasks: str):
+def main(repos: list, path_prs: str, path_tasks: str):
     """
     Spawns multiple threads given multiple GitHub tokens for collecting fine tuning data
 

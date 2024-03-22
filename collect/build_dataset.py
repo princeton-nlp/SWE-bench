@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+
 import argparse
 import json
 import logging
 import os
-from typing import Dict, Optional
+from typing import Optional
 
 
 from utils import Repo, extract_patches, extract_problem_statement_and_hints
@@ -13,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def create_instance(repo: Repo, pull: Dict) -> Dict:
+def create_instance(repo: Repo, pull: dict) -> dict:
     """
     Create a single task instance from a pull request, where task instance is:
 
@@ -43,7 +45,7 @@ def create_instance(repo: Repo, pull: Dict) -> Dict:
     }
 
 
-def is_valid_pull(pull: Dict) -> bool:
+def is_valid_pull(pull: dict) -> bool:
     """
     Check whether PR has an associated issue and is merged
 
@@ -59,7 +61,7 @@ def is_valid_pull(pull: Dict) -> bool:
     return True
 
 
-def is_valid_instance(instance: Dict) -> bool:
+def is_valid_instance(instance: dict) -> bool:
     """
     Check whether task instance has all required fields for task instance creation
 
@@ -75,7 +77,7 @@ def is_valid_instance(instance: Dict) -> bool:
     return True
 
 
-def has_test_patch(instance: Dict) -> bool:
+def has_test_patch(instance: dict) -> bool:
     """
     Check whether task instance has a test suite
 
@@ -132,9 +134,11 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
     logger.info(f"{len(seen_prs)} instance_ids previously recorded")
 
     # Write to .all file for all PRs
-    with open(all_output, "a") as all_output:
+    write_mode_all = "w" if not os.path.exists(all_output) else "a"
+    with open(all_output, write_mode_all) as all_output:
         # Write to output file for PRs with test suites
-        with open(output, "w") as output:
+        write_mode = "w" if not os.path.exists(output) else "a"
+        with open(output, write_mode) as output:
             for ix, line in enumerate(open(pr_file)):
                 total_instances += 1
                 pull = json.loads(line)

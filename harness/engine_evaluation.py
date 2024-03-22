@@ -10,7 +10,6 @@ from context_manager import TaskEnvContextManager
 from engine_validation import setup_testbed
 from multiprocessing import Pool, cpu_count
 from tqdm.auto import tqdm
-from typing import Dict
 from utils import (
     extract_minimal_patch,
     get_instances,
@@ -19,7 +18,7 @@ from utils import (
 )
 
 
-def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
+def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: dict):
     """
     Code for running ablation experiment to compare generating full files vs patches
 
@@ -76,7 +75,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: Dict):
     return
 
 
-def evaluate_predictions(data: Dict):
+def evaluate_predictions(data: dict):
     """
     Sets up task environment context manager. Each prediction is then
     evaluated within the context manager.
@@ -101,6 +100,7 @@ def evaluate_predictions(data: Dict):
             verbose=data_dict.verbose,
             timeout=data_dict.timeout,
             is_eval=True,
+            log_suffix=data_dict.log_suffix,
         ) as tcm:
             # Attempt to set up environment with task instance
             if not tcm.reset_task_env(task_instance):
@@ -146,7 +146,10 @@ def main(args):
     if args.skip_existing:
         predictions_filtered = []
         for p in predictions:
-            path_log = os.path.join(args.log_dir, f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log")
+            log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log"
+            if args.log_suffix is not None:
+                log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.{args.log_suffix}.eval.log"
+            path_log = os.path.join(args.log_dir, log_file_name)
             if not os.path.exists(path_log):
                 predictions_filtered.append(p)
         if len(predictions_filtered) == 0:
@@ -179,6 +182,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--predictions_path", type=str, help="Path to predictions instances file", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
+    parser.add_argument("--log_suffix", type=str, default=None, help="(Optional) Suffix to append to log file names")
     parser.add_argument("--num_workers", type=int, default=1, help="(Optional) Number of workers")
     parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
     parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")

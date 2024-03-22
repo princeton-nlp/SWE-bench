@@ -30,8 +30,10 @@ from metrics import (
 
 
 def get_eval_report(
-    eval_sm: Dict, gold_results: Dict, calculate_to_fail: bool = False
-) -> Dict:
+    eval_sm: dict,
+    gold_results: dict,
+    calculate_to_fail: bool = False
+) -> dict:
     """
     Create a report based on failure/pass change from gold results to eval results.
 
@@ -119,7 +121,7 @@ def get_eval_report(
 
 
 def get_eval_reports_for_logs(
-    eval_logs: List,
+    eval_logs: list,
     swe_bench_tasks: str,
     callback: callable = None,
     verbose: bool = False,
@@ -138,8 +140,8 @@ def get_eval_reports_for_logs(
     """
     reports_patch_success = {}
     reports_patch_failure = {}
-    eval_refs = json.load(open(swe_bench_tasks, "r"))
-    eval_refs = {t["instance_id"]: t for t in eval_refs}
+    eval_refs = json.load(open(swe_bench_tasks))
+    eval_refs = {t['instance_id']: t for t in eval_refs}
 
     for eval_log in eval_logs:
         # Remove task instances that do not satisfy callback
@@ -176,7 +178,7 @@ def get_eval_reports_for_logs(
 
 def get_eval_reports_for_dir(
     eval_dir: str, swe_bench_tasks: str, callback: callable = None, verbose=False
-) -> Dict:
+) -> dict:
     """
     Wrapper for getting eval report for a directory of evaluation logs.
 
@@ -210,7 +212,7 @@ def get_model_eval_summary(
     """
     # Load Predictions
     preds = []
-    with open(predicts_path, "r") as f:
+    with open(predicts_path) as f:
         for line in f.readlines():
             preds.append(json.loads(line))
 
@@ -274,21 +276,18 @@ def get_model_report(
     Returns:
         report_map (dict): map of repo to report
     """
-    eval_refs = json.load(open(swe_bench_tasks, "r"))
-    eval_refs = [
-        {key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]}
-        for t in eval_refs
-    ]
-    eval_refs = {t["instance_id"]: t for t in eval_refs}
+    eval_refs = json.load(open(swe_bench_tasks))
+    eval_refs = [{key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]} for t in eval_refs]
+    eval_refs = {t['instance_id']: t for t in eval_refs}
 
     # Get predictions
     predictions = []
     if predictions_path.endswith("jsonl"):
-        with open(predictions_path, "r") as f:
+        with open(predictions_path) as f:
             for line in f.readlines():
                 predictions.append(json.loads(line))
     else:
-        predictions = json.load(open(predictions_path, "r"))
+        predictions = json.load(open(predictions_path))
     report_map = {}
 
     # Iterate through predictions

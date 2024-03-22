@@ -8,7 +8,7 @@ Below, we include 1. An overview of how the code works for each of these parts a
 ## Evaluation
 The `engine_evaluation.py` and `run_evaluation.py` code is used for evaluating models' patch generations on task instances.
 
-The evaluation script generally performers the following steps:
+The evaluation script generally performs the following steps:
 
 ![evaluation](../assets/evaluation.png)
 
