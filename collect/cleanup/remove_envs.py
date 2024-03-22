@@ -71,7 +71,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Remove conda environments with a specific prefix
-    conda_source = "source " + os.path.join(args.conda_path, "etc/profile.d/conda.sh")
+    conda_source = ". " + os.path.join(args.conda_path, "etc/profile.d/conda.sh")
     check_env = conda_source + " && " + "conda env list"
     try:
         conda_envs = subprocess.run(check_env.split(" "), check=True, capture_output=True)
