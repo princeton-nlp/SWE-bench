@@ -3,6 +3,11 @@ dependencies:
   - python=3.9
   - pip
   - pip:
+    - datasets
+    - tenacity
+    - anthropic
+    - openai
+    - tiktoken
     - beautifulsoup4
     - chardet
     - ghapi
