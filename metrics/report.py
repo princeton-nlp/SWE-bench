@@ -381,10 +381,13 @@ if __name__ == "__main__":
     for project, v in report.items():
         resolved = v["resolved"]
         all_resolved.extend(resolved)
+        resolved = sorted(resolved)
         resolved_per_project[project] = resolved
         # print to screen just for info
         num_resolved = len(resolved)
         print(f"{project} resolved ({num_resolved}): {resolved}")
+
+    all_resolved = sorted(all_resolved)
 
     # form json report and write to file
     final_report = {
