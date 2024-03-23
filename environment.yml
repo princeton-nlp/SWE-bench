@@ -13,4 +13,5 @@ dependencies:
     - transformers>=4.34.0
     - pandas
     - pyarrow
+    - datasets
   - conda-forge::gh
