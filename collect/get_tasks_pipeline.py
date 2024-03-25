@@ -1,4 +1,9 @@
+#!/usr/bin/env python3
+
+"""Script to collect pull requests and convert them to candidate task instances"""
+
 import argparse, os
+import traceback
 
 from dotenv import load_dotenv
 from build_dataset import main as build_dataset
@@ -75,7 +80,11 @@ def construct_data_files(data: dict):
                     f"Task instance data for {repo} already exists at {path_task}, skipping..."
                 )
         except Exception as e:
+            print("-"*80)
             print(f"Something went wrong for {repo}, skipping: {e}")
+            print("Here is the full traceback:")
+            traceback.print_exc()
+            print("-"*80)
 
 
 def main(repos: list, path_prs: str, path_tasks: str):
@@ -107,9 +116,9 @@ def main(repos: list, path_prs: str, path_tasks: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--repos", nargs="+", help="List of repositories to create task instances for"
+        "--repos", nargs="+", help="List of repositories (e.g., `sqlfluff/sqlfluff`) to create task instances for"
     )
     parser.add_argument(
         "--path_prs", type=str, help="Path to folder to save PR data files to"
