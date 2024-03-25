@@ -92,7 +92,7 @@ def main(
         assert tokenizer_name is not None
     if push_to_hub_user is None and not Path(output_dir).exists():
         Path(output_dir).mkdir(parents=True)
-    output_file = f"SWE-bench__{prompt_style}__fs-{file_source}"
+    output_file = f"{dataset_name_or_path}__{prompt_style}__fs-{file_source}__tok-{tokenizer_name}"
     if k is not None:
         assert file_source not in {
             "all",
