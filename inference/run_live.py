@@ -28,7 +28,7 @@ from make_datasets.create_instance import (
     make_code_text,
     ingest_files,
 )
-from run_model import call_chat, call_anthropic
+from run_api import call_chat, call_anthropic
 import logging
 from argparse import ArgumentParser
 
