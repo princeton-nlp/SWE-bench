@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# Mirror repository to https://github.com/swe-bench
+# Usage make_repo.sh {gh organization}/{gh repository}
+
+# Abort on error
+set -euo pipefail
+
 REPO_TARGET=$1
 
 # Check if the target repository exists
