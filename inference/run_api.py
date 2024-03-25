@@ -26,7 +26,6 @@ from make_datasets.utils import extract_diff
 from make_datasets.tokenize_dataset import TOKENIZER_FUNCS
 from argparse import ArgumentParser
 import logging
-from icecream import ic
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -192,8 +191,6 @@ def call_opensource_chat(client, inputs, temperature, top_p, **model_args):
             top_p=top_p,
             **model_args,
         )
-        from icecream import ic
-        ic(response)
         return response
     except openai.exceptions.InvalidRequestError as e:  # TODO
         if e.code == "context_length_exceeded":
@@ -323,8 +320,6 @@ def opensource_inference(
         api_key=openai_key,
         base_url=url
     )
-    # model_name = client.models.list().data[0].id
-    # ic(model_name)
 
     encoding = TOKENIZER_FUNCS[model_name_or_path][0]
     test_dataset = test_dataset.filter(
