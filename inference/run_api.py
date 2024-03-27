@@ -13,6 +13,7 @@ from pathlib import Path
 from tqdm.auto import tqdm
 import numpy as np
 import openai
+from openai import OpenAI
 import tiktoken
 from anthropic import HUMAN_PROMPT, AI_PROMPT, Anthropic
 from tenacity import (
@@ -22,6 +23,7 @@ from tenacity import (
 )
 from datasets import load_dataset, load_from_disk
 from make_datasets.utils import extract_diff
+from make_datasets.tokenize_dataset import TOKENIZER_FUNCS
 from argparse import ArgumentParser
 import logging
 
@@ -42,6 +44,8 @@ MODEL_LIMITS = {
     "gpt-4-0613": 8_192,
     "gpt-4-1106-preview": 128_000,
     "gpt-4-0125-preview": 128_000,
+    "deepseek-coder-6.7b-instruct": 32_000,
+    "deepseek-coder-33b-instruct": 32_000,
 }
 
 # The cost per token for each model input.
@@ -138,7 +142,7 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
                 **model_args,
             )
         else:
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model=model_name_or_path,
                 messages=[
                     {"role": "system", "content": system_messages},
@@ -152,7 +156,43 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
         output_tokens = response.usage.completion_tokens
         cost = calc_cost(response.model, input_tokens, output_tokens)
         return response, cost
-    except openai.error.InvalidRequestError as e:
+    except openai.exceptions.InvalidRequestError as e:  # TODO
+        if e.code == "context_length_exceeded":
+            print("Context length exceeded")
+            return None
+        raise e
+
+
+@retry(wait=wait_random_exponential(min=30, max=600), stop=stop_after_attempt(3))
+def call_opensource_chat(client, inputs, temperature, top_p, **model_args):
+    """
+    Calls the openai API to generate completions for the given inputs.
+
+    Args:
+    model_name_or_path (str): The name or path of the model to use.
+    inputs (str): The inputs to generate completions for.
+    use_azure (bool): Whether to use the azure API.
+    temperature (float): The temperature to use.
+    top_p (float): The top_p to use.
+    **model_args (dict): A dictionary of model arguments.
+    """
+    model_name = client.models.list().data[0].id    # Get model name from the deployment service
+    system_messages = inputs.split("\n", 1)[0]
+    user_message = inputs.split("\n", 1)[1]
+
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": system_messages},
+                {"role": "user", "content": user_message},
+            ],
+            temperature=temperature,
+            top_p=top_p,
+            **model_args,
+        )
+        return response
+    except openai.exceptions.InvalidRequestError as e:  # TODO
         if e.code == "context_length_exceeded":
             print("Context length exceeded")
             return None
@@ -163,6 +203,18 @@ def gpt_tokenize(string: str, encoding) -> int:
     """Returns the number of tokens in a text string."""
     num_tokens = len(encoding.encode(string))
     return num_tokens
+
+
+def get_model_id(model_name: str) -> str:
+    """Returns normalized model id from abitrary serving model name.
+    E.g., abitrary_path/deepseek-coder-33b -> deepseek.
+    """
+    if "deepseek" in model_name:
+        return "deepseek"
+    elif "codellama" in model_name:
+        return "codelllma"
+    else:
+        raise ValueError(f"Unknown model name: {model_name}")
 
 
 def claude_tokenize(string: str, api) -> int:
@@ -231,7 +283,7 @@ def openai_inference(
                 temperature,
                 top_p,
             )
-            completion = response.choices[0]["message"]["content"]
+            completion = response.choices[0].message.content
             total_cost += cost
             print(f"Total Cost: {total_cost:.2f}")
             output_dict["full_output"] = completion
@@ -240,6 +292,69 @@ def openai_inference(
             if max_cost is not None and total_cost >= max_cost:
                 print(f"Reached max cost {max_cost}, exiting")
                 break
+
+
+def opensource_inference(
+    test_dataset,
+    model_name_or_path,
+    output_file,
+    model_args,
+    existing_ids,
+    max_cost,
+):
+    """
+    Runs inference on a dataset using the openai API.
+
+    Args:
+    test_dataset (datasets.Dataset): The dataset to run inference on.
+    output_file (str): The path to the output file.
+    model_args (dict): A dictionary of model arguments.
+    existing_ids (set): A set of ids that have already been processed.
+    max_cost (float): The maximum cost to spend on inference.
+    """
+    openai_key = os.environ.get("DEPLOYMENT_API_KEY", None)
+    url = os.environ.get("DEPLOYMENT_URL", None)
+    if openai_key is None:
+        raise ValueError(
+            "Must provide an api key. Expected in DEPLOYMENT_API_KEY environment variable."
+        )
+    client = OpenAI(
+        api_key=openai_key,
+        base_url=url
+    )
+
+    encoding = TOKENIZER_FUNCS[model_name_or_path][0]
+    test_dataset = test_dataset.filter(
+        lambda x: len(encoding(x["text"])) <= MODEL_LIMITS[model_name_or_path],
+        desc="Filtering",
+        load_from_cache_file=False,
+    )
+    print(f"Using api key {openai_key}")
+    temperature = model_args.pop("temperature", 0.2)
+    top_p = model_args.pop("top_p", 0.95 if temperature > 0 else 1)
+    print(f"Using temperature={temperature}, top_p={top_p}")
+    basic_args = {
+        "model_name_or_path": model_name_or_path,
+    }
+    print(f"Filtered to {len(test_dataset)} instances")
+    with open(output_file, "a+") as f:
+        for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
+            instance_id = datum["instance_id"]
+            if instance_id in existing_ids:
+                continue
+            output_dict = {"instance_id": instance_id}
+            output_dict.update(basic_args)
+            output_dict["text"] = f"{datum['text']}\n\n"
+            response = call_opensource_chat(
+                client,
+                output_dict["text"],
+                temperature,
+                top_p,
+            )
+            completion = response.choices[0].message.content
+            output_dict["full_output"] = completion
+            output_dict["model_patch"] = extract_diff(completion)
+            print(json.dumps(output_dict), file=f, flush=True)
 
 
 @retry(wait=wait_random_exponential(min=60, max=600), stop=stop_after_attempt(6))
@@ -503,6 +618,8 @@ def main(
         anthropic_inference(**inference_args)
     elif model_name_or_path.startswith("gpt"):
         openai_inference(**inference_args)
+    elif get_model_id(model_name_or_path) in ("deepseek", "codellama",):
+        opensource_inference(**inference_args)
     else:
         raise ValueError(f"Invalid model name or path {model_name_or_path}")
     logger.info(f"Done!")

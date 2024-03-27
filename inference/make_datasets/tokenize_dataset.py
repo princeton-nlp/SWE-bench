@@ -11,7 +11,7 @@ from pathlib import Path
 import tiktoken
 from datasets import disable_caching, load_from_disk, load_dataset
 from tqdm.auto import tqdm
-from transformers import LlamaTokenizer
+from transformers import LlamaTokenizer, AutoTokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -23,15 +23,16 @@ def cl100k(text, tokenizer):
     return tokenizer.encode(text, disallowed_special=())
 
 
-def llama(text, tokenizer):
+def hf_tokenize(text, tokenizer):
     return tokenizer(text, add_special_tokens=False, return_attention_mask=False)[
         "input_ids"
     ]
 
-
 TOKENIZER_FUNCS = {
     "cl100k": (tiktoken.get_encoding("cl100k_base"), cl100k),
-    "llama": (LlamaTokenizer.from_pretrained("togethercomputer/LLaMA-2-7B-32K"), llama),
+    "llama": (LlamaTokenizer.from_pretrained("togethercomputer/LLaMA-2-7B-32K"), hf_tokenize),
+    "deepseek-coder-33b-instruct": (AutoTokenizer.from_pretrained("deepseek-ai/deepseek-coder-33b-instruct"), hf_tokenize),
+    "deepseek-coder-6.7b-instruct": (AutoTokenizer.from_pretrained("deepseek-ai/deepseek-coder-6.7b-instruct"), hf_tokenize),
 }
 
 
