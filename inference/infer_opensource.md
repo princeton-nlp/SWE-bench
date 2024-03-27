@@ -4,7 +4,7 @@
 
 We leverage libraries such as [vllm](https://github.com/vllm-project/vllm) and [lmdeploy](https://github.com/InternLM/lmdeploy), with the OpenAI interface, for model deployment and inference.
 
-> lmdeploy could [faster](https://github.com/InternLM/lmdeploy?tab=readme-ov-file#performance) than vllm.
+> lmdeploy could be [faster](https://github.com/InternLM/lmdeploy?tab=readme-ov-file#performance) than vllm.
 
 The version of the OpenAI package previously used in SWE-bench (<1.0.0) is outdated and lacks support for explicit client instantiation, which is crucial for our deployment process. To resolve this, please upgrade to a compatible version:
 
