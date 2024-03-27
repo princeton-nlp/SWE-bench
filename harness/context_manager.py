@@ -1,4 +1,6 @@
 import logging, os, platform, subprocess
+import os.path
+import shutil
 
 from constants import (
     APPLY_PATCH_FAIL,
@@ -196,13 +198,17 @@ class TestbedContextManager:
                     cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-aarch64.sh"
             else:
                 raise ValueError("Unknown computer platform " + platform.system())
-            download_cmd = [
-                "wget",
-                cmd_line_install_link,
-                "-O",
-                miniconda_sh,
-            ]
-            self.exec(download_cmd)
+            
+            temp_miniconda_sh = f"{os.getcwd()}/miniconda.sh"
+            if not os.path.exists(temp_miniconda_sh):
+                download_cmd = [
+                    "wget",
+                    cmd_line_install_link,
+                    "-O",
+                    temp_miniconda_sh,
+                ]
+                self.exec(download_cmd)
+            shutil.copy(temp_miniconda_sh, miniconda_sh)
 
             # Install Miniconda
             install_cmd = ["bash", miniconda_sh, "-b", "-u", "-p", self.path_conda]
