@@ -211,8 +211,10 @@ def get_model_id(model_name: str) -> str:
     """
     if "deepseek" in model_name:
         return "deepseek"
-    if "codellama" in model_name:
+    elif "codellama" in model_name:
         return "codelllma"
+    else:
+        raise ValueError(f"Unknown model name: {model_name}")
 
 
 def claude_tokenize(string: str, api) -> int:
