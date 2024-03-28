@@ -160,15 +160,17 @@ cython_debug/
 #.idea/
 
 # Custom
-notebooks/
-*.patch
-data/repos/copies
+.api_key
 .keys
 .vscode/
 *.jsonl
 *.jsonl.*
+*.patch
+*.DS_Store
 analysis/**/*.json
 analysis/**/scratch*
 analysis/benchmark/plots/
 analysis/evaluation/*.csv
 analysis/evaluation/*.pdf
+data/repos/copies
+notebooks/
