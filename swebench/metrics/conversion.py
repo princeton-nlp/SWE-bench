@@ -1,7 +1,7 @@
 import json, os
 
-from log_parsers import MAP_REPO_TO_PARSER, TestStatus
-from getters import (
+from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER, TestStatus
+from swebench.metrics.getters import (
     get_file_name_from_lp,
     get_repo_from_lp,
     log_path_to_sms,

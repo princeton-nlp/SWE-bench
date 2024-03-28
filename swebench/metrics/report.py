@@ -1,7 +1,7 @@
 import glob, json, os
 
 from collections import Counter
-from getters import (
+from swebench.metrics.getters import (
     get_file_name_from_lp,
     get_logs_eval,
     get_id_from_lp,
@@ -12,8 +12,8 @@ from getters import (
     test_failed,
     test_passed,
 )
-from log_parsers import TestStatus
-from metrics import (
+from swebench.metrics.log_parsers import TestStatus
+from swebench.metrics.metrics import (
     compute_fail_to_pass_unweighted,
     compute_fail_to_pass_weighted,
     compute_pass_to_pass_unweighted,

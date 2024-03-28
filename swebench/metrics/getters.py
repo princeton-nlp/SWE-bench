@@ -1,6 +1,6 @@
 import re
 
-from log_parsers import MAP_REPO_TO_PARSER, TestStatus
+from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER, TestStatus
 
 
 # Evaluation Log Constants

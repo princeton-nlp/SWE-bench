@@ -9,7 +9,7 @@ import os
 from typing import Optional
 
 from fastcore.xtras import obj2dict
-from utils import Repo
+from swebench.collect.utils import Repo
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

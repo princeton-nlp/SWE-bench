@@ -6,8 +6,7 @@ import logging
 import os
 from typing import Optional
 
-
-from utils import Repo, extract_patches, extract_problem_statement_and_hints
+from swebench.collect.utils import Repo, extract_patches, extract_problem_statement_and_hints
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

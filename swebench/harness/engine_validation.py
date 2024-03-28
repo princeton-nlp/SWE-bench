@@ -1,8 +1,8 @@
 import argparse, os
 
-from context_manager import TaskEnvContextManager, TestbedContextManager
 from multiprocessing import Pool, cpu_count
-from utils import get_instances, split_instances, DotDict
+from swebench.harness.context_manager import TaskEnvContextManager, TestbedContextManager
+from swebench.harness.utils import get_instances, split_instances, DotDict
 
 
 SKIP_INSTANCES = {"pytest-dev/pytest": ["6387", "7956", "3805"]}

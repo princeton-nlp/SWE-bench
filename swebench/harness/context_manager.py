@@ -1,6 +1,6 @@
 import logging, os, platform, subprocess
 
-from constants import (
+from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
     INSTALL_FAIL,
@@ -17,15 +17,15 @@ from constants import (
     TESTS_TIMEOUT,
     TESTS_ERROR,
 )
-from tempfile import TemporaryDirectory
-from traceback import format_exc
-from utils import (
+from swebench.harness.utils import (
     clone_repo,
     get_conda_env_names,
     get_environment_yml,
     get_requirements,
     get_test_directives,
 )
+from tempfile import TemporaryDirectory
+from traceback import format_exc
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

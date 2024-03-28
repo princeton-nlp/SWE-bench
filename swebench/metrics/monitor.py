@@ -1,12 +1,11 @@
 import glob
 import os
 
-
-from log_parsers import MAP_REPO_TO_PARSER
-from getters import (
+from swebench.metrics.getters import (
     log_path_to_sms, get_diffs, get_repo_from_lp,
     APPLY_PATCH_FAIL, APPLY_PATCH_PASS, TESTS_TIMEOUT
 )
+from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER
 
 
 def monitor_validation(

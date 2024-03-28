@@ -1,6 +1,9 @@
 from enum import Enum
-from getters import FAIL_TO_FAIL, FAIL_TO_PASS, PASS_TO_FAIL, PASS_TO_PASS
 from statistics import mean
+from swebench.metrics.getters import (
+    FAIL_TO_FAIL, FAIL_TO_PASS,
+    PASS_TO_FAIL, PASS_TO_PASS,
+)
 
 
 class ResolvedStatus(Enum):
