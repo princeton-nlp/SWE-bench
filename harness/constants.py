@@ -165,6 +165,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB = {
         "python": "3.9",
         "packages": "environment.yml",
         "install": "python -m pip install -e .",
+        "pip_packages": "pytest",
     }
     for k in ["3.5", "3.6", "3.7"]
 }
@@ -174,6 +175,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
             "python": "3.8",
             "packages": "requirements.txt",
             "install": "python -m pip install -e .",
+            "pip_packages": "pytest"
         }
         for k in ["3.1", "3.2", "3.3", "3.4"]
     }
@@ -184,6 +186,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
             "python": "3.7",
             "packages": "requirements.txt",
             "install": "python -m pip install -e .",
+            "pip_packages": "pytest",
         }
         for k in ["3.0"]
     }
@@ -193,6 +196,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
         k: {
             "python": "3.5",
             "install": "python setup.py build; python setup.py install",
+            "pip_packages": "pytest",
         }
         for k in ["2.0", "2.1", "2.2", "1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]
     }

@@ -139,8 +139,8 @@ def get_versions_from_build(data: dict):
         data["save_path"],
     )
     # Activate conda environment and set installation command
-    cmd_activate = f"source {os.path.join(path_conda, 'bin/activate')}"
-    cmd_source = f"source {os.path.join(path_conda, 'etc/profile.d/conda.sh')}"
+    cmd_activate = f". {os.path.join(path_conda, 'bin/activate')}"
+    cmd_source = f". {os.path.join(path_conda, 'etc/profile.d/conda.sh')}"
     cmd_install = INSTALL_CMD[data_tasks[0]["repo"]]
 
     # Change directory to repo testbed
