@@ -65,6 +65,7 @@ def main(
     skip_existing: bool,
     timeout: int,
     verbose: bool,
+    path_conda: str,
     num_processes: int = -1,
 ):
     """
@@ -170,7 +171,7 @@ def main(
                 args.temp_dir = testbed_model_repo_version_dir
                 args.timeout = timeout
                 args.verbose = verbose
-                args.conda_link = conda_link
+                args.path_conda = path_conda
 
                 # Remove predictions that have already been evaluated
                 repo_version_predictions = map_repo_version_to_predictions[repo][version]
@@ -236,6 +237,8 @@ if __name__ == "__main__":
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
     parser.add_argument("--verbose", action="store_true", help="(Optional) Verbose mode")
     parser.add_argument("--num_processes", type=int, help="(Optional) Number of processes to use.", default=-1)
+    parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
+
     args = parser.parse_args()
     logger.propagate = args.verbose
     main(**vars(args))
