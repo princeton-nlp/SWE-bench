@@ -46,6 +46,9 @@ class ExecWrapper:
     def __call__(self, cmd, raise_error=True, **kwargs):
         try:
             combined_args = {**self.subprocess_args, **kwargs}
+            if "source" in cmd:
+                combined_args["shell"] = True
+                combined_args["executable"] = "/bin/bash"
             output = subprocess.run(cmd, **combined_args)
             return output
         except subprocess.CalledProcessError as e:
@@ -594,7 +597,7 @@ class TaskEnvContextManager:
             return False
 
     def apply_patch(
-        self, patch: str, patch_type: str = "", revert: bool = False
+        self, patch: str, patch_type: str = "", revert: bool = False, log_apply_patch_success: bool = False
     ) -> bool:
         """
         Apply patch to task environment
@@ -605,6 +608,7 @@ class TaskEnvContextManager:
         Returns:
             bool: True if patch applied successfully, False otherwise
         """
+        print(f"Applying patch of type {patch_type}, revert={revert}")
         # If patch is `None`, indicate in log and skip
         if patch is None:
             logger_taskenv.error(
@@ -645,8 +649,11 @@ class TaskEnvContextManager:
         logger_taskenv.info(
             f"[{self.testbed_name}] [{self.instance[KEY_INSTANCE_ID]}] {log_cmd} patch successful ({patch_type})"
         )
-        with open(self.log_file, "a") as f:
-            f.write(f"{APPLY_PATCH_PASS} ({patch_type})\n")
+        # don't log a pass if we're testing whether the patch is valid
+        # otherwise the monitor code sees 4 APPLY_PATCH_PASS on line 55 https://github.com/sweepai/SWE-bench/blob/sweep/swe-bench-fixes/metrics/monitor.py#L43-L55
+        if log_apply_patch_success:
+            with open(self.log_file, "a") as f:
+                f.write(f"{APPLY_PATCH_PASS} ({patch_type})\n")
         return True
 
     def run_tests_task(self, instance: dict):
