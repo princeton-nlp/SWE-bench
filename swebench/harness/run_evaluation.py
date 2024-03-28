@@ -9,15 +9,15 @@ import logging
 import os
 import shutil
 
-from constants import (
+from datasets import load_dataset
+from multiprocessing import Pool
+from swebench.harness.constants import (
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
 )
-from datasets import load_dataset
-from engine_evaluation import main as eval_engine
-from multiprocessing import Pool
-from utils import get_instances
+from swebench.harness.engine_evaluation import main as eval_engine
+from swebench.harness.utils import get_instances
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

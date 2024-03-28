@@ -1,4 +1,4 @@
-__version__ = "0.6.8.1"
+__version__ = "0.6.8.2"
 
 from swebench.collect.build_dataset import main as build_dataset
 from swebench.collect.get_tasks_pipeline import main as get_tasks_pipeline
