@@ -2,13 +2,12 @@ import argparse, glob, json, logging, os, re, requests, subprocess, sys
 
 from multiprocessing import Pool, Manager
 
-sys.path.append("../harness")
-from constants import (
+from swebench.versioning.constants import (
     SWE_BENCH_URL_RAW,
     MAP_REPO_TO_VERSION_PATHS,
     MAP_REPO_TO_VERSION_PATTERNS,
 )
-from utils import get_instances, split_instances
+from swebench.versioning.utils import get_instances, split_instances
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

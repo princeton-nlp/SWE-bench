@@ -1,4 +1,4 @@
-__version__ = "0.6.8.2"
+__version__ = "0.6.8.4"
 
 from swebench.collect.build_dataset import main as build_dataset
 from swebench.collect.get_tasks_pipeline import main as get_tasks_pipeline
@@ -57,4 +57,20 @@ from swebench.metrics.report import (
     get_eval_reports_for_dir,
     get_model_eval_summary,
     get_model_report,
+)
+
+from swebench.versioning.constants import (
+    MAP_REPO_TO_VERSION_PATHS,
+    MAP_REPO_TO_VERSION_PATTERNS,
+)
+
+from swebench.versioning.get_versions import (
+    get_version,
+    map_version_to_task_instances,
+    get_versions_from_build,
+    get_versions_from_web,
+)
+
+from swebench.versioning.utils import (
+    split_instances,
 )
