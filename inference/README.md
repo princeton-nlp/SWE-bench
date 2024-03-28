@@ -35,7 +35,7 @@ This script is similar to `run_api.py`, but it is designed to run inference usin
 
 For instance, to run this script on SWE-bench with the ``Oracle`` context and SWE-Llama, you can run the following command:
 ```bash
-python run_llama.py --dataset_name_or_path princeton-nlp/SWE-bench_oracle --model_name_or_path princeton-nlp/SWE-Llama-13b --output_dir ./outputs --temperature 0
+python run_llama.py --dataset_path princeton-nlp/SWE-bench_oracle --model_name_or_path princeton-nlp/SWE-Llama-13b --output_dir ./outputs --temperature 0
 ```
 
 You can also specify further options:
