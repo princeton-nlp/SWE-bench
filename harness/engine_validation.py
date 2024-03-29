@@ -91,7 +91,7 @@ def setup_testbed(data: dict):
         data_dict.task_instances,
         data_dict.log_dir,
         conda_link=data_dict.conda_link,
-        path_conda=data_dict.path_conda,
+        path_conda=data_dict.conda_path or data_dict.path_conda,
         testbed=data_dict.testbed,
         temp_dir=data_dict.temp_dir,
         timeout=data_dict.timeout,

@@ -445,16 +445,16 @@ class TaskEnvContextManager:
         )
         self.timeout = timeout
 
-        shellenv = os.environ.copy()
-        condabinpath = os.path.join(self.conda_path, "bin")
-        shellenv["PATH"] = shellenv["PATH"] + os.pathsep + condabinpath
+        # shellenv = os.environ.copy()
+        # condabinpath = os.path.join(self.conda_path, "bin")
+        # shellenv["PATH"] = shellenv["PATH"] + os.pathsep + condabinpath
         self.exec = ExecWrapper(
             subprocess_args={
                 "check": True,
                 "shell": False,
                 "capture_output": True,
                 "text": True,
-                "env": shellenv,
+                # "env": shellenv,
             }
         )
 
