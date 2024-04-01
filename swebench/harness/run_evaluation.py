@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 
 from datasets import load_dataset
 from multiprocessing import Pool
@@ -221,7 +222,10 @@ def main(
     finally:
         # Clean up
         for temp_dir in temp_dirs:
-            shutil.rmtree(temp_dir)
+            # Kill all processes that are using the temp directory
+            subprocess.run(f"lsof +D {temp_dir} | awk 'NR>1 {{print $2}}' | xargs kill".split())
+            # Remove temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":
