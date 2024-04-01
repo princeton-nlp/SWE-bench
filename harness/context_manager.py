@@ -520,6 +520,12 @@ class TaskEnvContextManager:
         # Get installation instructions by repo/version
         specifications = MAP_VERSION_TO_INSTALL[instance["repo"]][instance["version"]]
 
+        # (0) For matplotlib, qhull tarball download fails,
+        # so we need to pre-install the system version and specify to use it here
+        if "matplotlib" in instance["repo"]:
+            with open("mplsetup.cfg", "w") as f:
+                f.write("[libs]\nsystem_qhull = true")
+
         # Run pre-install set up if provided
         if "pre_install" in specifications:
             for pre_install in specifications["pre_install"]:
