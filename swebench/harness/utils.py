@@ -57,7 +57,12 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> list:
     return env_names
 
 
-def get_environment_yml(instance: dict, env_name: str, save_path: str = None) -> str:
+def get_environment_yml(
+        instance: dict,
+        env_name: str,
+        save_path: str = None,
+        python_version: str = None,
+    ) -> str:
     """
     Get environment.yml for given task instance
 
@@ -93,6 +98,11 @@ def get_environment_yml(instance: dict, env_name: str, save_path: str = None) ->
         # Rename environment to given name
         if line.startswith("name:"):
             cleaned.append(f"name: {env_name}")
+            continue
+        if line.startswith("dependencies:"):
+            cleaned.append(line)
+            if python_version is not None:
+                cleaned.append(f"  - python={python_version}")
             continue
         cleaned.append(line)
 

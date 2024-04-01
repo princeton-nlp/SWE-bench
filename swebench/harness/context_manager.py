@@ -3,6 +3,7 @@ import logging, os, platform, subprocess
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
+    DEFAULT_CONDA_LINK,
     INSTALL_FAIL,
     INSTALL_PASS,
     INSTALL_TIMEOUT,
@@ -10,6 +11,7 @@ from swebench.harness.constants import (
     KEY_MODEL,
     MAP_REPO_TO_INSTALL,
     MAP_REPO_TO_TEST_FRAMEWORK,
+    MAP_REPO_VERSION_TO_CONDA_LINK,
     MAP_VERSION_TO_INSTALL,
     RESET_FAILED,
     TESTS_FAILED,
@@ -76,6 +78,7 @@ class TestbedContextManager:
         Args:
             task_instances (list): List of task instances
             log_dir (str): Path to log directory
+            conda_link(str): URL to conda installation to use
             path_conda (str): Path to conda installation
             testbed (str): Path to testbed directory
             verbose (bool): Whether to show logs
@@ -186,16 +189,35 @@ class TestbedContextManager:
             # Download Miniconda installer
             if self.conda_link is not None:
                 cmd_line_install_link = self.conda_link
-            elif platform.system() == "Darwin":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-x86_64.sh"
-                if is_osx_64:
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-MacOSX-arm64.sh"
-            elif platform.system() == "Linux":
-                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-x86_64.sh"
-                if platform.machine() == "aarch64":
-                    cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-aarch64.sh"
             else:
-                raise ValueError("Unknown computer platform " + platform.system())
+                cmd_line_install_link = "https://repo.anaconda.com/miniconda/Miniconda3-"
+
+                # Adjust version for evaluation by repo/version
+                key, versions = list(self.setup_refs.items())[0]
+                if len(self.setup_refs) == 1 and len(versions) == 1:
+                    owner, repo = key.split("/")
+                    version = list(versions.keys())[0]
+                    logger_testbed.info(f"[Testbed] {repo}/{version} instances in a single process")
+                    conda_id = MAP_REPO_VERSION_TO_CONDA_LINK.get(repo, {}).get(version, DEFAULT_CONDA_LINK)
+                    cmd_line_install_link += conda_id
+                    logger_testbed.info(f"[Testbed] {repo}/{version} using Miniconda link: {cmd_line_install_link}")
+                else:
+                    cmd_line_install_link += DEFAULT_CONDA_LINK
+                    logger_testbed.info(f"[Testbed] Multiple repos/versions; using Miniconda link: {cmd_line_install_link}")
+
+                if platform.system() == "Darwin":
+                    if is_osx_64:
+                        cmd_line_install_link += "-MacOSX-arm64.sh"
+                    else:
+                        cmd_line_install_link += "-MacOSX-x86_64.sh"
+                elif platform.system() == "Linux":
+                    if platform.machine() == "aarch64":
+                        cmd_line_install_link += "-Linux-aarch64.sh"
+                    else:
+                        cmd_line_install_link += "-Linux-x86_64.sh"
+                else:
+                    raise ValueError("Unknown computer platform " + platform.system())
+
             download_cmd = [
                 "wget",
                 cmd_line_install_link,
@@ -205,7 +227,7 @@ class TestbedContextManager:
             self.exec(download_cmd)
 
             # Install Miniconda
-            install_cmd = ["bash", miniconda_sh, "-b", "-u", "-p", self.path_conda]
+            install_cmd = ["bash", miniconda_sh, "-b", "-u", "-p", self.path_conda, "&&", "conda", "init", "--all"]
             self.exec(install_cmd)
             if is_osx_64:
                 condabin = os.path.join(self.path_conda, "bin", "conda")
@@ -219,14 +241,10 @@ class TestbedContextManager:
         # Set up conda executables, get existing environments
         self.path_conda = os.path.abspath(self.path_conda)
         conda_bin_path = os.path.join(self.path_conda, "bin")
-        shellenv = os.environ.copy()
-        shellenv["PATH"] = conda_bin_path + os.pathsep + shellenv["PATH"]
-        self.exec.subprocess_args["env"] = shellenv
 
         path_activate = os.path.join(self.path_conda, "bin", "activate")
-        exec_type = "mamba" if "mamba" in self.path_conda else "conda"
-        exec_cmd = os.path.join(self.path_conda, "bin", exec_type)
-        env_list = get_conda_env_names(exec_cmd, shellenv)
+        exec_cmd = os.path.join(self.path_conda, "bin", "conda")
+        env_list = get_conda_env_names(exec_cmd)
 
         # Set up testbed (environment, github repo) for each repo
         for repo, version_to_setup_ref in self.setup_refs.items():
@@ -284,18 +302,20 @@ class TestbedContextManager:
 
                     # Install dependencies
                     path_to_reqs = get_requirements(setup_ref_instance, self.testbed)
-                    cmd = f"source {path_activate} {env_name} && echo 'activate successful' && pip install -r {path_to_reqs}"
+                    cmd = f". {path_activate} {env_name} && echo 'activate successful' && pip install -r {path_to_reqs}"
                     logger_testbed.info(
                         f"[Testbed] Installing dependencies for {env_name}; Command: {cmd}"
                     )
                     self.exec(cmd, shell=True)
                     os.remove(path_to_reqs)
                 elif pkgs == "environment.yml":
-                    # Create environment from yml
-                    path_to_reqs = get_environment_yml(
-                        setup_ref_instance, env_name, self.testbed
-                    )
                     if "no_use_env" in install and install["no_use_env"]:
+                        # Create environment from yml
+                        path_to_reqs = get_environment_yml(
+                            setup_ref_instance, env_name,
+                            save_path=self.testbed
+                        )
+
                         # `conda create` based installation
                         cmd = f"{exec_cmd} create -c conda-forge -n {env_name} python={install['python']} -y"
                         logger_testbed.info(
@@ -310,6 +330,13 @@ class TestbedContextManager:
                         )
                         self.exec(cmd.split(" "))
                     else:
+                        # Create environment from yml
+                        path_to_reqs = get_environment_yml(
+                            setup_ref_instance, env_name,
+                            save_path=self.testbed,
+                            python_version=install["python"]
+                        )
+
                         # `conda env create` based installation
                         cmd = f"{exec_cmd} env create --file {path_to_reqs}"
                         logger_testbed.info(
@@ -326,10 +353,19 @@ class TestbedContextManager:
                         f"[Testbed] Creating environment {env_name}; Command: {cmd}"
                     )
                     self.exec(cmd.split(" "))
+                
+                arch = platform.machine()
+                arch_specific_packages = install.get("arch_specific_packages", {}).get(arch, "")
+                if arch_specific_packages:
+                    cmd = f". {path_activate} {env_name} && conda install {arch_specific_packages} -y"
+                    logger_testbed.info(
+                        f"[Testbed] Installing arch-specific packages for {env_name}; Command: {cmd}"
+                    )
+                    self.exec(cmd, shell=True)
 
                 # Install additional packages if specified
                 if "pip_packages" in install:
-                    cmd = f"source {path_activate} {env_name} && pip install {install['pip_packages']}"
+                    cmd = f". {path_activate} {env_name} && pip install {install['pip_packages']}"
                     logger_testbed.info(
                         f"[Testbed] Installing pip packages for {env_name}; Command: {cmd}"
                     )
@@ -419,6 +455,7 @@ class TaskEnvContextManager:
         logger_taskenv.propagate = verbose
         self.instance = instance
         self.conda_path = conda_path
+        self.conda_cache_dir = os.path.join(self.conda_path, "cache")
         self.cwd = os.getcwd()
         self.is_eval = is_eval
         self.testbed = testbed
@@ -440,21 +477,18 @@ class TaskEnvContextManager:
         self.log_file = os.path.join(log_dir, log_file_name)
 
         self.cmd_activate = (
-            f"source {os.path.join(self.conda_path, 'bin', 'activate')} "
+            f". {os.path.join(self.conda_path, 'bin', 'activate')} "
             + f"{self.venv} && echo 'activate successful'"
         )
         self.timeout = timeout
 
-        shellenv = os.environ.copy()
-        condabinpath = os.path.join(self.conda_path, "bin")
-        shellenv["PATH"] = condabinpath + os.pathsep + shellenv["PATH"]
         self.exec = ExecWrapper(
             subprocess_args={
                 "check": True,
                 "shell": False,
                 "capture_output": True,
                 "text": True,
-                "env": shellenv,
+                "env": {"CONDA_PKGS_DIRS": self.conda_cache_dir},
             }
         )
 

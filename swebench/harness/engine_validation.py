@@ -77,14 +77,14 @@ def setup_testbed(data: dict):
 
     Args:
         data: Dict containing task instances and other data
-            conda_link: URL to conda installation to use
-            task_instances: List of task instances
-            log_dir: Path to log directory
-            path_conda: Path to miniconda3 or anaconda installation
-            testbed: Path to testbed directory
-            temp_dir: Path to temporary directory for storing virtual envs
-            timeout: Timeout (seconds) for testing script execution
-            verbose: Verbose mode
+        conda_link: URL to conda installation to use
+        task_instances: List of task instances
+        log_dir: Path to log directory
+        path_conda: Path to miniconda3 or anaconda installation
+        testbed: Path to testbed directory
+        temp_dir: Path to temporary directory for storing virtual envs
+        timeout: Timeout (seconds) for testing script execution
+        verbose: Verbose mode
     """
     data_dict = DotDict(data)
     with TestbedContextManager(
