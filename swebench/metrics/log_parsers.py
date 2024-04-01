@@ -1,13 +1,6 @@
 import re
 
-from enum import Enum
-
-
-class TestStatus(Enum):
-    FAILED = "FAILED"
-    PASSED = "PASSED"
-    SKIPPED = "SKIPPED"
-    ERROR = "ERROR"
+from swebench.metrics.constants import TestStatus
 
 
 def parse_log_pytest(log: str) -> dict:

@@ -1,22 +1,14 @@
 import re
 
+from swebench.metrics.constants import (
+    APPLY_PATCH_FAIL,
+    APPLY_PATCH_PASS,
+    RESET_FAILED,
+    TESTS_ERROR,
+    TESTS_TIMEOUT,
+)
 from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER, TestStatus
-
-
-# Evaluation Log Constants
-APPLY_PATCH_FAIL = ">>>>> Patch Apply Failed"
-APPLY_PATCH_PASS = ">>>>> Applied Patch"
-INSTALL_FAIL = ">>>>> Init Failed"
-INSTALL_PASS = ">>>>> Init Succeeded"
-RESET_FAILED = ">>>>> Reset Failed"
-TESTS_TIMEOUT = ">>>>> Tests Timed Out"
-TESTS_ERROR = ">>>>> Tests Errored"
-
-# Result Categories
-FAIL_TO_PASS = "FAIL_TO_PASS"
-FAIL_TO_FAIL = "FAIL_TO_FAIL"
-PASS_TO_PASS = "PASS_TO_PASS"
-PASS_TO_FAIL = "PASS_TO_FAIL"
+from typing import Tuple
 
 
 def get_diffs(sm_1: dict, sm_2: dict) -> dict:
@@ -41,7 +33,7 @@ def get_diffs(sm_1: dict, sm_2: dict) -> dict:
     return diff_map
 
 
-def get_logs_eval(log_fp: str) -> (dict, bool):
+def get_logs_eval(log_fp: str) -> Tuple[dict, bool]:
     """
     Retrieve evaluation results for a task instance from its corresponding log file
 
@@ -65,7 +57,7 @@ def get_logs_eval(log_fp: str) -> (dict, bool):
         return log_parser(content), True
 
 
-def get_logs_gold(log_fp: str) -> (str, str):
+def get_logs_gold(log_fp: str) -> Tuple[str, str]:
     """
     Retrieve pre-patch, post-patch test logs from a validation log file
 
@@ -92,7 +84,7 @@ get_id_from_lp = lambda x: get_file_name_from_lp(x).split(".")[0]
 get_repo_from_lp = lambda x: get_id_from_lp(x).rsplit("-", 1)[0].replace("__", "/")
 
 
-def log_path_to_sms(log_fp: str, log_parser) -> (list, bool):
+def log_path_to_sms(log_fp: str, log_parser) -> Tuple[list, bool]:
     """
     Wrapper for getting log data from log_parser file
 

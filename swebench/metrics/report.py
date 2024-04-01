@@ -1,25 +1,32 @@
 import glob, json, os
 
 from collections import Counter
-from swebench.metrics.getters import (
-    get_file_name_from_lp,
-    get_logs_eval,
-    get_id_from_lp,
+from swebench.harness.constants import (
+    INSTALL_FAIL,
+    KEY_INSTANCE_ID,
+)
+from swebench.metrics.constants import (
     FAIL_TO_FAIL,
     FAIL_TO_PASS,
     PASS_TO_FAIL,
     PASS_TO_PASS,
+)
+from swebench.metrics.getters import (
+    get_file_name_from_lp,
+    get_logs_eval,
+    get_id_from_lp,
     test_failed,
     test_passed,
 )
-from swebench.metrics.log_parsers import TestStatus
 from swebench.metrics.metrics import (
     compute_fail_to_pass_unweighted,
     compute_fail_to_pass_weighted,
     compute_pass_to_pass_unweighted,
     compute_pass_to_pass_weighted,
     get_resolution_status,
+    ResolvedStatus,
 )
+from typing import Tuple
 
 
 ### MARK - Eval Report Generation
@@ -119,7 +126,7 @@ def get_eval_reports_for_logs(
     swe_bench_tasks: str,
     callback: callable = None,
     verbose: bool = False,
-) -> (dict, dict):
+) -> Tuple[dict, dict]:
     """
     Wrapper for getting eval report for a list of evaluation log paths.
 
@@ -135,7 +142,7 @@ def get_eval_reports_for_logs(
     reports_patch_success = {}
     reports_patch_failure = {}
     eval_refs = json.load(open(swe_bench_tasks))
-    eval_refs = {t['instance_id']: t for t in eval_refs}
+    eval_refs = {t[KEY_INSTANCE_ID]: t for t in eval_refs}
 
     for eval_log in eval_logs:
         # Remove task instances that do not satisfy callback
@@ -194,7 +201,7 @@ def get_model_eval_summary(
     eval_dir: str,
     swe_bench_tasks: str,
     repo: str = None,
-):
+) -> dict:
     """
     Generate a summary of model evaluation results.
 
@@ -213,7 +220,7 @@ def get_model_eval_summary(
     # Filter by repo if provided
     criteria_eval_sm = None
     if repo is not None:
-        criteria_pred = lambda pred: repo in pred["instance_id"]
+        criteria_pred = lambda pred: repo in pred[KEY_INSTANCE_ID]
         criteria_eval_sm = lambda eval_log: repo in eval_log
         preds = [x for x in preds if criteria_pred(x)]
 
@@ -257,7 +264,7 @@ def get_model_eval_summary(
 
 def get_model_report(
     model: str, predictions_path: str, swe_bench_tasks: str, log_dir: str
-):
+) -> dict:
     """
     Generate a report of model evaluation results from predictions, task instances,
     and evaluation logs.
@@ -271,8 +278,8 @@ def get_model_report(
         report_map (dict): map of repo to report
     """
     eval_refs = json.load(open(swe_bench_tasks))
-    eval_refs = [{key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]} for t in eval_refs]
-    eval_refs = {t['instance_id']: t for t in eval_refs}
+    eval_refs = [{key: t[key] for key in [KEY_INSTANCE_ID, FAIL_TO_PASS, PASS_TO_PASS]} for t in eval_refs]
+    eval_refs = {t[KEY_INSTANCE_ID]: t for t in eval_refs}
 
     # Get predictions
     predictions = []
@@ -286,37 +293,43 @@ def get_model_report(
 
     # Iterate through predictions
     for p in predictions:
-        repo = p["instance_id"].split(".")[0].rsplit("-", 1)[0].replace("__", "/")
+        repo = p[KEY_INSTANCE_ID].split(".")[0].rsplit("-", 1)[0].replace("__", "/")
         if repo not in report_map:
             report_map[repo] = {
                 "none": [],
                 "generated": [],
                 "with_logs": [],
+                "install_fail": [],
                 "applied": [],
                 "resolved": [],
             }
 
         # Check if the model patch exists
         if p["model_patch"] == None:
-            report_map[repo]["none"].append(p['instance_id'])
+            report_map[repo]["none"].append(p[KEY_INSTANCE_ID])
             continue
-        report_map[repo]["generated"].append(p['instance_id'])
+        report_map[repo]["generated"].append(p[KEY_INSTANCE_ID])
 
         # Get log file
-        log_path = os.path.join(log_dir, f"{p['instance_id']}.{model}.eval.log")
+        log_path = os.path.join(log_dir, f"{p[KEY_INSTANCE_ID]}.{model}.eval.log")
         if not os.path.exists(log_path):
             continue
-        report_map[repo]["with_logs"].append(p['instance_id'])
+        report_map[repo]["with_logs"].append(p[KEY_INSTANCE_ID])
+
+        # Check if install succeeded
+        if INSTALL_FAIL in open(log_path).read():
+            report_map[repo]["install_fail"].append(p[KEY_INSTANCE_ID])
+            continue
 
         # Get evaluation logs
         eval_sm, found = get_logs_eval(log_path)
 
         if not found:
             continue
-        report_map[repo]["applied"].append(p['instance_id'])
+        report_map[repo]["applied"].append(p[KEY_INSTANCE_ID])
 
-        report = get_eval_report(eval_sm, eval_refs[p["instance_id"]])
-        if get_resolution_status(report) == "RESOLVED_FULL":
-            report_map[repo]["resolved"].append(p['instance_id'])
+        report = get_eval_report(eval_sm, eval_refs[p[KEY_INSTANCE_ID]])
+        if get_resolution_status(report) == ResolvedStatus.FULL.value:
+            report_map[repo]["resolved"].append(p[KEY_INSTANCE_ID])
 
     return report_map
