@@ -329,8 +329,10 @@ class TestbedContextManager:
 
                     # Activate the environment and install the packages
                     activate_cmd = f". {path_activate} {env_name}"
-                    install_cmd = f"pip install {pkgs}"
-                    full_cmd = f"{activate_cmd} && echo 'activate successful' && {install_cmd}"
+                    full_cmd = f"{activate_cmd} && echo 'activate successful'"
+                    if pkgs != "":
+                        install_cmd = f"pip install {pkgs}"
+                        full_cmd += f" && {install_cmd}"
                     logger_testbed.info(
                         f"[Testbed] Installing environment dependencies {pkgs}; Command: {full_cmd}"
                     )
