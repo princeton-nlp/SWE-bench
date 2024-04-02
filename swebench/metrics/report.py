@@ -17,6 +17,7 @@ from swebench.metrics.getters import (
     get_id_from_lp,
     test_failed,
     test_passed,
+    get_eval_refs,
 )
 from swebench.metrics.metrics import (
     compute_fail_to_pass_unweighted,
@@ -141,8 +142,7 @@ def get_eval_reports_for_logs(
     """
     reports_patch_success = {}
     reports_patch_failure = {}
-    eval_refs = json.load(open(swe_bench_tasks))
-    eval_refs = {t[KEY_INSTANCE_ID]: t for t in eval_refs}
+    eval_refs = get_eval_refs(swe_bench_tasks)
 
     for eval_log in eval_logs:
         # Remove task instances that do not satisfy callback
@@ -277,9 +277,9 @@ def get_model_report(
     Returns:
         report_map (dict): map of repo to report
     """
-    eval_refs = json.load(open(swe_bench_tasks))
-    eval_refs = [{key: t[key] for key in [KEY_INSTANCE_ID, FAIL_TO_PASS, PASS_TO_PASS]} for t in eval_refs]
-    eval_refs = {t[KEY_INSTANCE_ID]: t for t in eval_refs}
+    eval_refs = get_eval_refs(swe_bench_tasks)
+    for k, v in eval_refs.items():
+        eval_refs[k] = {key: v[key] for key in [KEY_INSTANCE_ID, FAIL_TO_PASS, PASS_TO_PASS]}
 
     # Get predictions
     predictions = []
