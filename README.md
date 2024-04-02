@@ -22,6 +22,9 @@ Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.
     <a href="https://copyright.princeton.edu/policy">
         <img alt="License" src="https://img.shields.io/badge/License-MIT-blue">
     </a>
+    <a href="https://badge.fury.io/py/swebench">
+        <img src="https://badge.fury.io/py/swebench.svg">
+    </a>
 </p>
 
 Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/princeton-nlp/SWE-bench/blob/master/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
