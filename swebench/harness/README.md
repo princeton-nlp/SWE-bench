@@ -10,7 +10,7 @@ The `engine_evaluation.py` and `run_evaluation.py` code is used for evaluating m
 
 The evaluation script generally performs the following steps:
 
-![evaluation](../assets/evaluation.png)
+![evaluation](../../assets/evaluation.png)
 
 the `run_evaluation.py` script is invoked using the `./run_evaluation.sh` script with the following arguments:
 ```
@@ -35,7 +35,7 @@ In the context of the collection pipeline, you should use this script after
 
 The validation script generally performs the following steps:
 
-![validation](../assets/validation.png)
+![validation](../../assets/validation.png)
 
 The `engine_validation.py` script is invoked using the `./run_validation.sh` script with the following arguments:
 ```
