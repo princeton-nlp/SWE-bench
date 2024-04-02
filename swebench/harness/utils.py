@@ -4,15 +4,15 @@ import re
 import requests
 import subprocess
 
-from constants import (
+from datetime import datetime
+from dotenv import load_dotenv
+from git import Repo
+from swebench.harness.constants import (
     MAP_REPO_TO_REQS_PATHS,
     MAP_REPO_TO_ENV_YML_PATHS,
     SWE_BENCH_URL_RAW,
     NON_TEST_EXTS,
 )
-from datetime import datetime
-from dotenv import load_dotenv
-from git import Repo
 
 
 load_dotenv()
@@ -57,7 +57,12 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> list:
     return env_names
 
 
-def get_environment_yml(instance: dict, env_name: str, save_path: str = None) -> str:
+def get_environment_yml(
+        instance: dict,
+        env_name: str,
+        save_path: str = None,
+        python_version: str = None,
+    ) -> str:
     """
     Get environment.yml for given task instance
 
@@ -93,6 +98,11 @@ def get_environment_yml(instance: dict, env_name: str, save_path: str = None) ->
         # Rename environment to given name
         if line.startswith("name:"):
             cleaned.append(f"name: {env_name}")
+            continue
+        if line.startswith("dependencies:"):
+            cleaned.append(line)
+            if python_version is not None:
+                cleaned.append(f"  - python={python_version}")
             continue
         cleaned.append(line)
 

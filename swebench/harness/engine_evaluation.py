@@ -1,21 +1,21 @@
 import argparse, os, re
 
-from constants import (
+from multiprocessing import Pool, cpu_count
+from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
 )
-from context_manager import TaskEnvContextManager
-from engine_validation import setup_testbed
-from multiprocessing import Pool, cpu_count
-from tqdm.auto import tqdm
-from utils import (
+from swebench.harness.context_manager import TaskEnvContextManager
+from swebench.harness.engine_validation import setup_testbed
+from swebench.harness.utils import (
     extract_minimal_patch,
     get_instances,
     split_instances,
     DotDict
 )
+from tqdm.auto import tqdm
 
 
 def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: dict):

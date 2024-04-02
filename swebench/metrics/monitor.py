@@ -1,17 +1,23 @@
 import glob
 import os
 
-
-from log_parsers import MAP_REPO_TO_PARSER
-from getters import (
-    log_path_to_sms, get_diffs, get_repo_from_lp,
-    APPLY_PATCH_FAIL, APPLY_PATCH_PASS, TESTS_TIMEOUT
+from swebench.metrics.constants import (
+    APPLY_PATCH_FAIL,
+    APPLY_PATCH_PASS,
+    TESTS_TIMEOUT
 )
+from swebench.metrics.getters import (
+    log_path_to_sms,
+    get_diffs,
+    get_repo_from_lp,
+)
+from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER
+from typing import Tuple
 
 
 def monitor_validation(
     path_to_logs: str, log_prefix: str = None
-) -> (list, list, list, list):
+) -> Tuple[list, list, list, list]:
     """
     Check log files generated from a `check_instances` run to see how many instances were successfully
     installed and/or tested.
@@ -80,7 +86,7 @@ def monitor_validation(
     return failed_install, corrupt_test_patch, corrupt_patch, timeout, success
 
 
-def monitor_logs_same_diff(log_dir: str, repo: str = None) -> (list, list):
+def monitor_logs_same_diff(log_dir: str, repo: str = None) -> Tuple[list, list]:
     """
     Given a log directory and repo, return a list of logs where pre-test
     and post-test logs are same/different

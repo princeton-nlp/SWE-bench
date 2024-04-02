@@ -3,6 +3,9 @@ MAP_VERSION_TO_INSTALL_SKLEARN = {
         "python": "3.6",
         "packages": "numpy scipy cython pytest pandas matplotlib",
         "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
+        "arch_specific_packages": {
+            "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+        }
     }
     for k in ["0.20", "0.21", "0.22"]
 }
@@ -12,6 +15,9 @@ MAP_VERSION_TO_INSTALL_SKLEARN.update(
             "python": "3.7",
             "packages": "numpy scipy cython pytest pandas matplotlib",
             "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
+            "arch_specific_packages": {
+                "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+            }
         }
         for k in ["0.23", "0.24"]
     }
@@ -22,6 +28,9 @@ MAP_VERSION_TO_INSTALL_SKLEARN.update(
             "python": "3.9",
             "packages": "numpy scipy cython pytest pandas matplotlib joblib threadpoolctl",
             "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
+            "arch_specific_packages": {
+                "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+            }
         }
         for k in ["1.0", "1.1", "1.2", "1.3", "1.4"]
     }
@@ -50,11 +59,13 @@ MAP_VERSION_TO_INSTALL_FLASK = {
         "python": "3.9",
         "packages": "requirements.txt",
         "install": "pip install -e .",
+        "pip_packages": "Werkzeug==2.2.2",
     },
     "2.1": {
         "python": "3.10",
         "packages": "requirements.txt",
         "install": "pip install -e .",
+        "pip_packages": "Werkzeug==2.2.2",
     },
 }
 MAP_VERSION_TO_INSTALL_FLASK.update(
@@ -74,6 +85,7 @@ MAP_VERSION_TO_INSTALL_FLASK.update(
             "python": "3.11",
             "packages": "requirements.txt",
             "install": "pip install -e .",
+            "pip_packages": "Werkzeug==2.2.2"
         }
         for k in ["2.2", "2.3"]
     }
@@ -162,9 +174,27 @@ MAP_VERSION_TO_INSTALL_PYTEST = {
 
 MAP_VERSION_TO_INSTALL_MATPLOTLIB = {
     k: {
-        "python": "3.9",
+        "python": "3.11",
         "packages": "environment.yml",
         "install": "python -m pip install -e .",
+        "pip_packages": " ".join([
+            "contourpy==1.1.0",
+            "cycler==0.11.0",
+            "fonttools==4.42.1",
+            "kiwisolver==1.4.5",
+            "numpy==1.25.2",
+            "packaging==23.1",
+            "pillow==10.0.0",
+            "pyparsing==3.0.9",
+            "python-dateutil==2.8.2",
+            "six==1.16.0",
+            "setuptools==68.1.2",
+            "setuptools-scm==7.1.0",
+            "typing-extensions==4.7.1",
+        ]),
+        "arch_specific_packages": {
+            "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+        }
     }
     for k in ["3.5", "3.6", "3.7"]
 }
@@ -174,6 +204,9 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
             "python": "3.8",
             "packages": "requirements.txt",
             "install": "python -m pip install -e .",
+            "arch_specific_packages": {
+                "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+            }
         }
         for k in ["3.1", "3.2", "3.3", "3.4"]
     }
@@ -184,6 +217,9 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
             "python": "3.7",
             "packages": "requirements.txt",
             "install": "python -m pip install -e .",
+            "arch_specific_packages": {
+                "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+            }
         }
         for k in ["3.0"]
     }
@@ -193,6 +229,9 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
         k: {
             "python": "3.5",
             "install": "python setup.py build; python setup.py install",
+            "arch_specific_packages": {
+                "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+            }
         }
         for k in ["2.0", "2.1", "2.2", "1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]
     }
@@ -204,15 +243,50 @@ MAP_VERSION_TO_INSTALL_SPHINX = {
         "pip_packages": "tox",
         "install": "pip install -e .[test]",
         "pre_install": ["sed -i 's/pytest/pytest -rA/' tox.ini"],
+        "arch_specific_packages": {
+            "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
+            "x86_64": "gxx_linux-64 gcc_linux-64 make",
+        }
     } for k in
         ["1.5", "1.6", "1.7", "1.8", "2.0", "2.1", "2.2", "2.3", "2.4", "3.0"] + \
         ["3.1", "3.2", "3.3", "3.4", "3.5", "4.0", "4.1", "4.2", "4.3", "4.4"] + \
         ["4.5", "5.0", "5.1", "5.2", "5.3", "6.0", "6.2", "7.0", "7.1", "7.2"]
 }
-for k in ["3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "4.0"]:
+for k in ["3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "4.0", "4.1", "4.2", "4.3", "4.4"]:
     MAP_VERSION_TO_INSTALL_SPHINX[k][
         "pre_install"
-    ].append("sed -i 's/Jinja2>=2.3/Jinja2<3.1/' setup.py")
+    ].extend([
+        "sed -i 's/Jinja2>=2.3/Jinja2<3.0/' setup.py",
+        "sed -i 's/sphinxcontrib-applehelp/sphinxcontrib-applehelp<=1.0.7/' setup.py",
+        "sed -i 's/sphinxcontrib-devhelp/sphinxcontrib-devhelp<=1.0.5/' setup.py",
+        "sed -i 's/sphinxcontrib-qthelp/sphinxcontrib-qthelp<=1.0.6/' setup.py",
+        "sed -i 's/alabaster>=0.7,<0.8/alabaster>=0.7,<0.7.12/' setup.py",
+        'sed -i "s/\'packaging\',/\'packaging\', \'markupsafe<=2.0.1\',/" setup.py',
+    ])
+    if k in ["4.2", "4.3", "4.4"]:
+        MAP_VERSION_TO_INSTALL_SPHINX[k]["pre_install"].extend([
+            "sed -i 's/sphinxcontrib-htmlhelp>=2.0.0/sphinxcontrib-htmlhelp>=2.0.0,<=2.0.4/' setup.py",
+            "sed -i 's/sphinxcontrib-serializinghtml>=1.1.5/sphinxcontrib-serializinghtml>=1.1.5,<=1.1.9/' setup.py",
+        ])
+    elif k == "4.1":
+        MAP_VERSION_TO_INSTALL_SPHINX[k]["pre_install"].extend([
+            (
+                "grep -q 'sphinxcontrib-htmlhelp>=2.0.0' setup.py && "
+                "sed -i 's/sphinxcontrib-htmlhelp>=2.0.0/sphinxcontrib-htmlhelp>=2.0.0,<=2.0.4/' setup.py || "
+                "sed -i 's/sphinxcontrib-htmlhelp/sphinxcontrib-htmlhelp<=2.0.4/' setup.py"
+            ),
+            (
+                "grep -q 'sphinxcontrib-serializinghtml>=1.1.5' setup.py && "
+                "sed -i 's/sphinxcontrib-serializinghtml>=1.1.5/sphinxcontrib-serializinghtml>=1.1.5,<=1.1.9/' setup.py || "
+                "sed -i 's/sphinxcontrib-serializinghtml/sphinxcontrib-serializinghtml<=1.1.9/' setup.py"
+            )
+        ])
+    else:
+        MAP_VERSION_TO_INSTALL_SPHINX[k]["pre_install"].extend([
+            "sed -i 's/sphinxcontrib-htmlhelp/sphinxcontrib-htmlhelp<=2.0.4/' setup.py",
+            "sed -i 's/sphinxcontrib-serializinghtml/sphinxcontrib-serializinghtml<=1.1.9/' setup.py",
+        ])
+
 
 MAP_VERSION_TO_INSTALL_ASTROPY = {
     k: {"python": "3.9", "install": "pip install -e .[test]"}
@@ -247,6 +321,10 @@ MAP_VERSION_TO_INSTALL_PYLINT = {
     k: {"python": "3.9", "packages": "requirements.txt", "install": "pip install -e ."}
     for k in ["2.10", "2.11", "2.13", "2.14", "2.15", "2.16", "2.17", "2.8", "2.9", "3.0"]
 }
+MAP_VERSION_TO_INSTALL_PYLINT.update({
+    k: {**MAP_VERSION_TO_INSTALL_PYLINT[k], "pip_packages": " ".join([
+        "astroid==3.0.0a7"
+    ])} for k in ['3.0']})
 
 MAP_VERSION_TO_INSTALL_XARRAY = {
     k: {
@@ -473,3 +551,23 @@ TESTS_TIMEOUT = ">>>>> Tests Timed Out"
 # Constants - Miscellaneous
 NON_TEST_EXTS = [".json", ".png", "csv", ".txt", ".md", ".jpg", ".jpeg", ".pkl", ".yml", ".yaml", ".toml"]
 SWE_BENCH_URL_RAW = "https://raw.githubusercontent.com/"
+
+# Constants - Repo/Version Mapped to Appropriate Conda Link
+MAP_REPO_VERSION_TO_CONDA_LINK = {
+    "django/django": {
+        "1.11": "py311_23.9.0-0",
+    },
+    "matplotlib/matplotlib": {
+        "3.1": "py311_23.9.0-0",
+        "3.2": "py311_23.9.0-0",
+        "3.3": "py311_23.9.0-0",
+        "3.4": "py311_23.9.0-0",
+        "3.0": "py311_23.10.0-1",
+    },
+    "mwaskom/seaborn": {"0.11": None, "0.12": None, "0.13": None},
+    "sympy/sympy": {
+        "1.0": "py39_23.9.0-0",
+    },
+}
+
+DEFAULT_CONDA_LINK = "py39_23.10.0-1"

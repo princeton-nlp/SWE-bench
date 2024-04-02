@@ -1,12 +1,9 @@
-from enum import Enum
-from getters import FAIL_TO_FAIL, FAIL_TO_PASS, PASS_TO_FAIL, PASS_TO_PASS
 from statistics import mean
-
-
-class ResolvedStatus(Enum):
-    NO = "RESOLVED_NO"
-    PARTIAL = "RESOLVED_PARTIAL"
-    FULL = "RESOLVED_FULL"
+from swebench.metrics.constants import (
+    FAIL_TO_PASS,
+    PASS_TO_PASS,
+    ResolvedStatus,
+)
 
 
 def compute_fail_to_pass(report: dict) -> float:
