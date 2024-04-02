@@ -207,7 +207,10 @@ def main(
         # Clean up
         for temp_dir in temp_dirs:
             # Kill all processes that are using the temp directory
-            subprocess.run(f"lsof +D {temp_dir} | awk 'NR>1 {{print $2}}' | xargs kill", shell=True)
+            try:
+                subprocess.run(f"lsof +D {temp_dir} | awk 'NR>1 {{print $2}}' | xargs kill", shell=True)
+            except Exception as e:
+                logger.error(f"Error killing processes using temp directory: {e}")
             # Remove temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)
 
