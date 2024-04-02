@@ -19,6 +19,7 @@ from swebench.harness.constants import (
 )
 from swebench.harness.engine_evaluation import main as eval_engine
 from swebench.harness.utils import get_instances
+from swebench.metrics.getters import get_eval_refs
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -73,7 +74,7 @@ def main(
 
     Args:
         predictions_path (str): Path to the predictions file.
-        swe_bench_tasks (str): Path to the SWE-bench tasks file OR [dev|test].
+        swe_bench_tasks (str): Path to the SWE-bench tasks file OR HF dataset name.
         log_dir (str): Path to the directory where logs will be saved.
         testbed (str): Path to the directory where testbeds will be saved.
         skip_existing (bool): Whether to skip evaluations for predictions that already have logs.
@@ -88,25 +89,8 @@ def main(
         raise ValueError("--log_dir must exist and point at a directory")
     if not os.path.exists(testbed) or not os.path.isdir(testbed):
         raise ValueError("--testbed must exist and point at a directory")
-
-    if not os.path.exists(swe_bench_tasks) and swe_bench_tasks not in ["dev", "test"]:
-        raise ValueError("--swe_bench_tasks does not exist OR is not [dev|test]")
-
-    tasks = None
-    if os.path.exists(swe_bench_tasks):
-        # If local path is provided, load from path
-        tasks = json.load(open(os.path.abspath(swe_bench_tasks)))
-    else:
-        # If dev/test split is provided, load from HuggingFace datasets
-        temp = load_dataset('princeton-nlp/SWE-bench', split=swe_bench_tasks)
-        assert(temp, datasets.arrow_dataset.Dataset)
-        temp = temp.to_dict()
-        tasks = []
-        for idx in range(len(temp[KEY_INSTANCE_ID])):
-            task_instance = {}
-            for k in temp.keys():
-                task_instance[k] = temp[k][idx]
-            tasks.append(task_instance)
+    
+    tasks = list(get_eval_refs(swe_bench_tasks).values())
 
     # Verify arguments are formatted correctly
     if not isinstance(tasks, list):
@@ -223,7 +207,7 @@ def main(
         # Clean up
         for temp_dir in temp_dirs:
             # Kill all processes that are using the temp directory
-            subprocess.run(f"lsof +D {temp_dir} | awk 'NR>1 {{print $2}}' | xargs kill".split())
+            subprocess.run(f"lsof +D {temp_dir} | awk 'NR>1 {{print $2}}' | xargs kill", shell=True)
             # Remove temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -232,7 +216,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file (must be .json)", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
-    parser.add_argument("--swe_bench_tasks", type=str, help="Path to SWE-bench task instances file", required=True)
+    parser.add_argument("--swe_bench_tasks", type=str, help="Path to dataset file or HF datasets name", required=True)
     parser.add_argument("--testbed", type=str, help="Path to testbed directory", required=True)
     parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
     parser.add_argument("--log_suffix", type=str, help="(Optional) Suffix to append to log file names", default=None)

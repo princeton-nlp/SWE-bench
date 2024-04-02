@@ -1,4 +1,7 @@
 import re
+import json
+import os
+from datasets import load_from_disk, load_dataset
 
 from swebench.metrics.constants import (
     APPLY_PATCH_FAIL,
@@ -7,6 +10,7 @@ from swebench.metrics.constants import (
     TESTS_ERROR,
     TESTS_TIMEOUT,
 )
+from swebench.harness.constants import KEY_INSTANCE_ID
 from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER, TestStatus
 from typing import Tuple
 
@@ -120,3 +124,21 @@ test_passed = lambda case, sm: case in sm and sm[case] == TestStatus.PASSED.valu
 test_failed = lambda case, sm: case not in sm or any(
     [sm[case] == status for status in [TestStatus.FAILED.value, TestStatus.ERROR.value]]
 )
+
+
+def get_eval_refs(data_path_or_name):
+    if os.path.isfile(data_path_or_name):
+        if data_path_or_name.endswith(".jsonl"):
+            data = [json.loads(l) for l in open(data_path_or_name).readlines()]
+        elif data_path_or_name.endswith(".json"):
+            data = json.load(open(data_path_or_name, "r"))
+    elif os.path.isdir(data_path_or_name):
+        data = load_from_disk(data_path_or_name)
+    else:
+        data = load_dataset(data_path_or_name)
+    if isinstance(data, dict):
+        all_data = list()
+        for split in data.keys():
+            all_data.extend(data[split])
+        data = all_data
+    return {d[KEY_INSTANCE_ID]: d for d in data}

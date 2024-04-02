@@ -30,6 +30,7 @@ from swebench.metrics.getters import (
     get_diffs,
     get_logs_eval,
     get_logs_gold,
+    get_eval_refs,
 )
 
 from swebench.metrics.log_parsers import (
