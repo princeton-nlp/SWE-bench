@@ -24,7 +24,7 @@ Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.
     </a>
 </p>
 
-Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/princeton-nlp/SWE-bench/blob/master/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
+Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/princeton-nlp/SWE-bench/blob/main/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
 
 ## 👋 Overview
 SWE-bench is a benchmark for evaluating large language models on real world software issues collected from GitHub.
@@ -44,9 +44,9 @@ You can download the SWE-bench dataset directly ([dev](https://drive.google.com/
 
 To use SWE-Bench, you can:
 * Train your own models on our pre-processed datasets  
-* Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/master/inference/) on existing models (either models you have on-disk like LLaMA, or models you have access to through an API like GPT-4). The inference step is where you get a repo and an issue and have the model try to generate a fix for it.
-* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/master/harness/) models against SWE-bench. This is where you take a SWE-Bench task and a model-proposed solution and evaluate its correctness. 
-*  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/master/collect/) on your own repositories, to make new SWE-Bench tasks. 
+* Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/main/inference/) on existing models (either models you have on-disk like LLaMA, or models you have access to through an API like GPT-4). The inference step is where you get a repo and an issue and have the model try to generate a fix for it.
+* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/harness/) models against SWE-bench. This is where you take a SWE-Bench task and a model-proposed solution and evaluate its correctness. 
+*  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/collect/) on your own repositories, to make new SWE-Bench tasks. 
 
 ## ⬇️ Downloads
 | Datasets | Models |
