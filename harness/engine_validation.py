@@ -78,6 +78,7 @@ def setup_testbed(data: Dict):
 
     Args:
         data: Dict containing task instances and other data
+            conda_link: URL to conda installation to use
             task_instances: List of task instances
             log_dir: Path to log directory
             path_conda: Path to miniconda3 or anaconda installation
@@ -90,6 +91,7 @@ def setup_testbed(data: Dict):
     with TestbedContextManager(
         data_dict.task_instances,
         data_dict.log_dir,
+        conda_link=data_dict.conda_link,
         path_conda=data_dict.path_conda,
         testbed=data_dict.testbed,
         temp_dir=data_dict.temp_dir,
@@ -148,6 +150,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--instances_path", type=str, help="Path to candidate task instances file", required=True)
     parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
+    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
     parser.add_argument("--log_suffix", type=str, default=None, help="(Optional) Suffix to append to log file names")
     parser.add_argument("--path_conda", type=str, help="(Optional) Path to miniconda3 or anaconda installation")
     parser.add_argument("--testbed", type=str, help="(Optional) Path to testbed directory")
