@@ -29,9 +29,13 @@ sudo dpkg-reconfigure dash
 ```
 
 Also install system level packages required by the benchmark subjects:
+These are important for successfully installing the benchmark subject dependencies, as well as
+successfully running the benchmark subject tests.
 
 ```
-sudo apt install libffi-dev python3-pytest libqhull-dev
+sudo apt install -y libffi-dev python3-pytest libfreetype6-dev libqhull-dev pkg-config texlive cm-super dvipng python-tk ffmpeg imagemagick fontconfig ghostscript inkscape graphviz optipng fonts-comic-neue  python3-pikepdf
+
+sudo apt install ttf-mscorefonts-installer
 ```
 
 ### To set up task instances for other tools
