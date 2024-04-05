@@ -81,7 +81,7 @@ class ExecWrapper:
             output = subprocess.run(cmd, **combined_args)
             self.logger.write(f"Std. Output:\n{output.stdout}", level=DEBUG)
             if output.stderr:
-                self.logger.write(f"Std. Error:\n{output.stderr}", level=ERROR)
+                self.logger.write(f"Std. Error:\n{output.stderr}", level=DEBUG)
             return output
         except subprocess.CalledProcessError as e:
             if raise_error and self.logger is not None:
