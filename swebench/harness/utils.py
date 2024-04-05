@@ -350,14 +350,14 @@ PATCH_HUNK_PATTERN = re.compile(
 
 
 def get_first_idx(charlist):
-    """Get index of first occurence of "-" or "+" in charlist"""
+    """Get index of first occurrence of "-" or "+" in charlist"""
     first_min = charlist.index("-") if "-" in charlist else len(charlist)
     first_plus = charlist.index("+") if "+" in charlist else len(charlist)
     return min(first_min, first_plus)
 
 
 def get_last_idx(charlist):
-    """Get index of last occurence of "-" or "+" in charlist"""
+    """Get index of last occurrence of "-" or "+" in charlist"""
     char_idx = get_first_idx(charlist[::-1])
     last_idx = len(charlist) - char_idx
     return last_idx + 1
