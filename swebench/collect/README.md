@@ -5,7 +5,7 @@ We include a comprehensive [tutorial](https://github.com/princeton-nlp/SWE-bench
 
 > SWE-bench's collection pipeline is currently designed to target PyPI packages. We hope to expand SWE-bench to more repositories and languages in the future.
 
-<img src="../assets/collection.png">
+<img src="../../assets/collection.png">
 
 ## Collection Procedure
 To run collection on your own repositories, run the `run_get_tasks_pipeline.sh` script. Given a repository or list of repositories (formatted as `owner/name`), for each repository this command will generate...
