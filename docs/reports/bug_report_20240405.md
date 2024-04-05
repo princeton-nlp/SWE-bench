@@ -18,6 +18,7 @@ The root causes of the issues are four-fold:
 <details>
 <summary>Click for Example</summary>
 This is an example of the log to console that showed up when the conda environment for sphinx 4.1 failed to build properly.
+
 ```bash
 ❌ Evaluation failed: Command '. /home/ubuntu/SWE-agent/evaluation/testbed/predictions/sphinx-doc__sphinx/4.1/tmpe4u_b189/miniconda3/bin/activate sphinx-doc__sphinx__4.1 && 
 conda install gxx_linux-64 gcc_linux-64 make -y' returned non-zero exit status 2.
@@ -116,4 +117,4 @@ Our diagnosis is that:
 * If you'd like to check that your machine is compatible with the harness, run evaluataion with `check_harness.jsonl` as the predictions. **[Coming soon]**
 * Use the updated `swe-bench.json` file to evaluate on the test set. **[Coming soon]**
 
-✍️ John & Carlos
+✍️ Carlos & John
