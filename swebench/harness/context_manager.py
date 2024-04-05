@@ -1,4 +1,4 @@
-import logging, os, platform, subprocess
+import logging, os, platform, subprocess, json
 
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
 from swebench.harness.constants import (
@@ -62,7 +62,7 @@ class ExecWrapper:
     def __init__(
         self,
         subprocess_args: dict = None,
-        logger: logging.Logger = None,
+        logger: LogWrapper = None,
     ):
         self.logger = logger
         if subprocess_args is None:
@@ -72,15 +72,23 @@ class ExecWrapper:
 
     def __call__(self, cmd, raise_error=True, **kwargs):
         try:
+            if isinstance(cmd, list):
+                self.logger.write(f"Command: {' '.join(cmd)}")
+            else:
+                self.logger.write(f"Command: {cmd}")
             combined_args = {**self.subprocess_args, **kwargs}
+            self.logger.write(f"Subprocess args:\n{json.dumps(combined_args, indent=4)}", level=DEBUG)
             output = subprocess.run(cmd, **combined_args)
+            self.logger.write(f"Std. Output:\n{output.stdout}", level=DEBUG)
+            if output.stderr:
+                self.logger.write(f"Std. Error:\n{output.stderr}", level=ERROR)
             return output
         except subprocess.CalledProcessError as e:
             if raise_error and self.logger is not None:
-                self.logger.error(f"Error: {e}")
-                self.logger.error(f"Error stdout: {e.stdout}")
-                self.logger.error(f"Error stderr: {e.stderr}")
-                self.logger.error(f"Error traceback: {format_exc()}")
+                self.logger.write(f"Error: {e}", level=ERROR)
+                self.logger.write(f"Error stdout: {e.stdout}", level=ERROR)
+                self.logger.write(f"Error stderr: {e.stderr}", level=ERROR)
+                self.logger.write(f"Error traceback: {format_exc()}", level=ERROR)
                 raise e
 
 
@@ -124,7 +132,6 @@ class TestbedContextManager:
                 "capture_output": True,
                 "text": True,
             },
-            logger=logger_testbed,
         )
 
         # Create log, temp directories if they don't exist
@@ -177,6 +184,7 @@ class TestbedContextManager:
 
         self.log_file = os.path.join(self.log_dir, log_file_name)
         self.log = LogWrapper(self.log_file, logger=logger_testbed, prefix="[Testbed]")
+        self.exec.logger = self.log
         self.log.write(f"Created log file {self.log_file}", mode="w")
 
         # Get reference set up instances for each repo/version
@@ -512,7 +520,7 @@ class TaskEnvContextManager:
                 "text": True,
                 "env": {"CONDA_PKGS_DIRS": self.conda_cache_dir},
             },
-            logger=logger_taskenv,
+            logger=self.log,
         )
 
     def __enter__(self):
