@@ -73,9 +73,9 @@ class ExecWrapper:
     def __call__(self, cmd, raise_error=True, **kwargs):
         try:
             if isinstance(cmd, list):
-                self.logger.write(f"Command: {' '.join(cmd)}")
+                self.logger.write(f"Command: {' '.join(cmd)}", level=DEBUG)
             else:
-                self.logger.write(f"Command: {cmd}")
+                self.logger.write(f"Command: {cmd}", level=DEBUG)
             combined_args = {**self.subprocess_args, **kwargs}
             self.logger.write(f"Subprocess args:\n{json.dumps(combined_args, indent=4)}", level=DEBUG)
             output = subprocess.run(cmd, **combined_args)
