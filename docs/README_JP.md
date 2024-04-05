@@ -10,7 +10,7 @@
 
 <div align="center">
 
- | [日本語](docs/README_JP.md) | [English](https://github.com/princeton-nlp/SWE-bench) |
+ | [日本語](docs/README_JP.md) | [English](https://github.com/princeton-nlp/SWE-bench) | [中文简体](docs/README_CN.md) | [中文繁體](docs/README_TW.md) |
 
 </div>
 
