@@ -564,7 +564,6 @@ MAP_REPO_VERSION_TO_CONDA_LINK = {
         "3.4": "py311_23.9.0-0",
         "3.0": "py311_23.10.0-1",
     },
-    "mwaskom/seaborn": {"0.11": None, "0.12": None, "0.13": None},
     "sympy/sympy": {
         "1.0": "py39_23.9.0-0",
     },
