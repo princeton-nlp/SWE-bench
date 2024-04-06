@@ -77,6 +77,7 @@ class ExecWrapper:
             else:
                 self.logger.write(f"Command: {cmd}", level=DEBUG)
             combined_args = {**self.subprocess_args, **kwargs}
+            combined_args["env"] = os.environ.copy()
             self.logger.write(f"Subprocess args:\n{json.dumps(combined_args, indent=4)}", level=DEBUG)
             output = subprocess.run(cmd, **combined_args)
             self.logger.write(f"Std. Output:\n{output.stdout}", level=DEBUG)
@@ -341,7 +342,7 @@ class TestbedContextManager:
 
                     # Install dependencies
                     path_to_reqs = get_requirements(setup_ref_instance, self.testbed)
-                    cmd = f". {path_activate} {env_name} && echo 'activate successful' && pip install -r {path_to_reqs}"
+                    cmd = f". {path_activate} {env_name} && echo 'activate successful' && {self.path_conda}/envs/{env_name}/bin/pip install -r {path_to_reqs}"
                     self.log.write(f"Installing dependencies for {env_name}; Command: {cmd}")
                     self.exec(cmd, shell=True)
                     os.remove(path_to_reqs)
@@ -392,7 +393,7 @@ class TestbedContextManager:
 
                 # Install additional packages if specified
                 if "pip_packages" in install:
-                    cmd = f". {path_activate} {env_name} && pip install {install['pip_packages']}"
+                    cmd = f"source {path_activate} {env_name} && {self.path_conda}/envs/{env_name}/bin/pip install {install['pip_packages']}"
                     self.log.write(f"Installing pip packages for {env_name}; Command: {cmd}")
                     self.exec(cmd, shell=True)
 
@@ -608,6 +609,8 @@ class TaskEnvContextManager:
         if "install" not in specifications:
             return True
 
+        if specifications['install'].startswith("python") or specifications['install'].startswith("pip"):
+            specifications['install'] = f"{self.conda_path}/envs/{self.venv}/bin/" + specifications['install']
         cmd_install = f"{self.cmd_activate} && {specifications['install']}"
         self.log.write(f"Running installation command: {cmd_install}")
         try:
