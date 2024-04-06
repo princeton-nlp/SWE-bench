@@ -1,26 +1,26 @@
 MAP_VERSION_TO_INSTALL_SKLEARN = {
     k: {
         "python": "3.6",
-        "packages": "numpy scipy cython pytest pandas matplotlib",
+        "packages": "numpy scipy Cython==0.27 pytest pandas matplotlib",
         "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
     }
-    for k in ["0.20", "0.21", "0.22"]
+    for k in ["0.20"]
 }
 MAP_VERSION_TO_INSTALL_SKLEARN.update(
     {
         k: {
             "python": "3.7",
-            "packages": "numpy scipy cython pytest pandas matplotlib",
+            "packages": "numpy scipy Cython==0.29 pytest pandas matplotlib",
             "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
         }
-        for k in ["0.23", "0.24"]
+        for k in ["0.21", "0.22", "0.23", "0.24"]
     }
 )
 MAP_VERSION_TO_INSTALL_SKLEARN.update(
     {
         k: {
             "python": "3.9",
-            "packages": "numpy scipy cython pytest pandas matplotlib joblib threadpoolctl",
+            "packages": "numpy scipy Cython==0.29 pytest pandas matplotlib joblib threadpoolctl",
             "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
         }
         for k in ["1.0", "1.1", "1.2", "1.3", "1.4"]
@@ -225,11 +225,24 @@ for k in ["3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "4.0"]:
     ])
 
 MAP_VERSION_TO_INSTALL_ASTROPY = {
-    k: {"python": "3.9", "install": "pip install -e .[test]"}
-    for k in
-        ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3", "3.0", "3.1", "3.2"] + \
-        ["4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]
+    k: {
+        "python": "3.9",
+        "install": "python setup.py install",
+        "pip_packages": "pytest extension-helpers numpy",
+    }
+    for k in ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3", "3.0", "3.1", "3.2"]
 }
+
+MAP_VERSION_TO_INSTALL_ASTROPY.update(
+    {
+        k: {
+            "python": "3.9",
+            "install": "pip install -e .[test]",
+            "pip_packages": "pytest extension-helpers numpy",
+        }
+        for k in ["4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]
+    }
+)
 
 MAP_VERSION_TO_INSTALL_SYMPY = {
     k: {

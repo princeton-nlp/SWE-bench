@@ -327,11 +327,22 @@ class TestbedContextManager:
                     os.remove(path_to_reqs)
                 else:
                     # Create environment + install dependencies
-                    cmd = f"{exec_cmd} create -n {env_name} python={install['python']} {pkgs} -y"
+                    cmd = f"{exec_cmd} create -n {env_name} python={install['python']} -y"
                     logger_testbed.info(
                         f"[Testbed] Creating environment {env_name}; Command: {cmd}"
                     )
                     self.exec(cmd.split(" "))
+
+                    # Activate the environment and install the packages
+                    activate_cmd = f". {path_activate} {env_name}"
+                    full_cmd = f"{activate_cmd} && echo 'activate successful'"
+                    if pkgs != "":
+                        install_cmd = f"pip install {pkgs}"
+                        full_cmd += f" && {install_cmd}"
+                    logger_testbed.info(
+                        f"[Testbed] Installing environment dependencies {pkgs}; Command: {full_cmd}"
+                    )
+                    self.exec(full_cmd, shell=True)
 
                 # Install additional packages if specified
                 if "pip_packages" in install:
