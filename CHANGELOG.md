@@ -6,7 +6,7 @@ Prior to version 1.0.0, not all deployed versions are listed, as the PyPI packag
 
 ## [1.0.4] - 4/5/2024
 * Fixed `env_list` parsing. [5be59d](https://github.com/princeton-nlp/SWE-bench/commit/5be59d665233ffb63b9beb30b2740cc41098e51f)
-* Updated `ExecWrapper`, `LogWrapper` logic for harness. https://github.com/princeton-nlp/SWE-bench/commit/231a2b205c5ca9ddcb126b73b22667d79e1b6108
+* Updated `ExecWrapper`, `LogWrapper` logic for harness. [231a2b](https://github.com/princeton-nlp/SWE-bench/commit/231a2b205c5ca9ddcb126b73b22667d79e1b6108)
 
 ## [1.0.2] - 4/2/2024
 * Added `try/catch` around `lsof` based clean up for `run_evaluation.py`. [3fb217](https://github.com/princeton-nlp/SWE-bench/commit/3fb2179a5c69737465f916898e8708adffff9914)
@@ -20,7 +20,7 @@ First working version. We strongly recommend not using versions older than this 
 * Reorganized repository to be directly build-able as a PyPI package. [548bdb](https://github.com/princeton-nlp/SWE-bench/commit/548bdbffb2ac5f0a09c1d7eb95bbee1bce126233)
 
 ## [0.6.9 - 0.6.9.2] - 3/31/2024 
-> ⚠️ Do NOT use these versions. The PyPI package for these versions was under development. Specifically, some of the evaluation configurations required re-validation. A detailed report for the failures and our recovery from it are detailed in [Bug Report 4/5/2024](docs/reports/bug_report_20240405.md).
+> ⚠️ Do NOT use these versions. The PyPI package for these versions was under development. Specifically, some of the evaluation configurations required re-validation. A detailed report for the failures and our recovery from it are detailed in [Bug Report 4/5/2024](docs/reports/20240405_eval_bug/report.md).
 
 ## [0.6.1] - 3/14/2023
 * Added minor conditions to make `run_evaluation` more robust (e.g. exit on empty predictions)
