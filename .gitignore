@@ -172,3 +172,8 @@ analysis/**/scratch*
 analysis/benchmark/plots/
 analysis/evaluation/*.csv
 analysis/evaluation/*.pdf
+
+harness/logs/**
+harness/predictions/**
+harness/testbed/**
+**/miniconda.sh

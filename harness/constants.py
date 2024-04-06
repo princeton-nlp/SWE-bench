@@ -214,9 +214,15 @@ MAP_VERSION_TO_INSTALL_SPHINX = {
         ["4.5", "5.0", "5.1", "5.2", "5.3", "6.0", "6.2", "7.0", "7.1", "7.2"]
 }
 for k in ["3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "4.0"]:
-    MAP_VERSION_TO_INSTALL_SPHINX[k][
-        "pre_install"
-    ].append("sed -i 's/Jinja2>=2.3/Jinja2<3.1/' setup.py")
+    MAP_VERSION_TO_INSTALL_SPHINX[k]["pre_install"].extend([
+        "sed -i 's/Jinja2>=2.3/Jinja2<3.1/' setup.py",
+        "sed -i 's/sphinxcontrib-applehelp/sphinxcontrib-applehelp==1.0.4/' setup.py",
+        "sed -i 's/sphinxcontrib-devhelp/sphinxcontrib-devhelp==1.0.2/' setup.py",
+        "sed -i 's/sphinxcontrib-htmlhelp/sphinxcontrib-htmlhelp==2.0.1/' setup.py",
+        "sed -i 's/sphinxcontrib-serializinghtml/sphinxcontrib-serializinghtml==1.1.5/' setup.py",
+        "sed -i 's/sphinxcontrib-qthelp/sphinxcontrib-qthelp==1.0.3/' setup.py",
+        "sed -i 's/alabaster>=0.7,<0.8/alabaster<0.7/' setup.py",
+    ])
 
 MAP_VERSION_TO_INSTALL_ASTROPY = {
     k: {"python": "3.9", "install": "pip install -e .[test]"}
@@ -418,7 +424,7 @@ TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
 MAP_REPO_TO_TEST_FRAMEWORK = {
     "astropy/astropy": TEST_PYTEST,
     "dbt-labs/dbt-core": TEST_PYTEST,
-    "django/django": "./tests/runtests.py --verbosity 2",
+    "django/django": "./tests/runtests.py --verbosity 2 --parallel=1",
     "huggingface/transformers": TEST_PYTEST,
     "marshmallow-code/marshmallow": TEST_PYTEST,
     "matplotlib/matplotlib": TEST_PYTEST,

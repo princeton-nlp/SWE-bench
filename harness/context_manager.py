@@ -339,7 +339,14 @@ class TestbedContextManager:
                     logger_testbed.info(
                         f"[Testbed] Installing pip packages for {env_name}; Command: {cmd}"
                     )
-                    self.exec(cmd, shell=True)
+                    # breakpoint()
+                    self.exec(
+                        cmd,
+                        shell=True,
+                        executable="/bin/bash",
+                        timeout=self.timeout,
+                        env=None
+                    )
 
         return self
 
@@ -523,6 +530,8 @@ class TaskEnvContextManager:
         # Get installation instructions by repo/version
         specifications = MAP_VERSION_TO_INSTALL[instance["repo"]][instance["version"]]
 
+        # breakpoint()
+
         # Run pre-install set up if provided
         if "pre_install" in specifications:
             for pre_install in specifications["pre_install"]:
@@ -531,7 +540,11 @@ class TaskEnvContextManager:
                     f"[{self.testbed_name}] [{instance[KEY_INSTANCE_ID]}] Running pre-install setup command: {cmd_pre_install}"
                 )
                 out_pre_install = self.exec(
-                    cmd_pre_install, timeout=self.timeout, shell=True
+                    cmd_pre_install, 
+                    timeout=self.timeout, 
+                    shell=True,
+                    executable="/bin/bash",
+                    env=None
                 )
                 with open(self.log_file, "a") as f:
                     f.write(f"Pre-installation Command: {cmd_pre_install}\n")
@@ -555,7 +568,8 @@ class TaskEnvContextManager:
         )
         try:
             # Run installation command
-            out_install = self.exec(cmd_install, timeout=self.timeout, shell=True)
+            # breakpoint()
+            out_install = self.exec(cmd_install, timeout=self.timeout, shell=True, executable="/bin/bash", env=None)
 
             # Write installation logs to log file
             with open(self.log_file, "a") as f:
@@ -664,10 +678,18 @@ class TaskEnvContextManager:
         try:
             # Run test command for task instance
             test_cmd = f"{self.cmd_activate} && {instance['test_cmd']}"
+            # test_cmd = test_cmd.replace("./tests/runtests.py ", "pip install -e . && ./tests/runtests.py --parallel=1 ") # Fix Django installs
             with open(self.log_file, "a") as f:
                 f.write(f"Test Script: {test_cmd};\n")
+            breakpoint()
             out_test = self.exec(
-                test_cmd, shell=True, timeout=self.timeout, check=False
+                test_cmd,
+                shell=True,
+                timeout=self.timeout,
+                check=False,
+                executable="/bin/bash",
+                text=True,
+                env=None
             )
 
             # Write test results to log file
