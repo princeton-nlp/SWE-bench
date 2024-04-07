@@ -4,6 +4,9 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.0.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.0.0 onwards are fully listed.
 
+## [1.0.5] - 4/7/2024
+* Fix log parsing for `pydicom`, `pylint`, and `requests` libraries. [5cb448](https://github.com/princeton-nlp/SWE-bench/commit/5cb448140a8cd05490650b0671d860765180f26c)
+
 ## [1.0.4] - 4/5/2024
 * Fixed `env_list` parsing. [5be59d](https://github.com/princeton-nlp/SWE-bench/commit/5be59d665233ffb63b9beb30b2740cc41098e51f)
 * Updated `ExecWrapper`, `LogWrapper` logic for harness. [231a2b](https://github.com/princeton-nlp/SWE-bench/commit/231a2b205c5ca9ddcb126b73b22667d79e1b6108)
