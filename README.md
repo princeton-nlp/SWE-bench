@@ -2,6 +2,15 @@
 
 Fork of [SWE-bench](https://github.com/princeton-nlp/SWE-bench) with modifications to use some of its scripts.
 
+## Docker images
+
+```
+# only evaluation environment
+yuntongzhang/swe-bench:latest
+# additionally with projects setup for other tools
+yuntongzhang/swe-bench:experiment
+```
+
 ## Instructions
 
 ### To install
