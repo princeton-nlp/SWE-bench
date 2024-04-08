@@ -4,8 +4,6 @@ Fork of [SWE-bench](https://github.com/princeton-nlp/SWE-bench) with modificatio
 
 ## Instructions
 
-_Before everything, install SWE-bench and conda activate._
-
 ### To install
 
 First, install miniconda:
@@ -25,7 +23,7 @@ conda activate swe-bench
 In some distro, `/bin/sh` points to dash instead of bash, which can cause issues when `source` is used in the benchmark code. To change it to bash:
 
 ```
-sudo dpkg-reconfigure dash
+ln -sf /bin/bash /bin/sh
 ```
 
 Also install system level packages required by the benchmark subjects:
@@ -33,7 +31,7 @@ These are important for successfully installing the benchmark subject dependenci
 successfully running the benchmark subject tests.
 
 ```
-sudo apt install -y libffi-dev python3-pytest libfreetype6-dev libqhull-dev pkg-config texlive cm-super dvipng python-tk ffmpeg imagemagick fontconfig ghostscript inkscape graphviz optipng fonts-comic-neue  python3-pikepdf
+sudo apt install -y libffi-dev python3-pytest libfreetype6-dev libqhull-dev pkg-config texlive cm-super dvipng python-tk ffmpeg imagemagick fontconfig ghostscript inkscape graphviz optipng fonts-comic-neue python3-pikepdf build-essential libssl-dev
 
 sudo apt install ttf-mscorefonts-installer
 ```
@@ -76,8 +74,12 @@ python harness/run_setup.py --log_dir logs --testbed testbed --result_dir setup_
    This can be downloaded from the original Github repo.
 3. Create directories `logs` and `eval-testbed` for storing logs and the temporarily cloned projects.
 
-- Run the script like this:
+Run the evaluation script like this:
+
+NOTE: do not overwrite existing `testbed` directory, as it contains setup for other tools to run.
 
 ```
-python harness/run_evaluation.py --predictions_path ../astropy-6938-prediction.json --swe_bench_tasks ./data/swe-bench.json --log_dir ../logs --testbed ../clone --conda_path  ~/miniconda3 --timeout 900 --verbose
+mkdir eval_logs
+mkdir eval_testbed
+python harness/run_evaluation.py --predictions_path ../predictions_for_swebench.json --swe_bench_tasks ./data/swe-bench.json --log_dir eval_logs --testbed eval_testbed  --verbose
 ```
