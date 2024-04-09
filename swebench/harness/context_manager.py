@@ -82,6 +82,7 @@ class ExecWrapper:
             self.logger.write(f"Std. Output:\n{output.stdout}", level=DEBUG)
             if output.stderr:
                 self.logger.write(f"Std. Error:\n{output.stderr}", level=DEBUG)
+            self.logger.write(f"Return Code: {output.returncode}", level=DEBUG)
             return output
         except subprocess.CalledProcessError as e:
             if raise_error and self.logger is not None:
@@ -129,8 +130,10 @@ class TestbedContextManager:
             subprocess_args={
                 "check": True,
                 "shell": False,
-                "capture_output": True,
+                "capture_output": False,
                 "text": True,
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.STDOUT,
             },
         )
 
@@ -516,9 +519,11 @@ class TaskEnvContextManager:
             subprocess_args={
                 "check": True,
                 "shell": False,
-                "capture_output": True,
+                "capture_output": False,
                 "text": True,
                 "env": {"CONDA_PKGS_DIRS": self.conda_cache_dir},
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.STDOUT,
             },
             logger=self.log,
         )
