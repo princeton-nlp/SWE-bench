@@ -709,9 +709,20 @@ class TaskEnvContextManager:
             test_cmd = f"{self.cmd_activate} && {instance['test_cmd']}"
             with open(self.log_file, "a") as f:
                 f.write(f"Test Script: {test_cmd};\n")
+
+            # Set environment variables if provided
+            specifications = MAP_VERSION_TO_INSTALL[instance["repo"]][instance["version"]]
+            if "env_vars_test" in specifications:
+                self.exec.subprocess_args["env"].update(specifications["env_vars_test"])
+
             out_test = self.exec(
                 test_cmd, shell=True, timeout=self.timeout, check=False
             )
+
+            # Unset environment variables if provided
+            if "env_vars_test" in specifications:
+                for key in specifications["env_vars_test"]:
+                    del self.exec.subprocess_args["env"][key]
 
             # Write test results to log file
             with open(self.log_file, "a") as f:

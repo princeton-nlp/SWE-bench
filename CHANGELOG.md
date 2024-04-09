@@ -4,6 +4,10 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.0.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.0.0 onwards are fully listed.
 
+## [1.0.7] - 4/9/2024
+* Add `env_vars_test` field to allow for environment variable assignment for testing scripts.
+* Fix versioning for `astroid` dependency in `pylint` installation script`.
+
 ## [1.0.5] - 4/7/2024
 * Fix log parsing for `pydicom`, `pylint`, and `requests` libraries. [5cb448](https://github.com/princeton-nlp/SWE-bench/commit/5cb448140a8cd05490650b0671d860765180f26c)
 

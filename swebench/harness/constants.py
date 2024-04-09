@@ -145,6 +145,10 @@ MAP_VERSION_TO_INSTALL_DJANGO.update(
         for k in ["5.0"]
     }
 )
+for k in ["2.2", "3.0", "3.1"]:
+    MAP_VERSION_TO_INSTALL_DJANGO[k].update(
+        {"env_vars_test": { "LANG": "en_US.UTF-8", "LC_ALL": "en_US.UTF-8" }}
+    )
 
 MAP_VERSION_TO_INSTALL_REQUESTS = {
     k: {"python": "3.9", "packages": "pytest", "install": "python -m pip install ."}
@@ -323,7 +327,7 @@ MAP_VERSION_TO_INSTALL_PYLINT = {
 }
 MAP_VERSION_TO_INSTALL_PYLINT.update({
     k: {**MAP_VERSION_TO_INSTALL_PYLINT[k], "pip_packages": " ".join([
-        "astroid==3.0.0a7"
+        "astroid==3.0.0a6"
     ])} for k in ['3.0']})
 
 MAP_VERSION_TO_INSTALL_XARRAY = {
