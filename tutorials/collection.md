@@ -57,7 +57,7 @@ Per repository, you must provide installation instructions per version. In `cons
     "python": "3.x", # Required
     "packages": "numpy pandas tensorflow",
     "install": "pip install -e .", # Required
-    "pip_packages": "pytest",
+    "pip_packages": ["pytest"],
 }
 ```
 These instructions can typically be inferred from the companion website or `CONTRIBUTING.md` doc that many open source repositories have.

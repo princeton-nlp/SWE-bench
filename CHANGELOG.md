@@ -6,6 +6,7 @@ Prior to version 1.0.0, not all deployed versions are listed, as the PyPI packag
 
 ## [1.0.8] - 4/9/2024
 * Add `env_vars_test` field to allow for environment variable assignment for testing scripts.
+* Change `pip_packages` installation specification to be a list instead of a string.
 * Define `astropy`, `flask`, `sympy`, `xarray` PyPI package versioning explicitly.
 * Fix versioning for `astroid` dependency in `pylint` installation script`.
 * Fix minor error in `parse_log_pytest_options`.
