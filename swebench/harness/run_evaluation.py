@@ -136,7 +136,7 @@ def main(
                     # Issue: https://github.com/conda/conda/issues/12250
                     testbed_model_name = deterministic_hash(testbed_model_name, 10)
                 testbed_model_repo_version_dir = os.path.join(
-                    testbed, testbed_model_name, repo, version)
+                    testbed, testbed_model_name, repo.rsplit('__', 1)[-1], version)
                 os.makedirs(testbed_model_repo_version_dir, exist_ok=True)
 
                 # Create predictions file for model/repo/version
