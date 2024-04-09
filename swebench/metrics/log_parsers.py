@@ -48,8 +48,8 @@ def parse_log_pytest_options(log: str) -> dict:
             if has_option:
                 main, option = has_option.groups()
                 if option.startswith('/') and not option.startswith('//') and '*' not in option:
-                    option = option.split('/')[-1]
-                test_name = f'{main}[/{option}]'
+                    option = "/" + option.split('/')[-1]
+                test_name = f'{main}[{option}]'
             else:
                 test_name = test_case[1]
             test_status_map[test_name] = test_case[0]
