@@ -4,14 +4,15 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.0.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.0.0 onwards are fully listed.
 
-## [1.0.8] - 4/9/2024
+## [1.0.9] - 4/10/2024
 * Add `env_vars_test` field to allow for environment variable assignment for testing scripts.
 * Change `pip_packages` installation specification to be a list instead of a string.
-* Define `astropy`, `flask`, `sympy`, `xarray` PyPI package versioning explicitly.
+* Define PyPI package versioning explicitly for dev, test repos.
 * Fix versioning for `astroid` dependency in `pylint` installation script`.
 * Fix minor error in `parse_log_pytest_options`.
 * Make logging of subprocess args to log file smaller.
 * Remove installation specifications for `dbt-core`, `transformers`.
+* Remove unused versions from installation specifications for dev, test repos.
 
 ## [1.0.5] - 4/7/2024
 * Fix log parsing for `pydicom`, `pylint`, and `requests` libraries. [5cb448](https://github.com/princeton-nlp/SWE-bench/commit/5cb448140a8cd05490650b0671d860765180f26c)

@@ -440,8 +440,8 @@ MAP_VERSION_TO_INSTALL_SQLFLUFF = {
         "install": "pip install -e .",
     }
     for k in [
-        '0.10', '0.11', '0.12', '0.13', '0.4', '0.5', '0.6', '0.8', '0.9',
-        '1.0', '1.1', '1.2', '1.3', '1.4', '2.0', '2.1', '2.2'
+        '0.10', '0.11', '0.12', '0.13', '0.4', '0.6', '0.8', '0.9',
+        '1.1', '1.2', '1.3', '1.4', '2.0', '2.1', '2.2'
     ]
 }
 
@@ -473,21 +473,29 @@ MAP_VERSION_TO_INSTALL_ASTROID = {
         "install": "pip install -e .",
         "pip_packages": ["pytest"],
     }
-    for k in [
-        '2.10', '2.12', '2.13', '2.14', '2.15', '2.16', '2.5', '2.6',
-        '2.7', '2.8', '2.9', '3.0'
-    ]
+    for k in ['2.10', '2.12', '2.13', '2.14', '2.15', '2.5', '2.6', '2.7', '2.9', '3.0']
 }
+for k in ["2.5", "2.6"]:
+    MAP_VERSION_TO_INSTALL_ASTROID[k]["pip_packages"] = [
+        "lazy_object_proxy==1.9.0", "wrapt==1.12.1"]
+for k in ["2.9", "2.10"]:
+    MAP_VERSION_TO_INSTALL_ASTROID[k]["pip_packages"] = [
+        "lazy_object_proxy==1.9.0", "wrapt==1.13.3",
+        "typing-extensions==4.8.0", "setuptools==68.0.0"]
+for k in ["2.12", "2.13", "2.14", "2.15"]:
+    MAP_VERSION_TO_INSTALL_ASTROID[k]["pip_packages"] = [
+        "lazy_object_proxy==1.9.0", "wrapt==1.15.0", "typing-extensions==4.8.0"]
+MAP_VERSION_TO_INSTALL_ASTROID["2.7"]["pip_packages"] = [
+    "lazy_object_proxy==1.9.0", "wrapt==1.12.1", "typing-extensions==4.8.0"]
+MAP_VERSION_TO_INSTALL_ASTROID["3.0"]["pip_packages"] = ["typing-extensions==4.8.0"]
+
 
 MAP_VERSION_TO_INSTALL_MARSHMALLOW = {
     k: {
         "python": "3.9",
         "install": "pip install -e '.[dev]'",
     }
-    for k in [
-        '2.18', '2.19', '2.20', '3.0', '3.1', '3.10', '3.11', '3.12',
-        '3.13', '3.15', '3.16', '3.19', '3.2', '3.4', '3.8', '3.9'
-    ]
+    for k in ['2.18', '2.19', '2.20', '3.0', '3.12', '3.19', '3.9']
 }
 
 MAP_VERSION_TO_INSTALL_PVLIB = {
@@ -497,9 +505,7 @@ MAP_VERSION_TO_INSTALL_PVLIB = {
         "packages": "pandas scipy",
         "pip_packages": ["jupyter", "ipython", "matplotlib", "pytest", "flake8"]
     }
-    for k in [
-        '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9'
-    ]
+    for k in ['0.5', '0.6', '0.7', '0.8', '0.9']
 }
 
 MAP_VERSION_TO_INSTALL_PYDICOM = {
@@ -508,10 +514,7 @@ MAP_VERSION_TO_INSTALL_PYDICOM = {
         "install": "pip install -e .",
         "packages": "numpy"
     }
-    for k in [
-        '1.0', '1.1', '1.2', '1.3', '1.4',
-        '2.0', '2.1', '2.2', '2.3', '2.4', '3.0'
-    ]
+    for k in ['1.2', '1.3', '1.4', '2.0', '2.1', '2.2', '2.3']
 }
 MAP_VERSION_TO_INSTALL_PYDICOM.update({
     k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.8"}
