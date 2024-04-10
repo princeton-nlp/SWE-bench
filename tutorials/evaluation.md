@@ -25,7 +25,7 @@ To run evalution, modify then run the `harness/run_evaluation.sh` script, which 
 ```bash
 python run_evaluation.py \
     --predictions_path <Path to predictions .json file> \
-    --swe_bench_tasks <Path to `swe-bench.json` file> \
+    --swe_bench_tasks <Path to `swe-bench.json` file | "test" | "dev"> \
     --log_dir <Path to folder to write per-task instance logs to> \
     --testbed <Path to temporary directory to execute each task instance>
 ```
