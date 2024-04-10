@@ -395,7 +395,8 @@ class TestbedContextManager:
 
                 # Install additional packages if specified
                 if "pip_packages" in install:
-                    cmd = f". {path_activate} {env_name} && pip install {install['pip_packages']}"
+                    pip_packages = " ".join(install["pip_packages"])
+                    cmd = f". {path_activate} {env_name} && pip install {pip_packages}"
                     self.log.write(f"Installing pip packages for {env_name}; Command: {cmd}")
                     self.exec(cmd, shell=True)
 

@@ -5,23 +5,14 @@ MAP_VERSION_TO_INSTALL_SKLEARN = {
         "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
         "arch_specific_packages": {
             "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
-        }
+        },
+        "pip_packages": [
+            "numpy==1.19.2",
+            "scipy==1.5.2",
+        ],
     }
     for k in ["0.20", "0.21", "0.22"]
 }
-MAP_VERSION_TO_INSTALL_SKLEARN.update(
-    {
-        k: {
-            "python": "3.7",
-            "packages": "numpy scipy cython pytest pandas matplotlib",
-            "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
-            "arch_specific_packages": {
-                "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
-            }
-        }
-        for k in ["0.23", "0.24"]
-    }
-)
 MAP_VERSION_TO_INSTALL_SKLEARN.update(
     {
         k: {
@@ -30,62 +21,57 @@ MAP_VERSION_TO_INSTALL_SKLEARN.update(
             "install": "pip install -v --no-use-pep517 --no-build-isolation -e .",
             "arch_specific_packages": {
                 "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
-            }
+            },
+            "pip_packages": [
+                "numpy==1.25.2",
+                "scipy==1.11.1",
+                "joblib==1.2.0",
+                "threadpoolctl==2.2.0",
+            ]
         }
-        for k in ["1.0", "1.1", "1.2", "1.3", "1.4"]
+        for k in ["1.3", "1.4"]
     }
 )
 
 MAP_VERSION_TO_INSTALL_FLASK = {
-    "0.11-dev": {
-        "python": "3.6",
-        "packages": "pytest",
-        "pip_packages": "tox",
-        "install": "python setup.py develop",
-    },
-    "1.0": {
-        "python": "3.8",
-        "packages": "pytest",
-        "pip_packages": "tox",
-        "install": 'pip install -e ".[dev]"',
-    },
-    "1.1": {
-        "python": "3.9",
-        "packages": "pytest",
-        "pip_packages": "tox",
-        "install": 'pip install -e ".[dev]"',
-    },
     "2.0": {
         "python": "3.9",
         "packages": "requirements.txt",
         "install": "pip install -e .",
-        "pip_packages": "Werkzeug==2.2.2",
+        "pip_packages": [
+            "Werkzeug==2.3.7",
+            "Jinja2==3.0.1",
+            "itsdangerous==2.1.2",
+            "click==8.0.1",
+            "MarkupSafe==2.1.3",
+        ],
     },
     "2.1": {
         "python": "3.10",
         "packages": "requirements.txt",
         "install": "pip install -e .",
-        "pip_packages": "Werkzeug==2.2.2",
+        "pip_packages": [
+            "click==8.1.3",
+            "itsdangerous==2.1.2",
+            "Jinja2==3.1.2",
+            "MarkupSafe==2.1.1",
+            "Werkzeug==2.3.7",
+        ],
     },
 }
-MAP_VERSION_TO_INSTALL_FLASK.update(
-    {
-        k: {
-            "python": "3.6",
-            "packages": "pytest",
-            "pip_packages": "tox",
-            "install": "pip install -e .",
-        }
-        for k in ["0.11", "0.12", "0.12-dev", "0.13-dev"]
-    }
-)
 MAP_VERSION_TO_INSTALL_FLASK.update(
     {
         k: {
             "python": "3.11",
             "packages": "requirements.txt",
             "install": "pip install -e .",
-            "pip_packages": "Werkzeug==2.2.2"
+            "pip_packages": [
+                "click==8.1.3",
+                "itsdangerous==2.1.2",
+                "Jinja2==3.1.2",
+                "MarkupSafe==2.1.1",
+                "Werkzeug==2.3.7",
+            ],
         }
         for k in ["2.2", "2.3"]
     }
@@ -159,29 +145,115 @@ MAP_VERSION_TO_INSTALL_REQUESTS = {
 }
 
 MAP_VERSION_TO_INSTALL_SEABORN = {
-    k: {"python": "3.9", "install": "pip install -e .", "pip_packages": "pytest"}
-    for k in ["0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.11"]
+    k: {
+        "python": "3.9",
+        "install": "pip install -e .",
+        "pip_packages": [
+            "contourpy==1.1.0",
+            "cycler==0.11.0",
+            "fonttools==4.42.1",
+            "importlib-resources==6.0.1",
+            "kiwisolver==1.4.5",
+            "matplotlib==3.7.2",
+            "numpy==1.25.2",
+            "packaging==23.1",
+            "pandas==2.1.0",
+            "pillow==10.0.0",
+            "pyparsing==3.0.9",
+            "pytest",
+            "python-dateutil==2.8.2",
+            "pytz==2023.3.post1",
+            "scipy==1.11.2",
+            "six==1.16.0",
+            "tzdata==2023.1",
+            "zipp==3.16.2",
+        ],
+    }
+    for k in ["0.11"]
 }
 MAP_VERSION_TO_INSTALL_SEABORN.update(
-    {k: {"python": "3.9", "install": "pip install -e .[dev]"} for k in ["0.12", "0.13"]}
+    {
+        k: {
+            "python": "3.9",
+            "install": "pip install -e .[dev]",
+            "pip_packages": [
+                "contourpy==1.1.0",
+                "cycler==0.11.0",
+                "fonttools==4.42.1",
+                "importlib-resources==6.0.1",
+                "kiwisolver==1.4.5",
+                "matplotlib==3.7.2",
+                "numpy==1.25.2",
+                "packaging==23.1",
+                "pandas==2.1.0",
+                "pillow==10.0.0",
+                "pyparsing==3.0.9",
+                "python-dateutil==2.8.2",
+                "pytz==2023.3.post1",
+                "scipy==1.11.2",
+                "six==1.16.0",
+                "tzdata==2023.1",
+                "zipp==3.16.2",
+            ],
+        } for k in ["0.12", "0.13"]
+    }
 )
 
 MAP_VERSION_TO_INSTALL_PYTEST = {
-    k: {"python": "3.9", "install": "pip install -e ."}
-    for k in ["3.10", "6.0", "6.2", "6.3", "8.0"]
-    + [
-        str(round(0.1 * x, 1))
-        for interval in [(30, 47), (50, 55), (70, 75)]
-        for x in range(interval[0], interval[1], 1)
+    k: {
+        "python": "3.9",
+        "install": "pip install -e ."
+    } for k in [
+        '4.4','4.5','4.6','5.0','5.1','5.2','5.3','5.4',
+        '6.0','6.2','6.3','7.0','7.1','7.2','7.4','8.0'
     ]
 }
+MAP_VERSION_TO_INSTALL_PYTEST["4.4"]["pip_packages"] = [
+    "atomicwrites==1.4.1", "attrs==23.1.0", "more-itertools==10.1.0",
+    "pluggy==0.13.1", "py==1.11.0", "setuptools==68.0.0", "six==1.16.0",]
+MAP_VERSION_TO_INSTALL_PYTEST["4.5"]["pip_packages"] = [
+    "atomicwrites==1.4.1", "attrs==23.1.0", "more-itertools==10.1.0",
+    "pluggy==0.11.0", "py==1.11.0", "setuptools==68.0.0", "six==1.16.0", "wcwidth==0.2.6"]
+MAP_VERSION_TO_INSTALL_PYTEST["4.6"]["pip_packages"] = [
+    "atomicwrites==1.4.1", "attrs==23.1.0", "more-itertools==10.1.0",
+    "packaging==23.1", "pluggy==0.13.1", "py==1.11.0", "six==1.16.0", "wcwidth==0.2.6"]
+for k in ["5.0", "5.1", "5.2"]:
+    MAP_VERSION_TO_INSTALL_PYTEST[k]["pip_packages"] = [
+        "atomicwrites==1.4.1", "attrs==23.1.0", "more-itertools==10.1.0",
+        "packaging==23.1", "pluggy==0.13.1", "py==1.11.0", "wcwidth==0.2.6"]
+MAP_VERSION_TO_INSTALL_PYTEST["5.3"]["pip_packages"] = [
+    "attrs==23.1.0", "more-itertools==10.1.0", "packaging==23.1",
+    "pluggy==0.13.1", "py==1.11.0", "wcwidth==0.2.6"]
+MAP_VERSION_TO_INSTALL_PYTEST["5.4"]["pip_packages"] = [
+    "py==1.11.0", "packaging==23.1", "attrs==23.1.0",
+    "more-itertools==10.1.0", "pluggy==0.13.1"]
+MAP_VERSION_TO_INSTALL_PYTEST["6.0"]["pip_packages"] = [
+    "attrs==23.1.0", "iniconfig==2.0.0", "more-itertools==10.1.0",
+    "packaging==23.1", "pluggy==0.13.1", "py==1.11.0", "toml==0.10.2"]
+for k in ["6.2", "6.3"]:
+    MAP_VERSION_TO_INSTALL_PYTEST[k]["pip_packages"] = [
+        "attrs==23.1.0", "iniconfig==2.0.0", "packaging==23.1",
+        "pluggy==0.13.1", "py==1.11.0", "toml==0.10.2"]
+MAP_VERSION_TO_INSTALL_PYTEST["7.0"]["pip_packages"] = [
+    "attrs==23.1.0", "iniconfig==2.0.0", "packaging==23.1",
+    "pluggy==0.13.1", "py==1.11.0"]
+for k in ["7.1", "7.2"]:
+    MAP_VERSION_TO_INSTALL_PYTEST[k]["pip_packages"] = [
+        "attrs==23.1.0", "iniconfig==2.0.0", "packaging==23.1",
+        "pluggy==0.13.1", "py==1.11.0", "tomli==2.0.1"]
+MAP_VERSION_TO_INSTALL_PYTEST["7.4"]["pip_packages"] = [
+    "iniconfig==2.0.0", "packaging==23.1", "pluggy==1.3.0",
+    "exceptiongroup==1.1.3", "tomli==2.0.1"]
+MAP_VERSION_TO_INSTALL_PYTEST["8.0"]["pip_packages"] = [
+    "iniconfig==2.0.0", "packaging==23.1", "pluggy==1.3.0",
+    "exceptiongroup==1.1.3", "tomli==2.0.1"]
 
 MAP_VERSION_TO_INSTALL_MATPLOTLIB = {
     k: {
         "python": "3.11",
         "packages": "environment.yml",
         "install": "python -m pip install -e .",
-        "pip_packages": " ".join([
+        "pip_packages": [
             "contourpy==1.1.0",
             "cycler==0.11.0",
             "fonttools==4.42.1",
@@ -195,7 +267,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB = {
             "setuptools==68.1.2",
             "setuptools-scm==7.1.0",
             "typing-extensions==4.7.1",
-        ]),
+        ],
         "arch_specific_packages": {
             "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
         }
@@ -244,7 +316,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
 MAP_VERSION_TO_INSTALL_SPHINX = {
     k: {
         "python": "3.9",
-        "pip_packages": "tox",
+        "pip_packages": ["tox"],
         "install": "pip install -e .[test]",
         "pre_install": ["sed -i 's/pytest/pytest -rA/' tox.ini"],
         "arch_specific_packages": {
@@ -293,7 +365,18 @@ for k in ["3.0", "3.1", "3.2", "3.3", "3.4", "3.5", "4.0", "4.1", "4.2", "4.3", 
 
 
 MAP_VERSION_TO_INSTALL_ASTROPY = {
-    k: {"python": "3.9", "install": "pip install -e .[test]"}
+    k: {
+        "python": "3.9",
+        "install": "pip install -e .[test]",
+        "pip_packages": [
+            "attrs==23.1.0", "exceptiongroup==1.1.3", "execnet==2.0.2", "hypothesis==6.82.6",
+            "iniconfig==2.0.0", "numpy==1.25.2", "packaging==23.1", "pluggy==1.3.0",
+            "psutil==5.9.5", "pyerfa==2.0.0.3", "pytest-arraydiff==0.5.0", "pytest-astropy-header==0.2.2",
+            "pytest-astropy==0.10.0", "pytest-cov==4.1.0", "pytest-doctestplus==1.0.0", "pytest-filter-subpackage==0.1.2",
+            "pytest-mock==3.11.1", "pytest-openfiles==0.5.0", "pytest-remotedata==0.4.0", "pytest-xdist==3.3.1",
+            "pytest==7.4.0", "PyYAML==6.0.1", "setuptools==68.0.0", "sortedcontainers==2.4.0", "tomli==2.0.1",
+        ],
+    }
     for k in
         ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3", "3.0", "3.1", "3.2"] + \
         ["4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]
@@ -303,7 +386,7 @@ MAP_VERSION_TO_INSTALL_SYMPY = {
     k: {
         "python": "3.9",
         "packages": "mpmath flake8",
-        "pip_packages": "flake8-comprehensions",
+        "pip_packages": ["mpmath==1.3.0", "flake8-comprehensions"],
         "install": "pip install -e .",
     }
     for k in
@@ -316,6 +399,7 @@ MAP_VERSION_TO_INSTALL_SYMPY.update(
             "python": "3.9",
             "packages": "requirements.txt",
             "install": "pip install -e .",
+            "pip_packages": ["mpmath==1.3.0"],
         }
         for k in ["1.13"]
     }
@@ -326,34 +410,27 @@ MAP_VERSION_TO_INSTALL_PYLINT = {
     for k in ["2.10", "2.11", "2.13", "2.14", "2.15", "2.16", "2.17", "2.8", "2.9", "3.0"]
 }
 MAP_VERSION_TO_INSTALL_PYLINT.update({
-    k: {**MAP_VERSION_TO_INSTALL_PYLINT[k], "pip_packages": " ".join([
+    k: {**MAP_VERSION_TO_INSTALL_PYLINT[k], "pip_packages": [
         "astroid==3.0.0a6"
-    ])} for k in ['3.0']})
+    ]} for k in ['3.0']})
 
 MAP_VERSION_TO_INSTALL_XARRAY = {
     k: {
         "python": "3.10",
         "packages": "environment.yml",
         "install": "pip install -e .",
-        "pip_packages": "pytest",
+        "pip_packages": [
+            "numpy==1.25.2",
+            "packaging==23.1",
+            "pandas==1.5.3",
+            "pytest==7.4.0",
+            "python-dateutil==2.8.2",
+            "pytz==2023.3",
+            "six==1.16.0",
+        ],
         "no_use_env": True,
     }
     for k in ["0.12", "0.18", "0.19", "0.20", "2022.03", "2022.06", "2022.09"]
-}
-
-MAP_VERSION_TO_INSTALL_TRANSFORMERS = {
-    k: {
-        "python": "3.10",
-        "install": "pip install -e .",
-        "pip_packages": "pytest torch tensorflow flax",
-    }
-    for k in [
-        '4.28', '4.29', '4.30', '4.31', '4.32', '4.16', '4.14', '4.15', '4.17',
-        '4.19', '4.18', '4.22', '4.20', '4.11', '4.13', '4.12', '4.6', '4.7',
-        '4.9', '4.8', '4.10', '3.1', '3.2', '3.4', '3.3', '4.0', '3.5', '4.1',
-        '2.5', '2.8', '2.9', '2.11', '2.10', '3.0', '4.3', '4.2', '4.5', '4.4',
-        '4.21', '4.23', '4.24', '4.26', '4.25', '4.27'
-    ]
 }
 
 MAP_VERSION_TO_INSTALL_SQLFLUFF = {
@@ -363,20 +440,8 @@ MAP_VERSION_TO_INSTALL_SQLFLUFF = {
         "install": "pip install -e .",
     }
     for k in [
-        '0.10', '0.11', '0.12', '0.13', '0.4', '0.5', '0.6', '0.8', '0.9',
-        '1.0', '1.1', '1.2', '1.3', '1.4', '2.0', '2.1', '2.2'
-    ]
-}
-
-MAP_VERSION_TO_INSTALL_DBT_CORE = {
-    k: {
-        "python": "3.9",
-        "packages": "requirements.txt",
-        "install": "pip install -e .",
-    }
-    for k in [
-        '0.13', '0.14', '0.15', '0.16', '0.17', '0.18', '0.19', '0.20',
-        '0.21', '1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7'
+        '0.10', '0.11', '0.12', '0.13', '0.4', '0.6', '0.8', '0.9',
+        '1.1', '1.2', '1.3', '1.4', '2.0', '2.1', '2.2'
     ]
 }
 
@@ -384,7 +449,7 @@ MAP_VERSION_TO_INSTALL_PYVISTA = {
     k: {
         "python": "3.9",
         "install": "pip install -e .",
-        "pip_packages": "pytest",
+        "pip_packages": ["pytest"],
     }
     for k in ['0.20', '0.21', '0.22', '0.23']
 }
@@ -393,7 +458,7 @@ MAP_VERSION_TO_INSTALL_PYVISTA.update({
         "python": "3.9",
         "packages": "requirements.txt",
         "install": "pip install -e .",
-        "pip_packages": "pytest",
+        "pip_packages": ["pytest"],
     }
     for k in [
         '0.24', '0.25', '0.26', '0.27', '0.28', '0.29', '0.30', '0.31',
@@ -406,23 +471,31 @@ MAP_VERSION_TO_INSTALL_ASTROID = {
     k: {
         "python": "3.9",
         "install": "pip install -e .",
-        "pip_packages": "pytest",
+        "pip_packages": ["pytest"],
     }
-    for k in [
-        '2.10', '2.12', '2.13', '2.14', '2.15', '2.16', '2.5', '2.6',
-        '2.7', '2.8', '2.9', '3.0'
-    ]
+    for k in ['2.10', '2.12', '2.13', '2.14', '2.15', '2.5', '2.6', '2.7', '2.9', '3.0']
 }
+for k in ["2.5", "2.6"]:
+    MAP_VERSION_TO_INSTALL_ASTROID[k]["pip_packages"] = [
+        "lazy_object_proxy==1.9.0", "wrapt==1.12.1"]
+for k in ["2.9", "2.10"]:
+    MAP_VERSION_TO_INSTALL_ASTROID[k]["pip_packages"] = [
+        "lazy_object_proxy==1.9.0", "wrapt==1.13.3",
+        "typing-extensions==4.8.0", "setuptools==68.0.0"]
+for k in ["2.12", "2.13", "2.14", "2.15"]:
+    MAP_VERSION_TO_INSTALL_ASTROID[k]["pip_packages"] = [
+        "lazy_object_proxy==1.9.0", "wrapt==1.15.0", "typing-extensions==4.8.0"]
+MAP_VERSION_TO_INSTALL_ASTROID["2.7"]["pip_packages"] = [
+    "lazy_object_proxy==1.9.0", "wrapt==1.12.1", "typing-extensions==4.8.0"]
+MAP_VERSION_TO_INSTALL_ASTROID["3.0"]["pip_packages"] = ["typing-extensions==4.8.0"]
+
 
 MAP_VERSION_TO_INSTALL_MARSHMALLOW = {
     k: {
         "python": "3.9",
         "install": "pip install -e '.[dev]'",
     }
-    for k in [
-        '2.18', '2.19', '2.20', '3.0', '3.1', '3.10', '3.11', '3.12',
-        '3.13', '3.15', '3.16', '3.19', '3.2', '3.4', '3.8', '3.9'
-    ]
+    for k in ['2.18', '2.19', '2.20', '3.0', '3.12', '3.19', '3.9']
 }
 
 MAP_VERSION_TO_INSTALL_PVLIB = {
@@ -430,11 +503,9 @@ MAP_VERSION_TO_INSTALL_PVLIB = {
         "python": "3.9",
         "install": "pip install -e .[all]",
         "packages": "pandas scipy",
-        "pip_packages": "jupyter ipython matplotlib pytest flake8"
+        "pip_packages": ["jupyter", "ipython", "matplotlib", "pytest", "flake8"]
     }
-    for k in [
-        '0.1', '0.2', '0.3', '0.4', '0.5', '0.6', '0.7', '0.8', '0.9'
-    ]
+    for k in ['0.5', '0.6', '0.7', '0.8', '0.9']
 }
 
 MAP_VERSION_TO_INSTALL_PYDICOM = {
@@ -443,10 +514,7 @@ MAP_VERSION_TO_INSTALL_PYDICOM = {
         "install": "pip install -e .",
         "packages": "numpy"
     }
-    for k in [
-        '1.0', '1.1', '1.2', '1.3', '1.4',
-        '2.0', '2.1', '2.2', '2.3', '2.4', '3.0'
-    ]
+    for k in ['1.2', '1.3', '1.4', '2.0', '2.1', '2.2', '2.3']
 }
 MAP_VERSION_TO_INSTALL_PYDICOM.update({
     k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.8"}
@@ -457,18 +525,13 @@ MAP_VERSION_TO_INSTALL_PYDICOM.update({
 MAP_VERSION_TO_INSTALL_PYDICOM.update({
     k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.10"}
     for k in ['2.3']})
-MAP_VERSION_TO_INSTALL_PYDICOM.update({
-    k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.11"}
-    for k in ['2.4', '3.0']})
 
 MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
 
 # Constants - Task Instance Instllation Environment
 MAP_VERSION_TO_INSTALL = {
     "astropy/astropy": MAP_VERSION_TO_INSTALL_ASTROPY,
-    "dbt-labs/dbt-core": MAP_VERSION_TO_INSTALL_DBT_CORE,
     "django/django": MAP_VERSION_TO_INSTALL_DJANGO,
-    "huggingface/transformers": MAP_VERSION_TO_INSTALL_TRANSFORMERS,
     "matplotlib/matplotlib": MAP_VERSION_TO_INSTALL_MATPLOTLIB,
     "marshmallow-code/marshmallow": MAP_VERSION_TO_INSTALL_MARSHMALLOW,
     "mwaskom/seaborn": MAP_VERSION_TO_INSTALL_SEABORN,
