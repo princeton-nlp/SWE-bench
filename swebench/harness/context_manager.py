@@ -88,7 +88,8 @@ class ExecWrapper:
             if raise_error and self.logger is not None:
                 self.logger.write(f"Error: {e}", level=ERROR)
                 self.logger.write(f"Error stdout: {e.stdout}", level=ERROR)
-                self.logger.write(f"Error stderr: {e.stderr}", level=ERROR)
+                if e.stderr:
+                    self.logger.write(f"Error stderr: {e.stderr}", level=ERROR)
                 self.logger.write(f"Error traceback: {format_exc()}", level=ERROR)
                 raise e
 
@@ -603,7 +604,8 @@ class TaskEnvContextManager:
                 with open(self.log_file, "a") as f:
                     f.write(f"Pre-installation Command: {cmd_pre_install}\n")
                     f.write(f"Std. Output: {out_pre_install.stdout}\n")
-                    f.write(f"Std. Error: {out_pre_install.stderr}\n")
+                    if out_pre_install.stderr:
+                        f.write(f"Std. Error: {out_pre_install.stderr}\n")
                 if out_pre_install.returncode != 0:
                     self.log.write(f"Pre-install setup failed", level=ERROR)
                     with open(self.log_file, "a") as f:
@@ -624,7 +626,8 @@ class TaskEnvContextManager:
             with open(self.log_file, "a") as f:
                 f.write(f"Installation Command: {cmd_install}\n")
                 f.write(f"Std. Output: {out_install.stdout}\n")
-                f.write(f"Std. Error: {out_install.stderr}\n")
+                if out_install.stderr:
+                    f.write(f"Std. Error: {out_install.stderr}\n")
 
             if out_install.returncode != 0:
                 # Installation failed
@@ -692,7 +695,8 @@ class TaskEnvContextManager:
             with open(self.log_file, "a") as f:
                 f.write(f"{APPLY_PATCH_FAIL}; ({patch_type})\nOutput:\n")
                 f.write(out_patch.stdout)
-                f.write(out_patch.stderr)
+                if out_patch.stderr:
+                    f.write(out_patch.stderr)
             return False
 
         # Patch apply succeeded
@@ -734,7 +738,8 @@ class TaskEnvContextManager:
             with open(self.log_file, "a") as f:
                 f.write(f"Output:\n")
                 f.write(out_test.stdout)
-                f.write(out_test.stderr)
+                if out_test.stderr:
+                    f.write(out_test.stderr)
                 if out_test.returncode != 0:
                     f.write(f"\n{TESTS_FAILED}\n")
                 else:
