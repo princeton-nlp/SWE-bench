@@ -525,9 +525,6 @@ MAP_VERSION_TO_INSTALL_PYDICOM.update({
 MAP_VERSION_TO_INSTALL_PYDICOM.update({
     k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.10"}
     for k in ['2.3']})
-MAP_VERSION_TO_INSTALL_PYDICOM.update({
-    k: {**MAP_VERSION_TO_INSTALL_PYDICOM[k], "python": "3.11"}
-    for k in ['2.4', '3.0']})
 
 MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
 
