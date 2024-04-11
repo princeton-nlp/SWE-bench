@@ -155,12 +155,13 @@ class TestbedContextManager:
 
         # Group repos by repo, then version
         self.task_instances_grouped = {}
-        self.test_directives = []
+        # self.test_directives = []
         for instance in self.task_instances:
             # Create test command from framework + directives
             test_type = MAP_REPO_TO_TEST_FRAMEWORK[instance["repo"]]
-            self.test_directives = get_test_directives(instance)
-            instance["test_cmd"] = f"{test_type} {' '.join(self.test_directives)}"
+            # self.test_directives = get_test_directives(instance)
+            instance["test_directives"] = get_test_directives(instance)
+            instance["test_cmd"] = f"{test_type} {' '.join(instance['test_directives'])}"
 
             # Group task instances by repo, version
             repo = instance["repo"]
@@ -678,7 +679,7 @@ class TaskEnvContextManager:
 
         # Restore test files before applying if patch_type is 'test'
         if patch_type == PatchType.PATCH_TEST:
-            for test in self.test_directives:
+            for test in self.instance["test_directives"]:
                 if os.path.exists(test):
                     self.exec(f"git restore {test}".split(" "))
 
