@@ -53,30 +53,23 @@ log_dir = "Path to folder with per-task instance logs (same as `log_dir` from ab
 
 report = get_model_report(model, predictions_path, swe_bench_tasks, log_dir)
 
-none = sum([len(v['none']) for k, v in report.items() if isinstance(v, dict)])
-generated = sum([len(v['generated']) for k, v in report.items() if isinstance(v, dict)])
-with_logs = sum([len(v['with_logs']) for k, v in report.items() if isinstance(v, dict)])
-applied = sum([len(v['applied']) for k, v in report.items() if isinstance(v, dict)])
-resolved = sum([len(v['resolved']) for k, v in report.items() if isinstance(v, dict)])
-
-print(f"{model} Evaluation Report:")
-print(f"\tNone:      {none}")
-print(f"\tGenerated: {generated}")
-print(f"\tWith Logs: {with_logs}")
-print(f"\tApplied:   {applied}")
-print(f"\tResolved:  {resolved}")
+for k, v in report.items():
+    print(f"- {k}: {len(v)}")
 ```
 
 Given the model name, the `get_model_report` function returns a dictionary formatted as follows:
 ```json
 {
-    "<repository>": {
-        "none": ["instance_ids"],
-        "generated": ["instance_ids"],
-        "with_logs": ["instance_ids"],
-        "applied": ["instance_ids"],
-        "resolved": ["instance_ids"]
-    }
+    "no_generation": ["instance_ids"],
+    "generated": ["instance_ids"],
+    "with_logs": ["instance_ids"],
+    "install_fail": ["instance_ids"],
+    "reset_failed": ["instance_ids"],
+    "no_apply": ["instance_ids"],
+    "applied": ["instance_ids"],
+    "test_errored": ["instance_ids"],
+    "test_timeout": ["instance_ids"],
+    "resolved": ["instance_ids"],
 }
 ```
 
