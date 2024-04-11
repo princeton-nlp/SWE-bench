@@ -155,11 +155,9 @@ class TestbedContextManager:
 
         # Group repos by repo, then version
         self.task_instances_grouped = {}
-        # self.test_directives = []
         for instance in self.task_instances:
             # Create test command from framework + directives
             test_type = MAP_REPO_TO_TEST_FRAMEWORK[instance["repo"]]
-            # self.test_directives = get_test_directives(instance)
             instance["test_directives"] = get_test_directives(instance)
             instance["test_cmd"] = f"{test_type} {' '.join(instance['test_directives'])}"
 
