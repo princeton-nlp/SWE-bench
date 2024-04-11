@@ -2,15 +2,7 @@ import re
 import json
 import os
 from datasets import load_from_disk, load_dataset
-
-from swebench.metrics.constants import (
-    APPLY_PATCH_FAIL,
-    APPLY_PATCH_PASS,
-    RESET_FAILED,
-    TESTS_ERROR,
-    TESTS_TIMEOUT,
-)
-from swebench.harness.constants import KEY_INSTANCE_ID
+from swebench.harness.constants import APPLY_PATCH_PASS, KEY_INSTANCE_ID
 from swebench.metrics.log_parsers import MAP_REPO_TO_PARSER, TestStatus
 from typing import Tuple
 
@@ -52,7 +44,13 @@ def get_logs_eval(log_fp: str) -> Tuple[dict, bool]:
 
     with open(log_fp) as f:
         content = f.read()
-        if any([x in content for x in [APPLY_PATCH_FAIL, RESET_FAILED, TESTS_ERROR, TESTS_TIMEOUT, "Failed to reset task environment"]]) or APPLY_PATCH_PASS not in content:
+        if any([
+            x not in content for x in [
+                f"{APPLY_PATCH_PASS} (test)",
+                f"{APPLY_PATCH_PASS} (pred)",
+            ]
+
+        ]):
             # Eval patch was not applied successfully
             return {}, False
 

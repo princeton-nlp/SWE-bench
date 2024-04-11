@@ -6,6 +6,8 @@ from swebench.harness.constants import (
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
+    PRED_MINIMAL_TRY,
+    PRED_TRY,
 )
 from swebench.harness.context_manager import TaskEnvContextManager
 from swebench.harness.engine_validation import setup_testbed
@@ -107,11 +109,11 @@ def evaluate_predictions(data: dict):
                 continue
 
             # Attempt to apply prediction
-            patch_type = "pred_try"
+            patch_type = PRED_TRY
             if not tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type) \
                 and task_instance[KEY_PREDICTION] is not None:
                 task_instance[KEY_PREDICTION] = extract_minimal_patch(task_instance[KEY_PREDICTION])
-                patch_type = "pred_minimal_try"
+                patch_type = PRED_MINIMAL_TRY
                 if not tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type):
                     continue
             tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type, revert=True)

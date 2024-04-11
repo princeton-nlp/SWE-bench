@@ -617,6 +617,8 @@ TESTS_TIMEOUT = ">>>>> Tests Timed Out"
 
 # Constants - Miscellaneous
 NON_TEST_EXTS = [".json", ".png", "csv", ".txt", ".md", ".jpg", ".jpeg", ".pkl", ".yml", ".yaml", ".toml"]
+PRED_TRY = "pred_try"
+PRED_MINIMAL_TRY = "pred_minimal_try"
 SWE_BENCH_URL_RAW = "https://raw.githubusercontent.com/"
 
 # Constants - Repo/Version Mapped to Appropriate Conda Link

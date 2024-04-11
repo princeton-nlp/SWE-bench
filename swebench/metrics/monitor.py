@@ -1,10 +1,10 @@
 import glob
 import os
 
-from swebench.metrics.constants import (
+from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
-    TESTS_TIMEOUT
+    TESTS_TIMEOUT,
 )
 from swebench.metrics.getters import (
     log_path_to_sms,

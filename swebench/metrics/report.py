@@ -2,8 +2,14 @@ import glob, json, os
 
 from collections import Counter
 from swebench.harness.constants import (
+    APPLY_PATCH_FAIL,
     INSTALL_FAIL,
     KEY_INSTANCE_ID,
+    PRED_MINIMAL_TRY,
+    PRED_TRY,
+    RESET_FAILED,
+    TESTS_ERROR,
+    TESTS_TIMEOUT,
 )
 from swebench.metrics.constants import (
     FAIL_TO_FAIL,
@@ -287,49 +293,77 @@ def get_model_report(
         with open(predictions_path) as f:
             for line in f.readlines():
                 predictions.append(json.loads(line))
-    else:
+    elif predictions_path.endswith("json"):
         predictions = json.load(open(predictions_path))
+    else:
+        raise ValueError("Predictions file must be in json or jsonl format")
     report_map = {}
 
     # Iterate through predictions
+    report_map = {
+        "no_generation": [],
+        "generated": [],
+        "with_logs": [],
+        "install_fail": [],
+        "reset_failed": [],
+        "no_apply": [],
+        "applied": [],
+        "test_errored": [],
+        "test_timeout": [],
+        "resolved": [],
+    }
     for p in predictions:
-        repo = p[KEY_INSTANCE_ID].split(".")[0].rsplit("-", 1)[0].replace("__", "/")
-        if repo not in report_map:
-            report_map[repo] = {
-                "none": [],
-                "generated": [],
-                "with_logs": [],
-                "install_fail": [],
-                "applied": [],
-                "resolved": [],
-            }
-
         # Check if the model patch exists
         if p["model_patch"] == None:
-            report_map[repo]["none"].append(p[KEY_INSTANCE_ID])
+            report_map["no_generation"].append(p[KEY_INSTANCE_ID])
             continue
-        report_map[repo]["generated"].append(p[KEY_INSTANCE_ID])
+        report_map["generated"].append(p[KEY_INSTANCE_ID])
 
         # Get log file
         log_path = os.path.join(log_dir, f"{p[KEY_INSTANCE_ID]}.{model}.eval.log")
         if not os.path.exists(log_path):
             continue
-        report_map[repo]["with_logs"].append(p[KEY_INSTANCE_ID])
+        report_map["with_logs"].append(p[KEY_INSTANCE_ID])
+        log_content = open(log_path).read()
 
-        # Check if install succeeded
-        if INSTALL_FAIL in open(log_path).read():
-            report_map[repo]["install_fail"].append(p[KEY_INSTANCE_ID])
+        # Check if there is an apply patch failure
+        if any([
+            f"{APPLY_PATCH_FAIL}; ({patch_type})" in log_content
+            for patch_type in [PRED_TRY, PRED_MINIMAL_TRY]
+        ]):
+            report_map["no_apply"].append(p[KEY_INSTANCE_ID])
+            continue
+
+        # Check if there is an installation failure
+        if INSTALL_FAIL in log_content:
+            report_map["install_fail"].append(p[KEY_INSTANCE_ID])
+            continue
+
+        # Check if there is a reset failure
+        if RESET_FAILED in log_content:
+            report_map["reset_failed"].append(p[KEY_INSTANCE_ID])
             continue
 
         # Get evaluation logs
         eval_sm, found = get_logs_eval(log_path)
 
+        # Check if any tests errored or timed out
+        for status in [
+            ("test_errored", TESTS_ERROR),
+            ("test_timeout", TESTS_TIMEOUT),
+        ]:
+            if status[1] in log_content:
+                report_map[status[0]].append(p[KEY_INSTANCE_ID])
+                continue
+
+        # Check if patch failed to apply
         if not found:
             continue
-        report_map[repo]["applied"].append(p[KEY_INSTANCE_ID])
+        report_map["applied"].append(p[KEY_INSTANCE_ID])
 
+        # Check if the patch was resolved
         report = get_eval_report(eval_sm, eval_refs[p[KEY_INSTANCE_ID]])
         if get_resolution_status(report) == ResolvedStatus.FULL.value:
-            report_map[repo]["resolved"].append(p[KEY_INSTANCE_ID])
+            report_map["resolved"].append(p[KEY_INSTANCE_ID])
 
     return report_map
