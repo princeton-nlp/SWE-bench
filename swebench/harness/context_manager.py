@@ -31,7 +31,7 @@ from tempfile import TemporaryDirectory
 from traceback import format_exc
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
-logger_testbed = logging.getLogger("testbed_context_manager")
+logger_testbed = logging.getLogger("testbed")
 
 
 class LogWrapper:
@@ -453,7 +453,7 @@ class TestbedContextManager:
             self.temp_dir_conda.cleanup()
 
 
-logger_taskenv = logging.getLogger("taskenv_context_manager")
+logger_taskenv = logging.getLogger("taskenv")
 
 
 class TaskEnvContextManager:
@@ -622,13 +622,6 @@ class TaskEnvContextManager:
             # Run installation command
             out_install = self.exec(cmd_install, timeout=self.timeout, shell=True)
 
-            # Write installation logs to log file
-            with open(self.log_file, "a") as f:
-                f.write(f"Installation Command: {cmd_install}\n")
-                f.write(f"Std. Output: {out_install.stdout}\n")
-                if out_install.stderr:
-                    f.write(f"Std. Error: {out_install.stderr}\n")
-
             if out_install.returncode != 0:
                 # Installation failed
                 self.log.write(f"Installation failed", level=ERROR)
@@ -734,12 +727,8 @@ class TaskEnvContextManager:
                 for key in specifications["env_vars_test"]:
                     del self.exec.subprocess_args["env"][key]
 
-            # Write test results to log file
+            # Write pass/fail status to log file
             with open(self.log_file, "a") as f:
-                f.write(f"Output:\n")
-                f.write(out_test.stdout)
-                if out_test.stderr:
-                    f.write(out_test.stderr)
                 if out_test.returncode != 0:
                     f.write(f"\n{TESTS_FAILED}\n")
                 else:

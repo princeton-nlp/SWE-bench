@@ -423,7 +423,7 @@ MAP_VERSION_TO_INSTALL_XARRAY = {
             "numpy==1.25.2",
             "packaging==23.1",
             "pandas==1.5.3",
-            "pytest==7.4.0",
+            "pytest==8.1.1",
             "python-dateutil==2.8.2",
             "pytz==2023.3",
             "six==1.16.0",
