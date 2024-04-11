@@ -33,6 +33,7 @@ from swebench.metrics.metrics import (
     get_resolution_status,
     ResolvedStatus,
 )
+from tqdm.auto import tqdm
 from typing import Tuple
 
 
@@ -269,7 +270,11 @@ def get_model_eval_summary(
 
 
 def get_model_report(
-    model: str, predictions_path: str, swe_bench_tasks: str, log_dir: str
+    model: str,
+    predictions_path: str,
+    swe_bench_tasks: str,
+    log_dir: str,
+    verbose: bool = False,
 ) -> dict:
     """
     Generate a report of model evaluation results from predictions, task instances,
@@ -280,6 +285,7 @@ def get_model_report(
         predictions_path (str): path to predictions file
         swe_bench_tasks (str): path to eval references (swe-bench-eval-refs.json)
         log_dir (str): path to directory of evaluation logs
+        verbose (bool): show tqdm to track progress
     Returns:
         report_map (dict): map of repo to report
     """
@@ -312,7 +318,7 @@ def get_model_report(
         "test_timeout": [],
         "resolved": [],
     }
-    for p in predictions:
+    for p in tqdm(predictions, desc="Processing predictions", disable=not verbose):
         # Check if the model patch exists
         if p["model_patch"] == None:
             report_map["no_generation"].append(p[KEY_INSTANCE_ID])

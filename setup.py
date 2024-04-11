@@ -36,6 +36,7 @@ setuptools.setup(
         'python-dotenv',
         'requests',
         'rich',
+        'tqdm',
     ],
     include_package_data=True,
 )

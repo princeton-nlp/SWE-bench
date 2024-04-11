@@ -16,4 +16,5 @@ dependencies:
     - requests
     - rich
     - transformers>=4.34.0
+    - tqdm
   - conda-forge::gh
