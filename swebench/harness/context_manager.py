@@ -19,6 +19,7 @@ from swebench.harness.constants import (
     TESTS_PASSED,
     TESTS_TIMEOUT,
     TESTS_ERROR,
+    PatchType,
 )
 from swebench.harness.utils import (
     clone_repo,
@@ -154,11 +155,12 @@ class TestbedContextManager:
 
         # Group repos by repo, then version
         self.task_instances_grouped = {}
+        self.test_directives = []
         for instance in self.task_instances:
             # Create test command from framework + directives
             test_type = MAP_REPO_TO_TEST_FRAMEWORK[instance["repo"]]
-            test_directives = get_test_directives(instance)
-            instance["test_cmd"] = f"{test_type} {' '.join(test_directives)}"
+            self.test_directives = get_test_directives(instance)
+            instance["test_cmd"] = f"{test_type} {' '.join(self.test_directives)}"
 
             # Group task instances by repo, version
             repo = instance["repo"]
@@ -648,7 +650,7 @@ class TaskEnvContextManager:
             return False
 
     def apply_patch(
-        self, patch: str, patch_type: str = "", revert: bool = False
+        self, patch: str, patch_type: PatchType = "", revert: bool = False
     ) -> bool:
         """
         Apply patch to task environment
@@ -673,6 +675,12 @@ class TaskEnvContextManager:
         )
         with open(patch_path, "w") as f:
             f.write(patch)
+
+        # Restore test files before applying if patch_type is 'test'
+        if patch_type == PatchType.PATCH_TEST:
+            for test in self.test_directives:
+                if os.path.exists(test):
+                    self.exec(f"git restore {test}".split(" "))
 
         # Apply patch to testbed directory
         apply_cmd = (

@@ -1,3 +1,5 @@
+from enum import Enum
+
 MAP_VERSION_TO_INSTALL_SKLEARN = {
     k: {
         "python": "3.6",
@@ -609,10 +611,15 @@ TESTS_FAILED = ">>>>> Some Tests Failed"
 TESTS_PASSED = ">>>>> All Tests Passed"
 TESTS_TIMEOUT = ">>>>> Tests Timed Out"
 
+# Constants - Patch Types
+class PatchType(Enum):
+    PATCH_GOLD = "gold"
+    PATCH_PRED_TRY = "pred_try"
+    PATCH_PRED_MINIMAL_TRY = "pred_minimal_try"
+    PATCH_TEST = "test"
+
 # Constants - Miscellaneous
 NON_TEST_EXTS = [".json", ".png", "csv", ".txt", ".md", ".jpg", ".jpeg", ".pkl", ".yml", ".yaml", ".toml"]
-PRED_TRY = "pred_try"
-PRED_MINIMAL_TRY = "pred_minimal_try"
 SWE_BENCH_URL_RAW = "https://raw.githubusercontent.com/"
 
 # Constants - Repo/Version Mapped to Appropriate Conda Link

@@ -1,6 +1,7 @@
 import argparse, os
 
 from multiprocessing import Pool, cpu_count
+from swebench.harness.constants import PatchType
 from swebench.harness.context_manager import TaskEnvContextManager, TestbedContextManager
 from swebench.harness.utils import get_instances, split_instances, DotDict
 
@@ -63,9 +64,9 @@ def verify_task_instances(data: dict):
             if (
                 not tcm.reset_task_env(task_instance)
                 or not tcm.run_install_task(task_instance)
-                or not tcm.apply_patch(task_instance["test_patch"], patch_type="test")
+                or not tcm.apply_patch(task_instance["test_patch"], patch_type=PatchType.PATCH_TEST)
                 or not tcm.run_tests_task(task_instance)
-                or not tcm.apply_patch(task_instance["patch"], patch_type="gold")
+                or not tcm.apply_patch(task_instance["patch"], patch_type=PatchType.PATCH_GOLD)
                 or not tcm.run_tests_task(task_instance)
             ):
                 continue

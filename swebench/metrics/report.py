@@ -5,11 +5,10 @@ from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     INSTALL_FAIL,
     KEY_INSTANCE_ID,
-    PRED_MINIMAL_TRY,
-    PRED_TRY,
     RESET_FAILED,
     TESTS_ERROR,
     TESTS_TIMEOUT,
+    PatchType,
 )
 from swebench.metrics.constants import (
     FAIL_TO_FAIL,
@@ -335,7 +334,7 @@ def get_model_report(
         # Check if there is an apply patch failure
         if any([
             f"{APPLY_PATCH_FAIL}; ({patch_type})" in log_content
-            for patch_type in [PRED_TRY, PRED_MINIMAL_TRY]
+            for patch_type in [PatchType.PATCH_PRED_TRY.value, PatchType.PATCH_PRED_MINIMAL_TRY.value]
         ]):
             report_map["no_apply"].append(p[KEY_INSTANCE_ID])
             continue
