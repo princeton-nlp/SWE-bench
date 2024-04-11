@@ -4,7 +4,7 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.0.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.0.0 onwards are fully listed.
 
-## [1.0.16] - 4/10/2024
+## [1.0.17] - 4/11/2024
 * Add `env_vars_test` field to allow for environment variable assignment for testing scripts.
 * Change `pip_packages` installation specification to be a list instead of a string.
 * Define PyPI package versioning explicitly for dev, test repos.
