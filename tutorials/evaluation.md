@@ -74,9 +74,21 @@ Given the model name, the `get_model_report` function returns a dictionary forma
 ```
 
 Each key-value entry is a pairing of a repository with the outcome of each prediction, identified by `instance_id`:
-* `none`: The prediction was `None`.
+* `no_generation`: The prediction was `None`.
 * `generated`: The prediction was non-empty.
 * `with_logs`: A log file was created for this prediction (should `=` no. of `generated`).
-* `applied`: The prediction was applied as a patch successfully (should `<= with_logs`).
-* `resolved`: The prediction passed all tests (should `<= applied`).
+* `install_fail`: The execution environment failed to install properly.
+* `reset_failed`: The GitHub repository of the execution environment could not be checked out properly.
+* `no_apply`: The prediction was not applied as a patch successfully.
+* `applied`: The prediction was applied as a patch successfully.
+* `test_errored`: The test command errored out.
+* `test_timeout`: The test command timed out.
+* `resolved`: The prediction passed all tests.
 
+Some notes on understanding the report numbers:
+* `no_generation` + `generated` = Total number of predictions.
+* `generated` >= `applied` >= `resolved`.
+* % Resolved Rate =
+    * `resolved` / 300 for SWE-bench lite
+    * `resolved` / 2294 for SWE-bench test
+    * `resolved` / (`no_generation` + `generated`) generally
