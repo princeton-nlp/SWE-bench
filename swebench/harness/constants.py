@@ -22,12 +22,6 @@ MAP_VERSION_TO_INSTALL_SKLEARN.update(
             "arch_specific_packages": {
                 "aarch64": "gxx_linux-aarch64 gcc_linux-aarch64 make",
             },
-            "pip_packages": [
-                "numpy==1.25.2",
-                "scipy==1.11.1",
-                "joblib==1.2.0",
-                "threadpoolctl==2.2.0",
-            ]
         }
         for k in ["1.3", "1.4"]
     }
@@ -623,18 +617,8 @@ SWE_BENCH_URL_RAW = "https://raw.githubusercontent.com/"
 
 # Constants - Repo/Version Mapped to Appropriate Conda Link
 MAP_REPO_VERSION_TO_CONDA_LINK = {
-    "django/django": {
-        "1.11": "py311_23.9.0-0",
-    },
-    "matplotlib/matplotlib": {
-        "3.1": "py311_23.9.0-0",
-        "3.2": "py311_23.9.0-0",
-        "3.3": "py311_23.9.0-0",
-        "3.4": "py311_23.9.0-0",
-        "3.0": "py311_23.10.0-1",
-    },
-    "sympy/sympy": {
-        "1.0": "py39_23.9.0-0",
+    "psf/requests": {
+        "2.4": "py39_23.9.0-0",
     },
 }
 
