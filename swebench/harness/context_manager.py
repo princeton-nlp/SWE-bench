@@ -676,7 +676,7 @@ class TaskEnvContextManager:
             f.write(patch)
 
         # Restore test files before applying if patch_type is 'test'
-        if patch_type == PatchType.PATCH_TEST:
+        if patch_type == PatchType.PATCH_TEST.value:
             for test in self.instance["test_directives"]:
                 if os.path.exists(test):
                     self.exec(f"git restore {test}".split(" "))

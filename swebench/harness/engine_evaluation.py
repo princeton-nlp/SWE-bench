@@ -47,7 +47,7 @@ def overwrite_ablation(tcm: TaskEnvContextManager, task_instance: dict):
     # Run installation
     if (
         not tcm.run_install_task(task_instance)
-        or not tcm.apply_patch(task_instance["test_patch"], patch_type=PatchType.PATCH_TEST)
+        or not tcm.apply_patch(task_instance["test_patch"], patch_type=PatchType.PATCH_TEST.value)
     ):
         return
     
@@ -108,25 +108,25 @@ def evaluate_predictions(data: dict):
                 continue
 
             # Attempt to apply prediction
-            patch_type = PatchType.PATCH_PRED_TRY
+            patch_type = PatchType.PATCH_PRED_TRY.value
             if not tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type) \
                 and task_instance[KEY_PREDICTION] is not None:
                 task_instance[KEY_PREDICTION] = extract_minimal_patch(task_instance[KEY_PREDICTION])
-                patch_type = PatchType.PATCH_PRED_MINIMAL_TRY
+                patch_type = PatchType.PATCH_PRED_MINIMAL_TRY.value
                 if not tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type):
                     continue
             tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type, revert=True)
 
-            if patch_type == PatchType.PATCH_PRED_MINIMAL_TRY:
-                patch_type = PatchType.PATCH_PRED_MINIMAL
+            if patch_type == PatchType.PATCH_PRED_MINIMAL_TRY.value:
+                patch_type = PatchType.PATCH_PRED_MINIMAL.value
             else:
-                patch_type = PatchType.PATCH_PRED
+                patch_type = PatchType.PATCH_PRED.value
 
             # Run installation + testing script
             if (
                 not tcm.run_install_task(task_instance)
                 or not tcm.apply_patch(task_instance[KEY_PREDICTION], patch_type=patch_type)
-                or not tcm.apply_patch(task_instance["test_patch"], patch_type=PatchType.PATCH_TEST)
+                or not tcm.apply_patch(task_instance["test_patch"], patch_type=PatchType.PATCH_TEST.value)
                 or not tcm.run_tests_task(task_instance)
             ):
                 continue

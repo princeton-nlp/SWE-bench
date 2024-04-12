@@ -334,7 +334,10 @@ def get_model_report(
         # Check if there is an apply patch failure
         if any([
             f"{APPLY_PATCH_FAIL}; ({patch_type})" in log_content
-            for patch_type in [PatchType.PATCH_PRED_TRY.value, PatchType.PATCH_PRED_MINIMAL_TRY.value]
+            for patch_type in [
+                PatchType.PATCH_PRED_TRY.value,
+                PatchType.PATCH_PRED_MINIMAL_TRY.value
+            ]
         ]):
             report_map["no_apply"].append(p[KEY_INSTANCE_ID])
             continue
