@@ -319,7 +319,7 @@ def get_model_report(
     }
     for p in tqdm(predictions, desc="Processing predictions", disable=not verbose):
         # Check if the model patch exists
-        if p["model_patch"] == None:
+        if p["model_patch"] == None or len(p["model_patch"].strip()) == 0:
             report_map["no_generation"].append(p[KEY_INSTANCE_ID])
             continue
         report_map["generated"].append(p[KEY_INSTANCE_ID])

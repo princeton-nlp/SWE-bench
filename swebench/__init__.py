@@ -1,4 +1,4 @@
-__version__ = "1.0.19"
+__version__ = "1.0.20"
 
 from swebench.collect.build_dataset import main as build_dataset
 from swebench.collect.get_tasks_pipeline import main as get_tasks_pipeline
