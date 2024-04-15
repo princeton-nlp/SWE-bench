@@ -150,6 +150,6 @@ Our diagnosis is that:
 
 ## Deliverables
 * Please use `swebench>=1.1.0`.
-* Use the `data/20240415/check_harness.jsonl` file to verify that your harness is working correctly.
+* Use the `check_harness.jsonl` file to verify that your harness is working correctly.
 
 ✍️ Carlos & John
