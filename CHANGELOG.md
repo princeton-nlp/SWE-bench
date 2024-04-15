@@ -36,7 +36,7 @@ First working version. We strongly recommend not using versions older than this 
 * Reorganized repository to be directly build-able as a PyPI package. [548bdb](https://github.com/princeton-nlp/SWE-bench/commit/548bdbffb2ac5f0a09c1d7eb95bbee1bce126233)
 
 ## [0.6.9 - 0.6.9.2] - 3/31/2024 
-> ⚠️ Do NOT use these versions. The PyPI package for these versions was under development. Specifically, some of the evaluation configurations required re-validation. A detailed report for the failures and our recovery from it are detailed in [Bug Report 4/5/2024](docs/reports/20240405_eval_bug/report.md).
+> ⚠️ Do NOT use these versions. The PyPI package for these versions was under development. Specifically, some of the evaluation configurations required re-validation. A detailed report for the failures and our recovery from it are detailed in [Bug Report 4/5/2024](docs/reports/20240405_eval_bug/README.md).
 
 ## [0.6.1] - 3/14/2023
 * Added minor conditions to make `run_evaluation` more robust (e.g. exit on empty predictions)
