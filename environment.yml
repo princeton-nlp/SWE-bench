@@ -3,6 +3,7 @@ dependencies:
   - python=3.9
   - pip
   - pip:
+    - swebench
     - datasets
     - tenacity
     - anthropic
