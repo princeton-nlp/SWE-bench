@@ -142,9 +142,11 @@ def get_eval_refs(data_path_or_name):
         for split in data.keys():
             all_data.extend(data[split])
         data = all_data
-    if decode_keys:
-        for datum in data:
-            for key in ["PASS_TO_PASS", "FAIL_TO_PASS"]:
-                datum[key] = json.loads(datum[key])
-    return {d[KEY_INSTANCE_ID]: d for d in data}
 
+    def _maybe_decode_keys(d):
+        if decode_keys:
+            for key in ["PASS_TO_PASS", "FAIL_TO_PASS"]:
+                d[key] = json.loads(d[key])
+        return d
+
+    return {d[KEY_INSTANCE_ID]: _maybe_decode_keys(d) for d in data}
