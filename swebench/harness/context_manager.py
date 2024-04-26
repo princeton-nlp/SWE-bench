@@ -229,16 +229,25 @@ class TestbedContextManager:
         """
         Set up testbed (conda environments, git repositories)
         """
-        # If path_conda not provided, create temporary miniconda3 installation
+        # If path_conda not provided or does not exist, create a miniconda3 installation
         is_osx_64 = False
         if platform.system() == "Darwin" and platform.machine() == "arm64":
             is_osx_64 = True
+
+        install_conda = False
         if self.temp_dir_conda is not None:
-            # Set up the paths for Miniconda
             self.path_conda = os.path.join(self.path_conda, "miniconda3")
-            os.mkdir(self.path_conda)
-            miniconda_sh = os.path.join(self.path_conda, "miniconda.sh")
             self.log.write(f"No conda path provided, creating temporary install in {self.path_conda}...")
+            os.mkdir(self.path_conda)
+            install_conda = True
+        elif not os.path.exists(self.path_conda):
+            self.log.write(f"Conda path does not exist, creating install in {self.path_conda}...")
+            os.makedirs(self.path_conda)
+            install_conda = True
+
+        if install_conda:
+            # Set up the paths for Miniconda
+            miniconda_sh = os.path.join(self.path_conda, "miniconda.sh")
 
             # Download Miniconda installer
             if self.conda_link is not None:

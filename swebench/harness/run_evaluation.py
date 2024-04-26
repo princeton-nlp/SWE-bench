@@ -89,7 +89,7 @@ def main(
         raise ValueError("--log_dir must exist and point at a directory")
     if not os.path.exists(testbed) or not os.path.isdir(testbed):
         raise ValueError("--testbed must exist and point at a directory")
-    
+
     tasks = list(get_eval_refs(swe_bench_tasks).values())
 
     # Verify arguments are formatted correctly
@@ -153,6 +153,7 @@ def main(
                 args.predictions_path = file_path
                 args.skip_existing = skip_existing
                 args.temp_dir = testbed_model_repo_version_dir
+                args.path_conda = os.path.join(testbed, "conda", repo.rsplit('__', 1)[-1], version)
                 args.timeout = timeout
                 args.verbose = verbose
                 args.conda_link = conda_link
