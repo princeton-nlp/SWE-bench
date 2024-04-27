@@ -63,6 +63,7 @@ def main(
     log_dir: str,
     testbed: str,
     conda_link: str,
+    path_conda: str,
     log_suffix: str,
     skip_existing: bool,
     timeout: int,
@@ -77,6 +78,7 @@ def main(
         swe_bench_tasks (str): Path to the SWE-bench tasks file OR HF dataset name.
         log_dir (str): Path to the directory where logs will be saved.
         testbed (str): Path to the directory where testbeds will be saved.
+        path_conda (str): Path to the conda installation to use.
         skip_existing (bool): Whether to skip evaluations for predictions that already have logs.
         timeout (int): Timeout for each evaluation.
         verbose (bool): Whether to print verbose output.
@@ -89,7 +91,7 @@ def main(
         raise ValueError("--log_dir must exist and point at a directory")
     if not os.path.exists(testbed) or not os.path.isdir(testbed):
         raise ValueError("--testbed must exist and point at a directory")
-    
+
     tasks = list(get_eval_refs(swe_bench_tasks).values())
 
     # Verify arguments are formatted correctly
@@ -152,10 +154,12 @@ def main(
                 args.num_workers = 1
                 args.predictions_path = file_path
                 args.skip_existing = skip_existing
+                args.testbed = testbed
                 args.temp_dir = testbed_model_repo_version_dir
                 args.timeout = timeout
                 args.verbose = verbose
                 args.conda_link = conda_link
+                args.path_conda = path_conda
 
                 # Remove predictions that have already been evaluated
                 repo_version_predictions = map_repo_version_to_predictions[repo][version]
@@ -219,6 +223,7 @@ if __name__ == "__main__":
     parser.add_argument("--swe_bench_tasks", type=str, help="Path to dataset file or HF datasets name", required=True)
     parser.add_argument("--testbed", type=str, help="Path to testbed directory", required=True)
     parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
+    parser.add_argument("--path_conda", type=str, default=None, help="(Optional) Path to conda installation to use")
     parser.add_argument("--log_suffix", type=str, help="(Optional) Suffix to append to log file names", default=None)
     parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")
     parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
