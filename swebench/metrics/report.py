@@ -22,7 +22,7 @@ from swebench.metrics.getters import (
     get_id_from_lp,
     test_failed,
     test_passed,
-    get_eval_refs,
+    get_eval_refs, test_not_found,
 )
 from swebench.metrics.metrics import (
     compute_fail_to_pass_unweighted,
@@ -69,19 +69,25 @@ def get_eval_report(
     # Calculate resolution metrics
     f2p_success = []
     f2p_failure = []
+    f2p_not_found = []
     for test_case in gold_results[FAIL_TO_PASS]:
         if test_passed(test_case, eval_sm):
             # Assume silent success for now (test case not in eval_sm)
             f2p_success.append(test_case)
+        elif test_not_found(test_case, eval_sm):
+            f2p_not_found.append(test_case)
         elif test_failed(test_case, eval_sm):
             f2p_failure.append(test_case)
 
     # Calculate maintenance metrics
     p2p_success = []
     p2p_failure = []
+    p2p_not_found = []
     for test_case in gold_results[PASS_TO_PASS]:
         if test_passed(test_case, eval_sm):
             p2p_success.append(test_case)
+        elif test_not_found(test_case, eval_sm):
+            p2p_not_found.append(test_case)
         elif test_failed(test_case, eval_sm):
             p2p_failure.append(test_case)
     
@@ -89,22 +95,28 @@ def get_eval_report(
         FAIL_TO_PASS: {
             "success": f2p_success,
             "failure": f2p_failure,
+            "not_found": f2p_not_found,
         },
         PASS_TO_PASS: {
             "success": p2p_success,
             "failure": p2p_failure,
+            "not_found": p2p_not_found,
         }
     }
 
     f2f_success = []
     f2f_failure = []
+    f2f_not_found = []
     p2f_success = []
     p2f_failure = []
+    p2f_not_found = []
     if calculate_to_fail:
         # Calculate "extra credit" metrics
         for test_case in gold_results[FAIL_TO_FAIL]:
             if test_passed(test_case, eval_sm):
                 f2f_success.append(test_case)
+            elif test_not_found(test_case, eval_sm):
+                f2f_not_found.append(test_case)
             elif test_failed(test_case, eval_sm):
                 f2f_failure.append(test_case)
 
@@ -112,6 +124,8 @@ def get_eval_report(
         for test_case in gold_results[PASS_TO_FAIL]:
             if test_passed(test_case, eval_sm):
                 p2f_success.append(test_case)
+            elif test_not_found(test_case, eval_sm):
+                p2f_not_found.append(test_case)
             elif test_failed(test_case, eval_sm):
                 p2f_failure.append(test_case)
 
@@ -119,10 +133,12 @@ def get_eval_report(
         FAIL_TO_FAIL: {
             "success": f2f_success,
             "failure": f2f_failure,
+            "not_found": f2f_not_found,
         },
         PASS_TO_FAIL: {
             "success": p2f_success,
             "failure": p2f_failure,
+            "not_found": p2f_not_found,
         }
     })
     return results

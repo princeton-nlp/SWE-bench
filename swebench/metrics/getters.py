@@ -119,7 +119,9 @@ def log_path_to_sms(log_fp: str, log_parser) -> Tuple[list, bool]:
 
 test_passed = lambda case, sm: case in sm and sm[case] == TestStatus.PASSED.value
 
-test_failed = lambda case, sm: case not in sm or any(
+test_not_found = lambda case, sm: case not in sm
+
+test_failed = lambda case, sm: any(
     [sm[case] == status for status in [TestStatus.FAILED.value, TestStatus.ERROR.value]]
 )
 
@@ -147,4 +149,3 @@ def get_eval_refs(data_path_or_name):
             for key in ["PASS_TO_PASS", "FAIL_TO_PASS"]:
                 datum[key] = json.loads(datum[key])
     return {d[KEY_INSTANCE_ID]: d for d in data}
-
