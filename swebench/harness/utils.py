@@ -30,7 +30,7 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> list:
     # Get list of conda environments
     try:
         conda_envs = subprocess.run(
-            f"{conda_source} env list".split(" "), check=True, capture_output=True, text=True, env=env,
+            f"{conda_source} env list --json".split(" "), check=True, capture_output=True, text=True, env=env,
         )
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
@@ -38,20 +38,8 @@ def get_conda_env_names(conda_source: str, env: dict = None) -> list:
         print(f"Error stderr: {e.stderr}")
         raise e
     output = conda_envs.stdout
-    lines = output.split("\n")
-    # Store environment names to list
-    env_names = []
-    for line in lines:
-        if line.startswith("#"):
-            continue
-        if line.strip() == "":
-            continue
-        parts = line.split()
-        if len(parts) <= 1:
-            continue
-        env_name = parts[1]
-        env_names.append(env_name)
-    return env_names
+    envs = json.loads(output)
+    return [e.split("/")[-1] for e in envs["envs"]]
 
 
 def get_environment_yml(
@@ -439,7 +427,7 @@ def has_attribute_or_import_error(log_before):
                 if target_word in line:
                     hits.append(line)
             return hits
-        
+
         # Get line with Attribute/Import error
         lines_1 = get_lines_with_word(log_before, 'attribute')
         lines_2 = get_lines_with_word(log_before, 'import')
