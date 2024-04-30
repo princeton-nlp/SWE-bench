@@ -153,7 +153,7 @@ def main(
                 args.predictions_path = file_path
                 args.skip_existing = skip_existing
                 args.temp_dir = testbed_model_repo_version_dir
-                args.path_conda = os.path.join(testbed, "conda", repo.rsplit('__', 1)[-1], version)
+                args.path_conda = os.path.join(testbed, "conda", repo.rsplit('__', 1)[-1], version, "envs", f"{repo}__{version}")
                 args.timeout = timeout
                 args.verbose = verbose
                 args.conda_link = conda_link
@@ -181,7 +181,7 @@ def main(
                         repo_version_predictions = predictions_filtered
                 else:
                     logger.info(f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(repo_version_predictions)}")
-                
+
                 # Save predictions to file
                 with open(file_path, "w") as f:
                     json.dump(repo_version_predictions, f, indent=4)
