@@ -40,6 +40,12 @@ Given a *codebase* and an *issue*, a language model is tasked with generating a 
 
 <img src="assets/teaser.png">
 
+To access SWE-bench, copy and run the following code:
+```python
+from datasets import load_dataset
+swebench = load_dataset('princeton-nlp/SWE-bench', split='test')
+```
+
 ## 🚀 Set Up
 To build SWE-bench from source, follow these steps:
 1. Clone this repository locally
