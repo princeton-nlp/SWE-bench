@@ -215,7 +215,10 @@ def get_test_directives(instance: dict) -> list:
         directives (list): List of test directives
     """
     # For seq2seq code repos, testing command is fixed
-    if instance["repo"] == "swe-bench/humaneval":
+    if any([
+        x == instance["repo"] for x in
+        ["humaneval", "humanevalfix-python"]
+    ]):
         return ["test.py"]
 
     # Get test directives from test patch and remove non-test files

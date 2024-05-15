@@ -523,6 +523,7 @@ MAP_VERSION_TO_INSTALL_PYDICOM.update({
     for k in ['2.3']})
 
 MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
+MAP_VERSION_TO_INSTALL_HUMANEVALFIX_PYTHON = {k: { "python": "3.9" } for k in ['1.0']}
 
 # Constants - Task Instance Instllation Environment
 MAP_VERSION_TO_INSTALL = {
@@ -543,7 +544,8 @@ MAP_VERSION_TO_INSTALL = {
     "scikit-learn/scikit-learn": MAP_VERSION_TO_INSTALL_SKLEARN,
     "sphinx-doc/sphinx": MAP_VERSION_TO_INSTALL_SPHINX,
     "sqlfluff/sqlfluff": MAP_VERSION_TO_INSTALL_SQLFLUFF,
-    "swe-bench/humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
+    "humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
+    "humanevalfix-python": MAP_VERSION_TO_INSTALL_HUMANEVALFIX_PYTHON,
     "sympy/sympy": MAP_VERSION_TO_INSTALL_SYMPY,
 }
 
@@ -570,7 +572,8 @@ MAP_REPO_TO_TEST_FRAMEWORK = {
     "scikit-learn/scikit-learn": TEST_PYTEST,
     "sphinx-doc/sphinx": "tox -epy39 -v --",
     "sqlfluff/sqlfluff": TEST_PYTEST,
-    "swe-bench/humaneval": "python",
+    "humaneval": "python",
+    "humanevalfix-python": "python",
     "sympy/sympy": "bin/test -C --verbose",
 }
 
