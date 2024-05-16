@@ -4,7 +4,7 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.1.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.1.0 onwards are fully listed.
 
-## [1.1.2] - 5/15/2024
+## [1.1.3] - 5/15/2024
 * Add support for HumanEvalFix (Python, JS) ([source](https://huggingface.co/datasets/bigcode/humanevalpack))
 
 ## [1.1.0] - 4/15/2024

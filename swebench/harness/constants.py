@@ -523,7 +523,6 @@ MAP_VERSION_TO_INSTALL_PYDICOM.update({
     for k in ['2.3']})
 
 MAP_VERSION_TO_INSTALL_HUMANEVAL= {k: { "python": "3.9" } for k in ['1.0']}
-MAP_VERSION_TO_INSTALL_HUMANEVALFIX_PYTHON = {k: { "python": "3.9" } for k in ['1.0']}
 
 # Constants - Task Instance Instllation Environment
 MAP_VERSION_TO_INSTALL = {
@@ -545,7 +544,9 @@ MAP_VERSION_TO_INSTALL = {
     "sphinx-doc/sphinx": MAP_VERSION_TO_INSTALL_SPHINX,
     "sqlfluff/sqlfluff": MAP_VERSION_TO_INSTALL_SQLFLUFF,
     "swe-bench/humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
-    "swe-bench/humanevalfix-python": MAP_VERSION_TO_INSTALL_HUMANEVALFIX_PYTHON,
+    "swe-bench/humanevalfix-python": MAP_VERSION_TO_INSTALL_HUMANEVAL,
+    "swe-bench/humanevalfix-js": MAP_VERSION_TO_INSTALL_HUMANEVAL,
+    "swe-bench/humanevalfix-go": MAP_VERSION_TO_INSTALL_HUMANEVAL,
     "sympy/sympy": MAP_VERSION_TO_INSTALL_SYMPY,
 }
 
@@ -574,6 +575,8 @@ MAP_REPO_TO_TEST_FRAMEWORK = {
     "sqlfluff/sqlfluff": TEST_PYTEST,
     "swe-bench/humaneval": "python",
     "swe-bench/humanevalfix-python": "python",
+    "swe-bench/humanevalfix-js": "node",
+    "swe-bench/humanevalfix-go": "go",
     "sympy/sympy": "bin/test -C --verbose",
 }
 
