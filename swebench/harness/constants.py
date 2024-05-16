@@ -544,8 +544,8 @@ MAP_VERSION_TO_INSTALL = {
     "scikit-learn/scikit-learn": MAP_VERSION_TO_INSTALL_SKLEARN,
     "sphinx-doc/sphinx": MAP_VERSION_TO_INSTALL_SPHINX,
     "sqlfluff/sqlfluff": MAP_VERSION_TO_INSTALL_SQLFLUFF,
-    "humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
-    "humanevalfix-python": MAP_VERSION_TO_INSTALL_HUMANEVALFIX_PYTHON,
+    "swe-bench/humaneval": MAP_VERSION_TO_INSTALL_HUMANEVAL,
+    "swe-bench/humanevalfix-python": MAP_VERSION_TO_INSTALL_HUMANEVALFIX_PYTHON,
     "sympy/sympy": MAP_VERSION_TO_INSTALL_SYMPY,
 }
 
@@ -572,8 +572,8 @@ MAP_REPO_TO_TEST_FRAMEWORK = {
     "scikit-learn/scikit-learn": TEST_PYTEST,
     "sphinx-doc/sphinx": "tox -epy39 -v --",
     "sqlfluff/sqlfluff": TEST_PYTEST,
-    "humaneval": "python",
-    "humanevalfix-python": "python",
+    "swe-bench/humaneval": "python",
+    "swe-bench/humanevalfix-python": "python",
     "sympy/sympy": "bin/test -C --verbose",
 }
 
