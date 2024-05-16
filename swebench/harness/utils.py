@@ -217,9 +217,13 @@ def get_test_directives(instance: dict) -> list:
     # For seq2seq code repos, testing command is fixed
     if any([
         x == instance["repo"] for x in
-        ["humaneval", "humanevalfix-python"]
+        ["swe-bench/humaneval", "swe-bench/humanevalfix-python"]
     ]):
         return ["test.py"]
+    if instance["repo"] == "swe-bench/humanevalfix-js":
+        return ["test.js"]
+    if instance["repo"] == "swe-bench/humanevalfix-go":
+        return []
 
     # Get test directives from test patch and remove non-test files
     diff_pat = r"diff --git a/.* b/(.*)"

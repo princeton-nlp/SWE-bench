@@ -576,7 +576,7 @@ MAP_REPO_TO_TEST_FRAMEWORK = {
     "swe-bench/humaneval": "python",
     "swe-bench/humanevalfix-python": "python",
     "swe-bench/humanevalfix-js": "node",
-    "swe-bench/humanevalfix-go": "go",
+    "swe-bench/humanevalfix-go": "go test",
     "sympy/sympy": "bin/test -C --verbose",
 }
 
