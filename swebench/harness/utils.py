@@ -214,7 +214,7 @@ def get_test_directives(instance: dict) -> list:
     Returns:
         directives (list): List of test directives
     """
-    # For seq2seq code repos, testing command is fixed
+    # HumanEvalFix: For seq2seq code repos, testing command is fixed
     if any([
         x == instance["repo"] for x in
         ["swe-bench/humaneval", "swe-bench/humanevalfix-python"]
