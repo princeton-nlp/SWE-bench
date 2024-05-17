@@ -220,10 +220,13 @@ def get_test_directives(instance: dict) -> list:
         ["swe-bench/humaneval", "swe-bench/humanevalfix-python"]
     ]):
         return ["test.py"]
+    if any([
+        x == instance["repo"] for x in
+        ["swe-bench/humanevalfix-go", "swe-bench/humanevalfix-java"]
+    ]):
+        return []
     if instance["repo"] == "swe-bench/humanevalfix-js":
         return ["test.js"]
-    if instance["repo"] == "swe-bench/humanevalfix-go":
-        return []
 
     # Get test directives from test patch and remove non-test files
     diff_pat = r"diff --git a/.* b/(.*)"
