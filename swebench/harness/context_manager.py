@@ -321,8 +321,10 @@ class TestbedContextManager:
                 # Clone github per repo/version
                 repo_path = os.path.join(self.testbed, env_name)
                 if not os.path.exists(repo_path):
-                    clone_repo(repo, repo_path)
-                    self.log.write(f"Cloned {repo} to {repo_path}")
+                    if clone_repo(repo, repo_path):
+                        self.log.write(f"Cloned {repo} to {repo_path}")
+                    else:
+                        raise Exception(f"Failed to clone {repo} to {repo_path}")
                 else:
                     self.log.write(f"Repo for {repo_prefix} version {version} exists: {repo_path}; skipping")
 
