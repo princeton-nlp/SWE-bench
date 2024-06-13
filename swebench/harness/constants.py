@@ -513,7 +513,7 @@ MAP_VERSION_TO_INSTALL_PYDICOM = {
     k: {
         "python": "3.6",
         "install": "pip install -e .",
-        "packages": "numpy"
+        "packages": "numpy pytest"
     }
     for k in ['1.2', '1.3', '1.4', '2.0', '2.1', '2.2', '2.3']
 }
