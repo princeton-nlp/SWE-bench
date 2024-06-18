@@ -169,12 +169,12 @@ class TestbedContextManager:
             if version not in self.task_instances_grouped[repo]:
                 self.task_instances_grouped[repo][version] = []
             self.task_instances_grouped[repo][version].append(instance)
-        
+
         # Check if instances are from single repo/version
         self.is_single_repo_version = len(self.task_instances_grouped) == 1 and \
             len(self.task_instances_grouped) == 1 and \
             len(list(self.task_instances_grouped.values())[0]) == 1
-        
+
         # Create log file for testbed
         log_file_name = "testbed"
         if self.is_single_repo_version:
@@ -389,7 +389,7 @@ class TestbedContextManager:
                     cmd = f"{exec_cmd} create -n {env_name} python={install['python']} {pkgs} -y"
                     self.log.write(f"Creating environment {env_name}")
                     self.exec(cmd.split(" "))
-                
+
                 arch = platform.machine()
                 arch_specific_packages = install.get("arch_specific_packages", {}).get(arch, "")
                 if arch_specific_packages:
@@ -526,7 +526,7 @@ class TaskEnvContextManager:
                 "shell": False,
                 "capture_output": False,
                 "text": True,
-                "env": {"CONDA_PKGS_DIRS": self.conda_cache_dir},
+                "env": {**os.environ, "CONDA_PKGS_DIRS": self.conda_cache_dir},
                 "stdout": subprocess.PIPE,
                 "stderr": subprocess.STDOUT,
             },
