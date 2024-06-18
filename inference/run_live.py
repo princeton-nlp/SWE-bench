@@ -101,7 +101,7 @@ def make_instance(
     thread_id = 0
     instance = {"instance_id": instance_id, "problem_statement": query}
     logger.info(f"Cloning repo {owner}/{repo}")
-    repo_dir = clone_repo(f"{owner}/{repo}", root_dir, token, False, thread_id)
+    repo_dir = clone_repo(f"{owner}/{repo}", root_dir, token)
     if commit is None:
         commit = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=repo_dir
