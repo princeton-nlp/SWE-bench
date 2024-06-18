@@ -231,7 +231,7 @@ def load_data(
     return dataset
 
 
-def generate(model, dataset, tokenizer, temperature, top_p, fileobj, peft_path):
+def generate(model, dataset, tokenizer, temperature, top_p, fileobj, model_name_or_path, peft_path):
     class RepeatingTokensCriteria(StoppingCriteria):
         """
         Stopping criteria based on repeating tokens in the generated sequence.
@@ -291,16 +291,18 @@ def generate(model, dataset, tokenizer, temperature, top_p, fileobj, peft_path):
                 output = output[0].cpu()[input_ids.shape[-1] :]
                 new_len = len(output)
                 logger.info(
-                    f"Generated {new_len} tokens ({total_len} total) in {(datetime.now() - start).total_seconds()} seconds (speed: {new_len / (datetime.now() - start).total_seconds()} tps)"
+                    f"Generated {new_len} tokens ({total_len} total) in {(datetime.now() - start).total_seconds()} " + \
+                    f"seconds (speed: {new_len / (datetime.now() - start).total_seconds()} tps)"
                 )
                 output = tokenizer.decode(output, skip_special_tokens=False)
                 logger.info(output[:200])
                 diff = extract_diff(output)
+                model_name_or_path += f"__{peft_path}" if peft_path is not None else ""
                 res = {
                     "instance_id": instance["instance_id"],
                     "full_output": output,
                     "model_patch": diff,
-                    "model_name_or_path": peft_path,
+                    "model_name_or_path": model_name_or_path,
                 }
                 print(json.dumps(res), file=fileobj, flush=True)
             except Exception as e:
@@ -392,6 +394,7 @@ def main(
             temperature=temperature,
             top_p=top_p,
             fileobj=f,
+            model_name_or_path=model_name_or_path,
             peft_path=peft_path,
         )
     logger.info(f"Done")
