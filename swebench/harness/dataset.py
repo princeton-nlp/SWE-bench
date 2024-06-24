@@ -214,6 +214,10 @@ def make_eval_script_list(instance, install, env_name, repo_directory, base_comm
         f"git diff {base_commit}",
         "source /opt/miniconda3/bin/activate",
         f"conda activate {env_name}",
+    ]
+    if "install" in install:
+        eval_commands.append(install["install"])
+    eval_commands += [
         reset_tests_command,
         apply_test_patch_command,
         test_command,
