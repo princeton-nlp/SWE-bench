@@ -269,11 +269,11 @@ def make_run_report(predictions, dataset, client, session_id):
         "resolved_instances": len(resolved_ids),
         "error_instances": len(error_ids),
         "unstopped_instances": len(unstopped_containers),
-        "completed_ids": list(completed_ids),
-        "resolved_ids": list(resolved_ids),
-        "error_ids": list(error_ids),
-        "unstopped_containers": list(unstopped_containers),
-        "unremoved_images": list(unremoved_images),
+        "completed_ids": sorted(list(completed_ids)),
+        "resolved_ids": sorted(list(resolved_ids)),
+        "error_ids": sorted(list(error_ids)),
+        "unstopped_containers": sorted(list(unstopped_containers)),
+        "unremoved_images": sorted(list(unremoved_images)),
     }
     report_file = Path(
         list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
@@ -320,7 +320,7 @@ def main(
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run")
+    parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file")
     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers")
     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
