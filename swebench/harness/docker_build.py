@@ -172,7 +172,8 @@ def build_env_images(dataset, client, force_rebuild=False, max_workers=4):
     ]
 
     print(f"Total environment images to build: {len(configs_to_build)}")
-    all_successful = True
+    successful = list()
+    failed = list()
     with tqdm(
         total=len(configs_to_build), smoothing=0, desc="Building environment images"
     ) as pbar:
@@ -193,24 +194,25 @@ def build_env_images(dataset, client, force_rebuild=False, max_workers=4):
                 pbar.update(1)
                 try:
                     future.result()
+                    successful.append(futures[future])
                 except BuildImageError as e:
                     print(f"BuildImageError {e.instance_id}")
                     traceback.print_exc()
-                    all_successful = False
+                    failed.append(futures[future])
                     continue
                 except Exception as e:
                     print(f"Error building image")
                     traceback.print_exc()
-                    all_successful = False
+                    failed.append(futures[future])
                     continue
-    if all_successful:
+    if len(failed) == 0:
         print("All environment images built successfully.")
     else:
-        # raise Exception("Error building environment images.")
-        print("Error building environment images.")
+        print(f"{len(failed)} environment images failed to build.")
+    return successful, failed
 
 
-def build_instance_images(dataset, client, force_rebuild=False, max_workers=4, chunk_size=100):
+def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
     test_specs = list(map(make_test_spec, dataset))
     all_image_names = list_images(client)
     env_image_names = {x.env_image_key for x in test_specs}
@@ -226,7 +228,8 @@ def build_instance_images(dataset, client, force_rebuild=False, max_workers=4, c
         print(f"Environment image(s) {env_image_names} already exist, skipping build.")
 
     print(f"Building instance images for {len(test_specs)} instances")
-    all_successful = True
+    successful = list()
+    failed = list()
     with tqdm(
         total=len(test_specs), smoothing=0, desc="Building instance images"
     ) as pbar:
@@ -239,33 +242,36 @@ def build_instance_images(dataset, client, force_rebuild=False, max_workers=4, c
                     None,  # logger is created in build_instance_image, don't make loggers before you need them
                     False,
                     force_rebuild,
-                ): test_spec.instance_id
+                ): test_spec
                 for test_spec in test_specs
             }
             for future in as_completed(futures):
                 pbar.update(1)
                 try:
                     future.result()
+                    successful.append(futures[future])
                 except BuildImageError as e:
                     print(f"BuildImageError {e.instance_id}")
                     traceback.print_exc()
-                    all_successful = False
+                    failed.append(futures[future])
                     continue
                 except Exception as e:
                     print(f"Error building image")
                     traceback.print_exc()
-                    all_successful = False
+                    failed.append(futures[future])
                     continue
-    if all_successful:
+    if len(failed) == 0:
         print("All instance images built successfully.")
     else:
-        # raise Exception("Error building instance images.")
-        print("Error building instance images.")
+        print(f"{len(failed)} instance images failed to build.")
+    return successful, failed
 
 
 def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False):
     build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
+    new_logger = False
     if logger is None:
+        new_logger = True
         logger = setup_logger(test_spec.instance_id, build_dir / "prepare_image.log")
     image_name = test_spec.instance_image_key
     env_image_name = test_spec.env_image_key
@@ -306,6 +312,8 @@ def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False
         )
     else:
         logger.info(f"Image {image_name} already exists, skipping build.")
+    if new_logger:
+        close_logger(logger)
 
 
 def build_container(

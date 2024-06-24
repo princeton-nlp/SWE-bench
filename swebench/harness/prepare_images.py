@@ -1,125 +1,128 @@
-# import json
-# import resource
-# import traceback
-# from argparse import ArgumentParser
-# from concurrent.futures import ThreadPoolExecutor, as_completed
-# from pathlib import Path
+import json
+import resource
+import traceback
+from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-# import docker
-# from tqdm import tqdm
+import docker
+from tqdm import tqdm
 
-# from swebench.harness.utils import str2bool
-# from swebench.harness.grading import get_model_report
-# from swebench.harness.docker_utils import (
-#     close_logger,
-#     setup_logger,
-#     get_session_id,
-#     cleanup_image,
-#     copy_to_container,
-#     exec_run_with_timeout,
-#     cleanup_container,
-#     list_images,
-#     build_container,
-#     build_env_images,
-#     INSTANCE_IMAGE_BUILD_DIR,
-# )
-# from swebench.harness.dataset import load, make_test_spec
+from swebench.harness.utils import str2bool
+from swebench.harness.docker_utils import (
+    get_session_id,
+    list_images,
+    clean_images,
+)
+from swebench.harness.docker_build import (
+    build_instance_images,
+)
+from swebench.harness.dataset import load, make_test_spec
 
 
-# RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")
-
-
-# def get_dataset_from_preds(instance_ids, predictions, exclude_completed=True):
-
-
-# def should_remove(image_name, cache, clean, prior_images):
-#     """
-#     Determine if an image should be removed based on cache level and clean flag.
-#     """
-#     existed_before = image_name in prior_images
-#     if image_name.startswith("sweb.base"):
-#         if cache in {"none"} and (clean or not existed_before):
-#             return True
-#     elif image_name.startswith("sweb.env"):
-#         if cache in {"none", "base"} and (clean or not existed_before):
-#             return True
-#     elif image_name.startswith("sweb.eval"):
-#         if cache in {"none", "base", "env"} and (clean or not existed_before):
-#             return True
-#     return False
-
-
-# def clean_images(client, prior_images, cache, clean):
+# def make_run_report(predictions, dataset, client, session_id):
+#     completed_ids = set()
+#     resolved_ids = set()
+#     error_ids = set()
+#     unstopped_containers = set()
+#     unremoved_images = set()
+#     test_specs = list(map(make_test_spec, dataset))
+#     for instance in dataset:
+#         instance_id = instance["instance_id"]
+#         prediction = predictions[instance_id]
+#         report_file = (
+#             RUN_INSTANCE_LOG_DIR
+#             / prediction["model_name_or_path"].replace("/", "__")
+#             / prediction["instance_id"]
+#             / "report.json"
+#         )
+#         if report_file.exists():
+#             completed_ids.add(instance_id)
+#             report = json.loads(report_file.read_text())
+#             if report[instance_id]["resolved"]:
+#                 resolved_ids.add(instance_id)
+#         else:
+#             error_ids.add(instance_id)
 #     images = list_images(client)
-#     removed = 0
-#     print(f"Cleaning cached images...")
-#     for image_name in images:
-#         if should_remove(image_name, cache, clean, prior_images):
-#             try:
-#                 cleanup_image(client, image_name, True, "quiet")
-#                 removed += 1
-#             except Exception as e:
-#                 print(f"Error removing image {image_name}: {e}")
-#                 continue
-#     print(f"Removed {removed} images.")
-
-
-# def main(
-#     instance_ids,
-#     predictions_path,
-#     max_workers,
-#     force_rebuild,
-#     cache,
-#     clean,
-#     open_file_limit,
-#     session_id,
-#     timeout,
-# ):
-#     if not session_id:
-#         session_id = get_session_id(8)
-#     else:
-#         assert len(session_id) == 8, "Session ID must be 8 characters long."
-#     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-#     client = docker.from_env()
-#     with open(predictions_path, "r") as f:
-#         predictions = json.loads(f.read())
-#     predictions = {pred["instance_id"]: pred for pred in predictions}
-#     dataset = get_dataset_from_preds(instance_ids, predictions)
-#     full_dataset = get_dataset_from_preds(instance_ids, predictions, exclude_completed=False)
-#     existing_images = list_images(client)
-#     print(f"Running {len(dataset)} unevaluated instances...")
-#     if not dataset:
-#         print("No instances to run.")
-#     else:
-#         build_env_images(dataset, client, force_rebuild, max_workers)
-#         run_instances(predictions, dataset, cache, clean, force_rebuild, max_workers, session_id, timeout)
-#     clean_images(client, existing_images, cache, clean)
-#     make_run_report(predictions, full_dataset, client, session_id)
-
-
-# if __name__ == "__main__":
-#     parser = ArgumentParser()
-#     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run")
-#     parser.add_argument("--predictions_path", type=str, help="Path to predictions file")
-#     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers")
-#     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
-#     parser.add_argument("--timeout", type=int, default=1_800, help="Timeout for running tests for each instance")
-#     parser.add_argument(
-#         "--force_rebuild", type=str2bool, default=False, help="Force rebuild of images"
+#     for spec in test_specs:
+#         image_name = spec.instance_image_key
+#         if image_name in images:
+#             unremoved_images.add(image_name)
+#     # docker list containers
+#     containers = client.containers.list(all=True)
+#     for container in containers:
+#         if session_id in container.name:
+#             unstopped_containers.add(container.name)
+#     print(f"Total instances: {len(dataset)}")
+#     print(f"Instances completed: {len(completed_ids)}")
+#     print(f"Instances resolved: {len(resolved_ids)}")
+#     print(f"Instances with errors: {len(error_ids)}")
+#     print(f"Instances still running: {len(unstopped_containers)}")
+#     print(f"Still existing images: {len(unremoved_images)}")
+#     report = {
+#         "total_instances": len(dataset),
+#         "completed_instances": len(completed_ids),
+#         "resolved_instances": len(resolved_ids),
+#         "error_instances": len(error_ids),
+#         "unstopped_instances": len(unstopped_containers),
+#         "completed_ids": sorted(list(completed_ids)),
+#         "resolved_ids": sorted(list(resolved_ids)),
+#         "error_ids": sorted(list(error_ids)),
+#         "unstopped_containers": sorted(list(unstopped_containers)),
+#         "unremoved_images": sorted(list(unremoved_images)),
+#     }
+#     report_file = Path(
+#         list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
+#         + f".{session_id}"
+#         + ".json"
 #     )
-#     parser.add_argument(
-#         "--cache",
-#         type=str,
-#         choices=["none", "base", "env", "instance"],
-#         help="Cache level",
-#         default="env",
-#     )
-#     # if clean is true then we remove all images that are above the cache level
-#     # if clean is false, we only remove images above the cache level if they don't already exist
-#     parser.add_argument(
-#         "--clean", type=str2bool, default=False, help="Clean images above cache level"
-#     )
-#     parser.add_argument("--session_id", type=str, help="Session ID")
-#     args = parser.parse_args()
+#     with open(report_file, "w") as f:
+#         print(json.dumps(report, indent=4), file=f)
+#     print(f"Report written to {report_file}")
 
-#     main(**vars(args))
+
+def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
+    existing_images = list_images(client)
+    data_to_build = []
+    not_in_dataset = set(instance_ids).difference(set([instance["instance_id"] for instance in dataset]))
+    if not_in_dataset:
+        raise ValueError(f"Instance IDs not found in dataset: {not_in_dataset}")
+    for instance in dataset:
+        if instance["instance_id"] not in instance_ids:
+            continue
+        spec = make_test_spec(instance)
+        if force_rebuild:
+            data_to_build.append(instance)
+        elif spec.instance_image_key not in existing_images:
+            data_to_build.append(instance)
+    return data_to_build
+
+
+def main(
+    instance_ids,
+    max_workers,
+    force_rebuild,
+    open_file_limit,
+):
+    resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
+    client = docker.from_env()
+    dataset = load()
+    dataset = filter_dataset_to_build(dataset, instance_ids, client, force_rebuild)
+    successful, failed = build_instance_images(
+        dataset=dataset,
+        client=client,
+        force_rebuild=force_rebuild,
+        max_workers=max_workers,
+    )
+    print(f"Successfully built {len(successful)} images")
+    print(f"Failed to build {len(failed)} images")
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
+    parser.add_argument("--max_workers", type=int, default=4, help="Max workers for parallel processing")
+    parser.add_argument("--force_rebuild", type=str2bool, default=False, help="Force rebuild images")
+    parser.add_argument("--open_file_limit", type=int, default=8192, help="Open file limit")
+    args = parser.parse_args()
+    main(**vars(args))
