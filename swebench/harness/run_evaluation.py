@@ -353,7 +353,7 @@ def main(
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run")
+    parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file")
     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers")
     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")

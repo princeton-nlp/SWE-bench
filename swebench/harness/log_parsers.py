@@ -80,14 +80,12 @@ def parse_log_django(log: str) -> dict[str, str]:
         if "--version is equivalent to version" in line:
             test_status_map["--version is equivalent to version"] = TestStatus.PASSED.value
 
-        if line.endswith(" ... ok"):
-            test = line.split(" ... ok")[0]
-            # if "Applying" in line and "..." in line:
-            #     test = test.split("...")[1]
-            test_status_map[test] = TestStatus.PASSED.value
-        if line.endswith(" ... OK"):
-            test = line.split(" ... OK")[0]
-            test_status_map[test] = TestStatus.PASSED.value
+        pass_suffixes = (" ... ok", " ... OK", " ...  OK")
+        for suffix in pass_suffixes:
+            if line.endswith(suffix):
+                test = line.rsplit(suffix, 1)[0]
+                test_status_map[test] = TestStatus.PASSED.value
+                break
         if " ... skipped" in line:
             test = line.split(" ... skipped")[0]
             test_status_map[test] = TestStatus.SKIPPED.value
@@ -106,15 +104,18 @@ def parse_log_django(log: str) -> dict[str, str]:
 
     # TODO: This is very brittle, we should do better
     # There's a bug in the django logger, such that sometimes a test output near the end gets
-    # interrupted by a particular long multiline print statement. This always has the form:
-    # "{test_name} ... Testing against Django installed in {*} silenced.\nok"
-    pattern = (
-        r"^(.*?)\s\.\.\.\sTesting\ against\ Django\ installed\ in\ ((?s:.*?))\ silenced\)\.\nok$"
-    )
-    match = re.search(pattern, log, re.MULTILINE)
-    if match:
-        test_name = match.group(1)
-        test_status_map[test_name] = TestStatus.PASSED.value
+    # interrupted by a particular long multiline print statement.
+    # We have observed this in one of two form:
+    # - "{test_name} ... Testing against Django installed in {*} silenced.\nok"
+    # - "{test_name} ... Internal Server Error: \/(.*)\/\nok"
+    patterns = [
+        r"^(.*?)\s\.\.\.\sTesting\ against\ Django\ installed\ in\ ((?s:.*?))\ silenced\)\.\nok$",
+        r"^(.*?)\s\.\.\.\sInternal\ Server\ Error:\ \/(.*)\/\nok$"
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, log, re.MULTILINE):
+            test_name = match.group(1)
+            test_status_map[test_name] = TestStatus.PASSED.value
     return test_status_map
 
 
