@@ -19,6 +19,7 @@ setuptools.setup(
         'GitPython',
         'python-dotenv',
         'requests',
+        'bs4',
     ],
     include_package_data=True,
 )
