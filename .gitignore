@@ -174,3 +174,5 @@ analysis/evaluation/*.csv
 analysis/evaluation/*.pdf
 data/repos/copies
 notebooks/
+image_build_logs/
+run_instance_logs/
