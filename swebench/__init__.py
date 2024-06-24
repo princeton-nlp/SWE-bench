@@ -16,6 +16,25 @@ from swebench.harness.run_evaluation import (
   main as run_evaluation,
 )
 
+from swebench.harness.docker_build import (
+    build_image,
+    build_base_images,
+    build_env_images,
+    build_instance_images,
+    build_instance_image,
+    close_logger,
+    setup_logger,
+)
+
+from swebench.harness.docker_utils import (
+    cleanup_container,
+    cleanup_image,
+    copy_to_container,
+    exec_run_with_timeout,
+    get_session_id,
+    list_images,
+)
+
 from swebench.harness.utils import (
     get_environment_yml,
     get_instances,
