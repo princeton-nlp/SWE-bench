@@ -19,10 +19,9 @@ from swebench.harness.docker_utils import (
     exec_run_with_timeout,
     cleanup_container,
     list_images,
-    build_container,
-    build_env_images,
-    INSTANCE_IMAGE_BUILD_DIR,
+    should_remove,
 )
+from swebench.harness.docker_build import build_container, build_env_images, INSTANCE_IMAGE_BUILD_DIR
 from swebench.harness.dataset import load, make_test_spec
 
 
@@ -284,38 +283,6 @@ def make_run_report(predictions, dataset, client, session_id):
     with open(report_file, "w") as f:
         print(json.dumps(report, indent=4), file=f)
     print(f"Report written to {report_file}")
-
-
-def should_remove(image_name, cache, clean, prior_images):
-    """
-    Determine if an image should be removed based on cache level and clean flag.
-    """
-    existed_before = image_name in prior_images
-    if image_name.startswith("sweb.base"):
-        if cache in {"none"} and (clean or not existed_before):
-            return True
-    elif image_name.startswith("sweb.env"):
-        if cache in {"none", "base"} and (clean or not existed_before):
-            return True
-    elif image_name.startswith("sweb.eval"):
-        if cache in {"none", "base", "env"} and (clean or not existed_before):
-            return True
-    return False
-
-
-def clean_images(client, prior_images, cache, clean):
-    images = list_images(client)
-    removed = 0
-    print(f"Cleaning cached images...")
-    for image_name in images:
-        if should_remove(image_name, cache, clean, prior_images):
-            try:
-                cleanup_image(client, image_name, True, "quiet")
-                removed += 1
-            except Exception as e:
-                print(f"Error removing image {image_name}: {e}")
-                continue
-    print(f"Removed {removed} images.")
 
 
 def main(
