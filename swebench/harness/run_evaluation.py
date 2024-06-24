@@ -1,229 +1,379 @@
-#!/usr/bin/env python3
-
-"""Run evaluation"""
-import argparse
-import datasets
-import hashlib
 import json
-import logging
-import os
-import shutil
-import subprocess
+import resource
+import traceback
+from argparse import ArgumentParser
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-from datasets import load_dataset
-from multiprocessing import Pool
-from swebench.harness.constants import (
-    KEY_INSTANCE_ID,
-    KEY_MODEL,
-    KEY_PREDICTION,
+import docker
+from tqdm import tqdm
+
+from swebench.harness.utils import str2bool
+from swebench.harness.grading import get_model_report
+from swebench.harness.docker_utils import (
+    close_logger,
+    setup_logger,
+    get_session_id,
+    cleanup_image,
+    copy_to_container,
+    exec_run_with_timeout,
+    cleanup_container,
+    list_images,
+    build_container,
+    build_env_images,
+    INSTANCE_IMAGE_BUILD_DIR,
 )
-from swebench.harness.engine_evaluation import main as eval_engine
-from swebench.harness.utils import get_instances
-from swebench.metrics.getters import get_eval_refs
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("run_evaluation")
+from swebench.harness.dataset import load, make_test_spec
 
 
-def deterministic_hash(input_string: str, length: int = None):
-    input_bytes = input_string.encode('utf-8')
-    sha256_hash = hashlib.sha256(input_bytes)
-    hex_digest = sha256_hash.hexdigest()
-    if length is None:
-        return hex_digest
-    return hex_digest[:length]
+RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")
 
 
-def validate_predictions(predictions_path, tasks_ids):
-    # Check that predictions file exists
-    if not any([predictions_path.endswith(x) for x in [".json", ".jsonl"]]):
-        raise ValueError("Predictions path must be .json or .jsonl file")
-    predictions = get_instances(predictions_path)
-    not_in_tasks = []
-    # Check that predictions are correctly formatted
-    for pred in predictions:
-        if any([x not in pred for x in [KEY_INSTANCE_ID, KEY_MODEL, KEY_PREDICTION]]):
-            raise ValueError(f"Every prediction must have {KEY_INSTANCE_ID}, {KEY_MODEL}, and {KEY_PREDICTION} fields")
-        if pred[KEY_INSTANCE_ID] not in tasks_ids:
-            not_in_tasks.append(pred[KEY_INSTANCE_ID])
-    # Check that instance IDs specified by predictions exist
-    if len(not_in_tasks) > 0:
-        logger.warning(
-            "Predictions for the following instance_ids were not "
-            + "found in the tasks file and will not be considered: "
-            + ", ".join(not_in_tasks)
+class EvaluationError(Exception):
+    def __init__(self, instance_id, message, logger):
+        super().__init__(message)
+        self.instance_id = instance_id
+        self.log_file = logger.log_file
+        self.logger = logger
+
+    def __str__(self):
+        log_msg = " ".join(traceback.TracebackException.from_exception(self).format())
+        self.logger.error(log_msg)
+        return (
+            f"{self.instance_id}: {super().__str__()}\n"
+            f"Check ({self.log_file}) for more information."
         )
 
 
-def main(
-    predictions_path: str,
-    swe_bench_tasks: str,
-    log_dir: str,
-    testbed: str,
-    conda_link: str,
-    log_suffix: str,
-    skip_existing: bool,
-    timeout: int,
-    verbose: bool,
-    num_processes: int = -1,
-):
-    """
-    Runs evaluation on predictions for each model/repo/version combination.
-
-    Args:
-        predictions_path (str): Path to the predictions file.
-        swe_bench_tasks (str): Path to the SWE-bench tasks file OR HF dataset name.
-        log_dir (str): Path to the directory where logs will be saved.
-        testbed (str): Path to the directory where testbeds will be saved.
-        skip_existing (bool): Whether to skip evaluations for predictions that already have logs.
-        timeout (int): Timeout for each evaluation.
-        verbose (bool): Whether to print verbose output.
-
-    Raises:
-        ValueError: If log_dir is not a directory, testbed is not a directory, or swe_bench_tasks does not exist.
-    """
-    # Validate arguments
-    if not os.path.exists(log_dir) or not os.path.isdir(log_dir):
-        raise ValueError("--log_dir must exist and point at a directory")
-    if not os.path.exists(testbed) or not os.path.isdir(testbed):
-        raise ValueError("--testbed must exist and point at a directory")
-    
-    tasks = list(get_eval_refs(swe_bench_tasks).values())
-
-    # Verify arguments are formatted correctly
-    if not isinstance(tasks, list):
-        raise ValueError(f"{swe_bench_tasks} must contain an array of tasks")
-    tasks_map = {t[KEY_INSTANCE_ID]: t for t in tasks}
-    predictions_path = os.path.abspath(predictions_path)
-    validate_predictions(predictions_path, [t[KEY_INSTANCE_ID] for t in tasks])
-
-    # Group predictions by model
-    predictions = get_instances(predictions_path)
-    map_model_to_predictions = {}
-    for p in predictions:
-        model = p[KEY_MODEL]
-        if model not in map_model_to_predictions:
-            map_model_to_predictions[model] = []
-        map_model_to_predictions[model].append(p)
-    logger.info(f"Found {len(predictions)} predictions across {len(map_model_to_predictions)} model(s) in predictions file")
-
-    # For each model, split predictions by repo + save to folder
-    eval_args = []
-    temp_dirs = []
-    for model, predictions in map_model_to_predictions.items():
-        # Group predictions by repository, version
-        map_repo_version_to_predictions = {}
-        for p in predictions:
-            repo = p[KEY_INSTANCE_ID].rsplit("-", 1)[0]
-            if repo not in map_repo_version_to_predictions:
-                map_repo_version_to_predictions[repo] = {}
-            t = tasks_map[p[KEY_INSTANCE_ID]]
-            p.update(t)
-            version = t["version"]
-            if version not in map_repo_version_to_predictions[repo]:
-                map_repo_version_to_predictions[repo][version] = []
-            map_repo_version_to_predictions[repo][version].append(p)
-
-        # For each model/repo/version, create testbed folder and save predictions
-        for repo in map_repo_version_to_predictions:
-            for version in map_repo_version_to_predictions[repo]:
-                # Create model/repo/version specific testbed folder
-                testbed_model_name = model
-                if len(testbed_model_name) > 50:
-                    # Hash model name for temp_dir path if too long
-                    # Issue: https://github.com/conda/conda/issues/12250
-                    testbed_model_name = deterministic_hash(testbed_model_name, 10)
-                testbed_model_repo_version_dir = os.path.join(
-                    testbed, testbed_model_name, repo.rsplit('__', 1)[-1], version)
-                os.makedirs(testbed_model_repo_version_dir, exist_ok=True)
-
-                # Create predictions file for model/repo/version
-                file_name = f"{model}_{repo}_{version}_{predictions_path.split('/')[-1]}"
-                file_path = os.path.join(testbed_model_repo_version_dir, file_name)
-                if file_path.endswith(".jsonl"):
-                    file_path = file_path[:-1]
-
-                # Create evaluation args
-                args = argparse.Namespace()
-                args.log_dir = os.path.join(log_dir, model)
-                args.log_suffix = log_suffix
-                args.num_workers = 1
-                args.predictions_path = file_path
-                args.skip_existing = skip_existing
-                args.temp_dir = testbed_model_repo_version_dir
-                args.timeout = timeout
-                args.verbose = verbose
-                args.conda_link = conda_link
-
-                # Remove predictions that have already been evaluated
-                repo_version_predictions = map_repo_version_to_predictions[repo][version]
-                if skip_existing:
-                    # Skip logs that already exist
-                    predictions_filtered = []
-                    for p in repo_version_predictions:
-                        log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.eval.log"
-                        if args.log_suffix is not None:
-                            log_file_name = f"{p[KEY_INSTANCE_ID]}.{p[KEY_MODEL]}.{log_suffix}.eval.log"
-                        log_file = os.path.join(args.log_dir, log_file_name)
-                        if not os.path.exists(log_file):
-                            predictions_filtered.append(p)
-                    if len(predictions_filtered) == 0:
-                        logger.info(f"[{model}/{repo}/{version}] All predictions already exist, skipping")
-                        continue
-                    else:
-                        logger.info(
-                            f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(predictions_filtered)} " +
-                            f"({len(repo_version_predictions) - len(predictions_filtered)} already evaluated)"
-                        )
-                        repo_version_predictions = predictions_filtered
-                else:
-                    logger.info(f"[{model}/{repo}/{version}] # of predictions to evaluate: {len(repo_version_predictions)}")
-                
-                # Save predictions to file
-                with open(file_path, "w") as f:
-                    json.dump(repo_version_predictions, f, indent=4)
-
-                eval_args.append(args)
-                temp_dirs.append(testbed_model_repo_version_dir)
-
-    if len(eval_args) == 0:
-        logger.info("No predictions to evaluate")
-        return
-
-    # Run evaluation on each model/repo
-    num_processes = min(len(eval_args), num_processes) if num_processes > 0 else len(eval_args)
+def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, timeout=None):
+    instance_id = test_spec.instance_id
+    model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
+    log_dir = RUN_INSTANCE_LOG_DIR / model_name_or_path / instance_id
+    log_dir.mkdir(parents=True, exist_ok=True)
+    build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
+    image_build_link = log_dir / "image_build_dir"
+    if not image_build_link.exists():
+        try:
+            image_build_link.symlink_to(build_dir, target_is_directory=True)
+        except:
+            # some error, idk why
+            pass
+    log_file = log_dir / "run_instance.log"
+    report_path = log_dir / "report.json"
+    if report_path.exists():
+        return instance_id, json.loads(report_path.read_text())
+    logger = setup_logger(instance_id, log_file)
+    container = None
     try:
-        if num_processes == 1:
-            for args in eval_args:
-                eval_engine(args)
-        else:
-            pool = Pool(processes=num_processes)
-            pool.map(eval_engine, eval_args)
-            pool.close()
-            pool.join()
+        container = build_container(test_spec, client, session_id, logger, rm_image, force_rebuild)
+        container.start()
+        logger.info(f"Container for {instance_id} started: {container.id}")
+
+        patch_file = log_dir / "patch.diff"
+        with open(patch_file, "w") as f:
+            f.write(pred["model_patch"])
+        logger.info(
+            f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
+        )
+        copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
+        val = container.exec_run(
+            "git apply -v /tmp/patch.diff",
+            workdir="/testbed",
+            user="root",
+        )
+        if val.exit_code != 0:
+            logger.error(f"Error applying patch:\n{val.output.decode('utf-8')}")
+            raise EvaluationError(
+                instance_id,
+                f"Error applying patch:\n{val.output.decode('utf-8')}",
+                logger,
+            )
+
+        git_diff_output_before = (
+            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
+        )
+        logger.info(f"Git diff before:\n{git_diff_output_before}")
+
+        # result = container.exec_run("/bin/bash /eval.sh")
+        result = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout=timeout)
+        test_output = result.decode("utf-8")
+        test_output_path = log_dir / "test_output.txt"
+        with open(test_output_path, "w") as f:
+            f.write(test_output)
+        logger.info(f"Test output for {instance_id} written to {test_output_path}")
+
+        git_diff_output_after = (
+            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
+        )
+        logger.info(f"Git diff after:\n{git_diff_output_after}")
+        if git_diff_output_after != git_diff_output_before:
+            logger.error(f"Git diff changed after running eval script")
+            # "Git diff changed after running eval script"
+
+        logger.info(f"Grading answer for {instance_id}...")
+        report = get_model_report(
+            predictions=[pred],
+            swe_bench_tasks="swe-bench_test.json",
+            log_paths=[test_output_path],
+            include_tests_status=True,
+        )
+        logger.info(
+            f"report: {report}\n"
+            "Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
+        )
+
+        with open(report_path, "w") as f:
+            f.write(json.dumps(report, indent=4))
+        return instance_id, report
+    except EvaluationError as e:
+        raise EvaluationError(instance_id, str(e), logger) from e
+    except Exception as e:
+        logger.error(f"Error in evaluating model for {instance_id}: {e}")
+        logger.info(traceback.format_exc())
+        raise EvaluationError(instance_id, str(e), logger) from e
     finally:
-        # Clean up
-        for temp_dir in temp_dirs:
-            # Kill all processes that are using the temp directory
-            subprocess.run(f"lsof +D {temp_dir} | awk 'NR>1 {{print $2}}' | xargs kill", shell=True, capture_output=True)
-            # Remove temp directory
-            shutil.rmtree(temp_dir, ignore_errors=True)
+        cleanup_container(client, container, logger)
+        cleanup_image(client, test_spec.instance_image_key, rm_image, logger)
+        close_logger(logger)
+
+
+def run_instances(predictions, instances, cache, clean, force_rebuild, max_workers, session_id, timeout):
+    client = docker.from_env()
+    test_specs = list(map(make_test_spec, instances))
+    instance_image_ids = {x.instance_image_key for x in test_specs}
+    existing_images = {
+        tag for i in client.images.list(all=True) for tag in i.tags if tag in instance_image_ids
+    }
+    if not force_rebuild and len(existing_images):
+        print(f"Found {len(existing_images)} existing instance images. Will reuse them.")
+    print(f"Running {len(instances)} instances...")
+    with tqdm(total=len(instances), smoothing=0) as pbar:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(
+                    run_instance,
+                    spec,
+                    predictions[spec.instance_id],
+                    should_remove(
+                        spec.instance_image_key,
+                        cache,
+                        clean,
+                        existing_images,
+                    ),
+                    force_rebuild,
+                    client,
+                    session_id,
+                    timeout,
+                ): None
+                for spec in test_specs
+            }
+            for future in as_completed(futures):
+                pbar.update(1)
+                try:
+                    future.result()
+                except EvaluationError as e:
+                    print(f"EvaluationError {e.instance_id}: {e}")
+                    continue
+                except Exception as e:
+                    traceback.print_exc()
+                    continue
+    print("All instances run.")
+
+
+def get_dataset_from_preds(instance_ids, predictions, exclude_completed=True):
+    dataset = load()
+    dataset_ids = {i["instance_id"] for i in dataset}
+    if instance_ids:
+        instance_ids = set(instance_ids)
+        if instance_ids - dataset_ids:
+            raise ValueError(
+                (
+                    "Some instance IDs not found in dataset!"
+                    f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
+                )
+            )
+        missing_preds = instance_ids - set(predictions.keys())
+        if missing_preds:
+            print(f"Warning: Missing predictions for {len(missing_preds)} instance IDs.")
+    prediction_ids = set(predictions.keys())
+    if prediction_ids - dataset_ids:
+        raise ValueError(
+            (
+                "Some prediction IDs not found in dataset!"
+                f"\nMissing IDs:\n{' '.join(prediction_ids - dataset_ids)}"
+            )
+        )
+    if instance_ids:
+        dataset = [i for i in dataset if i["instance_id"] in instance_ids]
+    completed_ids = set()
+    for instance in dataset:
+        if instance["instance_id"] not in prediction_ids:
+            continue
+        prediction = predictions[instance["instance_id"]]
+        report_file = (
+            RUN_INSTANCE_LOG_DIR
+            / prediction["model_name_or_path"].replace("/", "__")
+            / prediction["instance_id"]
+            / "report.json"
+        )
+        if report_file.exists():
+            completed_ids.add(instance["instance_id"])
+    if completed_ids and exclude_completed:
+        print(f"{len(completed_ids)} instances already run, skipping...")
+        dataset = [i for i in dataset if i["instance_id"] not in completed_ids]
+    dataset = [i for i in dataset if i["instance_id"] in prediction_ids]
+    return dataset
+
+
+def make_run_report(predictions, dataset, client, session_id):
+    completed_ids = set()
+    resolved_ids = set()
+    error_ids = set()
+    unstopped_containers = set()
+    unremoved_images = set()
+    test_specs = list(map(make_test_spec, dataset))
+    for instance in dataset:
+        instance_id = instance["instance_id"]
+        prediction = predictions[instance_id]
+        report_file = (
+            RUN_INSTANCE_LOG_DIR
+            / prediction["model_name_or_path"].replace("/", "__")
+            / prediction["instance_id"]
+            / "report.json"
+        )
+        if report_file.exists():
+            completed_ids.add(instance_id)
+            report = json.loads(report_file.read_text())
+            if report[instance_id]["resolved"]:
+                resolved_ids.add(instance_id)
+        else:
+            error_ids.add(instance_id)
+    images = list_images(client)
+    for spec in test_specs:
+        image_name = spec.instance_image_key
+        if image_name in images:
+            unremoved_images.add(image_name)
+    # docker list containers
+    containers = client.containers.list(all=True)
+    for container in containers:
+        if session_id in container.name:
+            unstopped_containers.add(container.name)
+    print(f"Total instances: {len(dataset)}")
+    print(f"Instances completed: {len(completed_ids)}")
+    print(f"Instances resolved: {len(resolved_ids)}")
+    print(f"Instances with errors: {len(error_ids)}")
+    print(f"Instances still running: {len(unstopped_containers)}")
+    print(f"Still existing images: {len(unremoved_images)}")
+    report = {
+        "total_instances": len(dataset),
+        "completed_instances": len(completed_ids),
+        "resolved_instances": len(resolved_ids),
+        "error_instances": len(error_ids),
+        "unstopped_instances": len(unstopped_containers),
+        "completed_ids": list(completed_ids),
+        "resolved_ids": list(resolved_ids),
+        "error_ids": list(error_ids),
+        "unstopped_containers": list(unstopped_containers),
+        "unremoved_images": list(unremoved_images),
+    }
+    report_file = Path(
+        list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
+        + f".{session_id}"
+        + ".json"
+    )
+    with open(report_file, "w") as f:
+        print(json.dumps(report, indent=4), file=f)
+    print(f"Report written to {report_file}")
+
+
+def should_remove(image_name, cache, clean, prior_images):
+    """
+    Determine if an image should be removed based on cache level and clean flag.
+    """
+    existed_before = image_name in prior_images
+    if image_name.startswith("sweb.base"):
+        if cache in {"none"} and (clean or not existed_before):
+            return True
+    elif image_name.startswith("sweb.env"):
+        if cache in {"none", "base"} and (clean or not existed_before):
+            return True
+    elif image_name.startswith("sweb.eval"):
+        if cache in {"none", "base", "env"} and (clean or not existed_before):
+            return True
+    return False
+
+
+def clean_images(client, prior_images, cache, clean):
+    images = list_images(client)
+    removed = 0
+    print(f"Cleaning cached images...")
+    for image_name in images:
+        if should_remove(image_name, cache, clean, prior_images):
+            try:
+                cleanup_image(client, image_name, True, "quiet")
+                removed += 1
+            except Exception as e:
+                print(f"Error removing image {image_name}: {e}")
+                continue
+    print(f"Removed {removed} images.")
+
+
+def main(
+    instance_ids,
+    predictions_path,
+    max_workers,
+    force_rebuild,
+    cache,
+    clean,
+    open_file_limit,
+    session_id,
+    timeout,
+):
+    if not session_id:
+        session_id = get_session_id(8)
+    else:
+        assert len(session_id) == 8, "Session ID must be 8 characters long."
+    resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
+    client = docker.from_env()
+    with open(predictions_path, "r") as f:
+        predictions = json.loads(f.read())
+    predictions = {pred["instance_id"]: pred for pred in predictions}
+    dataset = get_dataset_from_preds(instance_ids, predictions)
+    full_dataset = get_dataset_from_preds(instance_ids, predictions, exclude_completed=False)
+    existing_images = list_images(client)
+    print(f"Running {len(dataset)} unevaluated instances...")
+    if not dataset:
+        print("No instances to run.")
+    else:
+        build_env_images(dataset, client, force_rebuild, max_workers)
+        run_instances(predictions, dataset, cache, clean, force_rebuild, max_workers, session_id, timeout)
+    clean_images(client, existing_images, cache, clean)
+    make_run_report(predictions, full_dataset, client, session_id)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--predictions_path", type=str, help="Path to predictions file (must be .json)", required=True)
-    parser.add_argument("--log_dir", type=str, help="Path to log directory", required=True)
-    parser.add_argument("--swe_bench_tasks", type=str, help="Path to dataset file or HF datasets name", required=True)
-    parser.add_argument("--testbed", type=str, help="Path to testbed directory", required=True)
-    parser.add_argument("--conda_link", type=str, default=None, help="(Optional) URL to conda installation to use")
-    parser.add_argument("--log_suffix", type=str, help="(Optional) Suffix to append to log file names", default=None)
-    parser.add_argument("--skip_existing", action="store_true", help="(Optional) Skip existing logs")
-    parser.add_argument("--timeout", type=int, help="(Optional) Timeout in seconds (default: 900)", default=900)
-    parser.add_argument("--verbose", action="store_true", help="(Optional) Verbose mode")
-    parser.add_argument("--num_processes", type=int, help="(Optional) Number of processes to use.", default=-1)
+    parser = ArgumentParser()
+    parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run")
+    parser.add_argument("--predictions_path", type=str, help="Path to predictions file")
+    parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers")
+    parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
+    parser.add_argument("--timeout", type=int, default=1_800, help="Timeout for running tests for each instance")
+    parser.add_argument(
+        "--force_rebuild", type=str2bool, default=False, help="Force rebuild of images"
+    )
+    parser.add_argument(
+        "--cache",
+        type=str,
+        choices=["none", "base", "env", "instance"],
+        help="Cache level",
+        default="env",
+    )
+    # if clean is true then we remove all images that are above the cache level
+    # if clean is false, we only remove images above the cache level if they don't already exist
+    parser.add_argument(
+        "--clean", type=str2bool, default=False, help="Clean images above cache level"
+    )
+    parser.add_argument("--session_id", type=str, help="Session ID")
     args = parser.parse_args()
-    logger.propagate = args.verbose
+
     main(**vars(args))

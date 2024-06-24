@@ -2,116 +2,21 @@ import json
 import os
 import re
 import requests
-import subprocess
 
+from argparse import ArgumentTypeError
+from swebench.harness.swebench_instance import SwebenchInstance
+from functools import cache
 from datetime import datetime
 from dotenv import load_dotenv
 from git import Repo
 from swebench.harness.constants import (
-    MAP_REPO_TO_REQS_PATHS,
     MAP_REPO_TO_ENV_YML_PATHS,
-    SWE_BENCH_URL_RAW,
+    MAP_REPO_TO_REQS_PATHS,
     NON_TEST_EXTS,
+    SWE_BENCH_URL_RAW,
 )
 
-
 load_dotenv()
-
-
-def get_conda_env_names(conda_source: str, env: dict = None) -> list:
-    """
-    Get list of conda environment names for given conda path
-
-    Args:
-        conda_source (str): Path to conda executable
-    Returns:
-        env_names (list): List of conda environment names
-    """
-    # Get list of conda environments
-    try:
-        conda_envs = subprocess.run(
-            f"{conda_source} env list".split(" "), check=True, capture_output=True, text=True, env=env,
-        )
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
-        print(f"Error stdout: {e.stdout}")
-        print(f"Error stderr: {e.stderr}")
-        raise e
-    output = conda_envs.stdout
-    lines = output.split("\n")
-    # Store environment names to list
-    env_names = []
-    for line in lines:
-        if line.startswith("#"):
-            continue
-        if line.strip() == "":
-            continue
-        parts = line.split()
-        if len(parts) <= 1:
-            continue
-        env_name = parts[1]
-        env_names.append(env_name)
-    return env_names
-
-
-def get_environment_yml(
-        instance: dict,
-        env_name: str,
-        save_path: str = None,
-        python_version: str = None,
-    ) -> str:
-    """
-    Get environment.yml for given task instance
-
-    Args:
-        instance (dict): SWE Bench Task instance
-        env_name (str): Rename retrieved environment.yml to this name
-        save_path (str): If provided, save environment.yml to this path
-    Returns:
-        environment.yml (str): If save_path given, returns path to saved environment.yml.
-            Otherwise, returns environment.yml as string
-    """
-    # Attempt to find environment.yml at each path based on task instance's repo
-    path_worked = False
-
-    commit = 'environment_setup_commit' if 'environment_setup_commit' in instance else 'base_commit'
-    for req_path in MAP_REPO_TO_ENV_YML_PATHS[instance["repo"]]:
-        reqs_url = os.path.join(
-            SWE_BENCH_URL_RAW, instance["repo"], instance[commit], req_path
-        )
-        reqs = requests.get(reqs_url)
-        if reqs.status_code == 200:
-            path_worked = True
-            break
-    if not path_worked:
-        print(
-            f"Could not find environment.yml at paths {MAP_REPO_TO_ENV_YML_PATHS[instance['repo']]}"
-        )
-        return None
-
-    lines = reqs.text.split("\n")
-    cleaned = []
-    for line in lines:
-        # Rename environment to given name
-        if line.startswith("name:"):
-            cleaned.append(f"name: {env_name}")
-            continue
-        if line.startswith("dependencies:"):
-            cleaned.append(line)
-            if python_version is not None:
-                cleaned.append(f"  - python={python_version}")
-            continue
-        cleaned.append(line)
-
-    # Return environment.yml as string if no save path given
-    if save_path is None:
-        return "\n".join(cleaned)
-
-    # Save environment.yml to given path and return path
-    path_to_reqs = os.path.join(save_path, "environment.yml")
-    with open(path_to_reqs, "w") as f:
-        f.write("\n".join(cleaned))
-    return path_to_reqs
 
 
 def get_instances(instance_path: str) -> list:
@@ -133,120 +38,6 @@ def get_instances(instance_path: str) -> list:
     with open(instance_path) as f:
         task_instances = json.load(f)
     return task_instances
-
-
-def get_requirements(instance: dict, save_path: str = None):
-    """
-    Get requirements.txt for given task instance
-
-    Args:
-        instance (dict): task instance
-        save_path (str): If provided, save requirements.txt to this path
-    Returns:
-        requirements.txt (str): If save_path given, returns path to saved requirements.txt.
-            Otherwise, returns requirements.txt as string
-    """
-    # Attempt to find requirements.txt at each path based on task instance's repo
-    path_worked = False
-    commit = 'environment_setup_commit' if 'environment_setup_commit' in instance else 'base_commit'
-
-    for req_path in MAP_REPO_TO_REQS_PATHS[instance["repo"]]:
-        reqs_url = os.path.join(
-            SWE_BENCH_URL_RAW, instance["repo"], instance[commit], req_path
-        )
-        reqs = requests.get(reqs_url)
-        if reqs.status_code == 200:
-            path_worked = True
-            break
-    if not path_worked:
-        print(
-            f"Could not find requirements.txt at paths {MAP_REPO_TO_REQS_PATHS[instance['repo']]}"
-        )
-        return None
-
-    lines = reqs.text
-    original_req = []
-    additional_reqs = []
-    req_dir = "/".join(req_path.split("/")[:-1])
-    exclude_line = lambda line: any(
-        [line.strip().startswith(x) for x in ["-e .", "#", ".[test"]]
-    )
-
-    for line in lines.split("\n"):
-        if line.strip().startswith("-r"):
-            # Handle recursive requirements
-            file_name = line[len("-r") :].strip()
-            reqs_url = os.path.join(
-                SWE_BENCH_URL_RAW,
-                instance["repo"],
-                instance[commit],
-                req_dir,
-                file_name,
-            )
-            reqs = requests.get(reqs_url)
-            if reqs.status_code == 200:
-                for line_extra in reqs.text.split("\n"):
-                    if not exclude_line(line_extra):
-                        additional_reqs.append(line_extra)
-        else:
-            if not exclude_line(line):
-                original_req.append(line)
-
-    # Combine all requirements into single text body
-    additional_reqs.append("\n".join(original_req))
-    all_reqs = "\n".join(additional_reqs)
-
-    if save_path is None:
-        return all_reqs
-
-    path_to_reqs = os.path.join(save_path, "requirements.txt")
-    with open(path_to_reqs, "w") as f:
-        f.write(all_reqs)
-    return path_to_reqs
-
-
-def get_test_directives(instance: dict) -> list:
-    """
-    Get test directives from the test_patch of a task instance
-
-    Args:
-        instance (dict): task instance
-    Returns:
-        directives (list): List of test directives
-    """
-    # HumanEvalFix: For seq2seq code repos, testing command is fixed
-    if any([
-        x == instance["repo"] for x in
-        ["swe-bench/humaneval", "swe-bench/humanevalfix-python"]
-    ]):
-        return ["test.py"]
-    if any([
-        x == instance["repo"] for x in
-        ["swe-bench/humanevalfix-go", "swe-bench/humanevalfix-java"]
-    ]):
-        return []
-    if instance["repo"] == "swe-bench/humanevalfix-js":
-        return ["test.js"]
-
-    # Get test directives from test patch and remove non-test files
-    diff_pat = r"diff --git a/.* b/(.*)"
-    test_patch = instance["test_patch"]
-    directives = re.findall(diff_pat, test_patch)
-    directives = [
-        d for d in directives if not any(d.endswith(ext) for ext in NON_TEST_EXTS)
-    ]
-
-    # For Django tests, remove extension + "tests/" prefix and convert slashes to dots (module referencing)
-    if instance["repo"] == "django/django":
-        directives_transformed = []
-        for d in directives:
-            d = d[: -len(".py")] if d.endswith(".py") else d
-            d = d[len("tests/") :] if d.startswith("tests/") else d
-            d = d.replace("/", ".")
-            directives_transformed.append(d)
-        directives = directives_transformed
-
-    return directives
 
 
 def clone_repo(repo_name: str, path: str, token: str = None) -> bool:
@@ -440,22 +231,179 @@ def has_attribute_or_import_error(log_before):
     """
     log_before = log_before.lower()
 
-    if any([x in log_before for x in ['attribute', 'import']]):
+    if any([x in log_before for x in ["attribute", "import"]]):
+
         def get_lines_with_word(text, target_word):
             # Function to extract line(s) that contains target_word
             text, target_word = text.lower(), target_word.lower()
-            lines, hits = text.split('\n')[::-1], []
+            lines, hits = text.split("\n")[::-1], []
             for line in lines:
                 if target_word in line:
                     hits.append(line)
             return hits
-        
+
         # Get line with Attribute/Import error
-        lines_1 = get_lines_with_word(log_before, 'attribute')
-        lines_2 = get_lines_with_word(log_before, 'import')
+        lines_1 = get_lines_with_word(log_before, "attribute")
+        lines_2 = get_lines_with_word(log_before, "import")
         lines_1 = " ".join(lines_1)
         lines_2 = " ".join(lines_2)
 
-        if any([(x in lines_1 or x in lines_2) for x in ['error', 'fail']]):
+        if any([(x in lines_1 or x in lines_2) for x in ["error", "fail"]]):
             return True
     return False
+
+
+@cache
+def get_environment_yml_by_commit(repo: str, commit: str, env_name: str) -> str:
+    for req_path in MAP_REPO_TO_ENV_YML_PATHS[repo]:
+        reqs_url = os.path.join(SWE_BENCH_URL_RAW, repo, commit, req_path)
+        reqs = requests.get(reqs_url)
+        if reqs.status_code == 200:
+            break
+    else:
+        raise ValueError(
+            f"Could not find environment.yml at paths {MAP_REPO_TO_ENV_YML_PATHS[repo]} for repo {repo} at commit {commit}"
+        )
+
+    lines = reqs.text.split("\n")
+    cleaned = []
+    for line in lines:
+        # Rename environment to given name
+        if line.startswith("name:"):
+            cleaned.append(f"name: {env_name}")
+            continue
+        cleaned.append(line)
+
+    return "\n".join(cleaned)
+
+
+def get_environment_yml(instance: SwebenchInstance, env_name: str) -> str:
+    """
+    Get environment.yml for given task instance
+
+    Args:
+        instance (dict): SWE Bench Task instance
+        env_name (str): Rename retrieved environment.yml to this name
+    Returns:
+        environment.yml (str): Returns environment.yml as string
+    """
+    # Attempt to find environment.yml at each path based on task instance's repo
+
+    commit = (
+        instance["environment_setup_commit"]
+        if "environment_setup_commit" in instance
+        else instance["base_commit"]
+    )
+
+    return get_environment_yml_by_commit(instance["repo"], commit, env_name)
+
+
+@cache
+def get_requirements_by_commit(repo: str, commit: str) -> str:
+    for req_path in MAP_REPO_TO_REQS_PATHS[repo]:
+        reqs_url = os.path.join(SWE_BENCH_URL_RAW, repo, commit, req_path)
+        reqs = requests.get(reqs_url)
+        if reqs.status_code == 200:
+            break
+    else:
+        raise ValueError(
+            f"Could not find requirements.txt at paths {MAP_REPO_TO_REQS_PATHS[repo]} for repo {repo} at commit {commit}"
+        )
+
+    lines = reqs.text
+    original_req = []
+    additional_reqs = []
+    req_dir = "/".join(req_path.split("/")[:-1])
+    exclude_line = lambda line: any(
+        [line.strip().startswith(x) for x in ["-e .", "#", ".[test"]]
+    )
+
+    for line in lines.split("\n"):
+        if line.strip().startswith("-r"):
+            # Handle recursive requirements
+            file_name = line[len("-r") :].strip()
+            reqs_url = os.path.join(
+                SWE_BENCH_URL_RAW,
+                repo,
+                commit,
+                req_dir,
+                file_name,
+            )
+            reqs = requests.get(reqs_url)
+            if reqs.status_code == 200:
+                for line_extra in reqs.text.split("\n"):
+                    if not exclude_line(line_extra):
+                        additional_reqs.append(line_extra)
+        else:
+            if not exclude_line(line):
+                original_req.append(line)
+
+    # Combine all requirements into single text body
+    additional_reqs.append("\n".join(original_req))
+    all_reqs = "\n".join(additional_reqs)
+
+    return all_reqs
+
+
+def get_requirements(instance: SwebenchInstance) -> str:
+    """
+    Get requirements.txt for given task instance
+
+    Args:
+        instance (dict): task instance
+    Returns:
+        requirements.txt (str): Returns requirements.txt as string
+    """
+    # Attempt to find requirements.txt at each path based on task instance's repo
+    commit = (
+        instance["environment_setup_commit"]
+        if "environment_setup_commit" in instance
+        else instance["base_commit"]
+    )
+
+    return get_requirements_by_commit(instance["repo"], commit)
+
+
+def get_test_directives(instance: SwebenchInstance) -> list:
+    """
+    Get test directives from the test_patch of a task instance
+
+    Args:
+        instance (dict): task instance
+    Returns:
+        directives (list): List of test directives
+    """
+    # For seq2seq code repos, testing command is fixed
+    if instance["repo"] == "swe-bench/humaneval":
+        return ["test.py"]
+
+    # Get test directives from test patch and remove non-test files
+    diff_pat = r"diff --git a/.* b/(.*)"
+    test_patch = instance["test_patch"]
+    directives = re.findall(diff_pat, test_patch)
+    directives = [
+        d for d in directives if not any(d.endswith(ext) for ext in NON_TEST_EXTS)
+    ]
+
+    # For Django tests, remove extension + "tests/" prefix and convert slashes to dots (module referencing)
+    if instance["repo"] == "django/django":
+        directives_transformed = []
+        for d in directives:
+            d = d[: -len(".py")] if d.endswith(".py") else d
+            d = d[len("tests/") :] if d.startswith("tests/") else d
+            d = d.replace("/", ".")
+            directives_transformed.append(d)
+        directives = directives_transformed
+
+    return directives
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise ArgumentTypeError("Boolean value expected.")
