@@ -270,11 +270,11 @@ def make_run_report(predictions, dataset, client, session_id):
         "resolved_instances": len(resolved_ids),
         "error_instances": len(error_ids),
         "unstopped_instances": len(unstopped_containers),
-        "completed_ids": list(completed_ids),
-        "resolved_ids": list(resolved_ids),
-        "error_ids": list(error_ids),
-        "unstopped_containers": list(unstopped_containers),
-        "unremoved_images": list(unremoved_images),
+        "completed_ids": sorted(list(completed_ids)),
+        "resolved_ids": sorted(list(resolved_ids)),
+        "error_ids": sorted(list(error_ids)),
+        "unstopped_containers": sorted(list(unstopped_containers)),
+        "unremoved_images": sorted(list(unremoved_images)),
     }
     report_file = Path(
         list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
