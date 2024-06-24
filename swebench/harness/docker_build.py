@@ -264,7 +264,7 @@ def build_instance_images(dataset, client, force_rebuild=False, max_workers=4, c
 
 
 def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False):
-    build_dir = INSTANCE_IMAGE_BUILD_DIR / image_name.replace(":", "__")
+    build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
     if logger is None:
         logger = setup_logger(test_spec.instance_id, build_dir / "prepare_image.log")
     image_name = test_spec.instance_image_key

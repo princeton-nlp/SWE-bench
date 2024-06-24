@@ -22,17 +22,17 @@ from swebench.harness.docker_build import (
     build_env_images,
     build_instance_images,
     build_instance_image,
+    close_logger,
+    setup_logger,
 )
 
 from swebench.harness.docker_utils import (
     cleanup_container,
     cleanup_image,
-    close_logger,
     copy_to_container,
     exec_run_with_timeout,
     get_session_id,
     list_images,
-    setup_logger,
 )
 
 from swebench.harness.utils import (

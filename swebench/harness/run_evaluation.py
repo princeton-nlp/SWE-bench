@@ -11,8 +11,6 @@ from tqdm import tqdm
 from swebench.harness.utils import str2bool
 from swebench.harness.grading import get_model_report
 from swebench.harness.docker_utils import (
-    close_logger,
-    setup_logger,
     get_session_id,
     cleanup_image,
     copy_to_container,
@@ -20,8 +18,15 @@ from swebench.harness.docker_utils import (
     cleanup_container,
     list_images,
     should_remove,
+    clean_images,
 )
-from swebench.harness.docker_build import build_container, build_env_images, INSTANCE_IMAGE_BUILD_DIR
+from swebench.harness.docker_build import (
+    build_container,
+    build_env_images,
+    INSTANCE_IMAGE_BUILD_DIR,
+    close_logger,
+    setup_logger,
+)
 from swebench.harness.dataset import load, make_test_spec
 
 
