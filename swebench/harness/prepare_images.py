@@ -20,6 +20,15 @@ from swebench.harness.dataset import make_test_spec
 
 
 def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
+    """
+    Filter the dataset to only include instances that need to be built.
+
+    Args:
+        dataset (list): List of instances.
+        instance_ids (list): List of instance IDs to build.
+        client (docker.client.DockerClient): Docker client.
+        force_rebuild (bool): Whether to force rebuild all images.
+    """
     existing_images = list_images(client)
     data_to_build = []
     not_in_dataset = set(instance_ids).difference(set([instance["instance_id"] for instance in dataset]))
@@ -37,14 +46,25 @@ def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
 
 
 def main(
+    dataset_name,
+    split,
     instance_ids,
     max_workers,
     force_rebuild,
     open_file_limit,
 ):
+    """
+    Build Docker images for the specified instances.
+
+    Args:
+        instance_ids (list): List of instance IDs to build.
+        max_workers (int): Number of workers for parallel processing.
+        force_rebuild (bool): Whether to force rebuild all images.
+        open_file_limit (int): Open file limit.
+    """
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
-    dataset = load_swebench_dataset()
+    dataset = load_swebench_dataset(dataset_name, split)
     dataset = filter_dataset_to_build(dataset, instance_ids, client, force_rebuild)
     successful, failed = build_instance_images(
         dataset=dataset,
@@ -58,6 +78,8 @@ def main(
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, default="princeton-nlp/SWE-bench_Lite", help="Name of the dataset to use")
+    parser.add_argument("--split", type=str, default="test", help="Split to use")
     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
     parser.add_argument("--max_workers", type=int, default=4, help="Max workers for parallel processing")
     parser.add_argument("--force_rebuild", type=str2bool, default=False, help="Force rebuild images")
