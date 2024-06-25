@@ -14,39 +14,6 @@ from docker.models.containers import Container
 HEREDOC_DELIMITER = "EOF_1399519320"  # different from dataset HEREDOC_DELIMITERs!
 
 
-def get_session_id(length=8):
-    """
-    Generates a random string of specified length.
-
-    Parameters:
-    length (int): The length of the random string. Default is 8.
-
-    Returns:
-    str: The generated random string.
-
-    Raises:
-    ValueError: If length is not a positive integer or no character set is selected.
-    """
-    if not isinstance(length, int) or length <= 0:
-        raise ValueError("Length must be a positive integer.")
-
-    characters = ""
-    characters += string.ascii_uppercase
-    characters += string.ascii_lowercase
-    characters += string.digits
-    if not characters:
-        raise ValueError(
-            "At least one character set (uppercase, lowercase, digits) must be enabled."
-        )
-    # Create a high-resolution timestamp seed
-    timestamp = time.time_ns()
-    timestamp_bytes = str(timestamp).encode("utf-8")
-    seed = hashlib.sha256(timestamp_bytes).digest()
-    random_gen = secrets.SystemRandom(int.from_bytes(seed, "big"))
-    random_string = "".join(random_gen.choice(characters) for _ in range(length))
-    return random_string
-
-
 def copy_to_container(container: Container, src: Path, dst: Path):
     if os.path.dirname(dst) == "":
         raise ValueError(

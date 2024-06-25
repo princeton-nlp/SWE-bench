@@ -1,17 +1,17 @@
+import docker
 import json
 import resource
 import traceback
+import uuid
+
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-
-import docker
 from tqdm import tqdm
 
 from swebench.harness.utils import str2bool
 from swebench.harness.grading import get_pred_report
 from swebench.harness.docker_utils import (
-    get_session_id,
     cleanup_image,
     copy_to_container,
     exec_run_with_timeout,
@@ -123,7 +123,7 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         )
         logger.info(
             f"report: {report}\n"
-            "Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
+            f"Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
         )
 
         with open(report_path, "w") as f:
@@ -304,7 +304,7 @@ def main(
     timeout,
 ):
     if not session_id:
-        session_id = get_session_id(8)
+        session_id = str(uuid.uuid1())[:8]
     else:
         assert len(session_id) == 8, "Session ID must be 8 characters long."
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))

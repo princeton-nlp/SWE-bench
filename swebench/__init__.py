@@ -31,7 +31,6 @@ from swebench.harness.docker_utils import (
     cleanup_image,
     copy_to_container,
     exec_run_with_timeout,
-    get_session_id,
     list_images,
 )
 
