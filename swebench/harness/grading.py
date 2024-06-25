@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, List
 
-from swebench.harness.dataset import load
+from swebench.harness.dataset import TestSpec
 from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
 
 # TODO remove unused constants
@@ -227,66 +227,61 @@ def get_resolution_status(report: dict[str, dict[str, Any]]) -> str:
         return ResolvedStatus.PARTIAL.value
     else:
         return ResolvedStatus.NO.value
+    
 
-
-def get_model_report(
-    predictions: list[dict[str, str]],
-    log_paths: List[str],
+def get_pred_report(
+    test_spec: TestSpec,
+    prediction: dict[str, str],
+    log_path: str,
     include_tests_status: bool,
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, Any]:
     """
-    Generate a report of model evaluation results from predictions, task instances,
-    and evaluation logs.
+    Generate a report of model evaluation results from a prediction, task instance,
+    and evaluation log.
 
     Args:
-        predictions (List[dict]): list of predictions containing keys "instance_id", "model_name_or_path", and "model_patch"
-        log_path (List[str]): list of paths to evaluation logs. Must be in consistent order as predictions arg
+        test_spec (dict): test spec containing keys "instance_id", "FAIL_TO_PASS", and "PASS
+        prediction (dict): prediction containing keys "instance_id", "model_name_or_path", and "model_patch"
+        log_path (str): path to evaluation log
         include_tests_status (bool): whether to include the status of each test in the returned report
     Returns:
-        report_map (dict): map of instance id to report
+        report (dict): report of metrics
     """
-    assert len(predictions) == len(
-        log_paths
-    ), "Num. evaluations logs must equal number of predictions"
-
-    dataset = load()
-    eval_refs = [
-        {key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]}
-        for t in dataset
-    ]
-    eval_refs = {t["instance_id"]: t for t in eval_refs}
-
     report_map = {}
 
-    # Iterate through predictions
-    for p, log_path in zip(predictions, log_paths):
-        instance_id = p["instance_id"]
-        if instance_id not in report_map:
-            report_map[instance_id] = {
-                "patch_is_None": False,
-                "patch_exists": False,
-                "patch_successfully_applied": False,
-                "resolved": False,
-            }
+    instance_id = prediction["instance_id"]
+    if instance_id not in report_map:
+        report_map[instance_id] = {
+            "patch_is_None": False,
+            "patch_exists": False,
+            "patch_successfully_applied": False,
+            "resolved": False,
+        }
 
-        # Check if the model patch exists
-        if p["model_patch"] is None:
-            report_map[instance_id]["none"] = True
-            continue
-        report_map[instance_id]["patch_exists"] = True
+    # Check if the model patch exists
+    if prediction["model_patch"] is None:
+        report_map[instance_id]["none"] = True
+        return report_map
+    report_map[instance_id]["patch_exists"] = True
 
-        # Get evaluation logs
-        eval_sm, found = get_logs_eval(log_path)
+    # Get evaluation logs
+    eval_sm, found = get_logs_eval(log_path)
 
-        if not found:
-            continue
-        report_map[instance_id]["patch_successfully_applied"] = True
+    if not found:
+        return report_map
+    report_map[instance_id]["patch_successfully_applied"] = True
 
-        report = get_eval_report(eval_sm, eval_refs[p["instance_id"]])
-        if get_resolution_status(report) == "RESOLVED_FULL":
-            report_map[instance_id]["resolved"] = True
+    eval_ref = {
+        "instance_id": test_spec.instance_id,
+        "FAIL_TO_PASS": test_spec.FAIL_TO_PASS,
+        "PASS_TO_PASS": test_spec.PASS_TO_PASS,
+    }
 
-        if include_tests_status:
-            report_map[instance_id]["tests_status"] = report  # type: ignore
+    report = get_eval_report(eval_sm, eval_ref)
+    if get_resolution_status(report) == "RESOLVED_FULL":
+        report_map[instance_id]["resolved"] = True
 
+    if include_tests_status:
+        report_map[instance_id]["tests_status"] = report  # type: ignore
+    
     return report_map

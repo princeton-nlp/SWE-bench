@@ -24,8 +24,8 @@ class BuildImageError(Exception):
         self.logger = logger
 
     def __str__(self):
-        log_msg = " ".join(traceback.TracebackException.from_exception(self).format())
-        self.logger.error(log_msg)
+        log_msg = traceback.format_exc()
+        self.logger.info(log_msg)
         return (
             f"{self.image_name}: {super().__str__()}\n"
             f"Check ({self.log_path}) for more information."

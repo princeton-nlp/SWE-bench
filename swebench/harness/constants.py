@@ -615,7 +615,7 @@ MAP_VERSION_TO_INSTALL_PYVISTA = {
     k: {
         "python": "3.9",
         "install": "python -m pip install -e .",
-        "pip_packages": "pytest",
+        "pip_packages": ["pytest"],
     }
     for k in ["0.20", "0.21", "0.22", "0.23"]
 }
@@ -625,7 +625,7 @@ MAP_VERSION_TO_INSTALL_PYVISTA.update(
             "python": "3.9",
             "packages": "requirements.txt",
             "install": "python -m pip install -e .",
-            "pip_packages": "pytest",
+            "pip_packages": ["pytest"],
         }
         for k in [
             "0.24",
@@ -655,7 +655,7 @@ MAP_VERSION_TO_INSTALL_ASTROID = {
     k: {
         "python": "3.9",
         "install": "python -m pip install -e .",
-        "pip_packages": "pytest",
+        "pip_packages": ["pytest"],
     }
     for k in [
         "2.10",
@@ -701,7 +701,7 @@ MAP_VERSION_TO_INSTALL_PVLIB = {
         "python": "3.9",
         "install": "python -m pip install -e .[all]",
         "packages": "pandas scipy",
-        "pip_packages": "jupyter ipython matplotlib pytest flake8",
+        "pip_packages": ["jupyter", "ipython", "matplotlib", "pytest", "flake8"],
     }
     for k in ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"]
 }

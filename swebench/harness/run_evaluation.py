@@ -9,7 +9,7 @@ import docker
 from tqdm import tqdm
 
 from swebench.harness.utils import str2bool
-from swebench.harness.grading import get_model_report
+from swebench.harness.grading import get_pred_report
 from swebench.harness.docker_utils import (
     get_session_id,
     cleanup_image,
@@ -41,8 +41,8 @@ class EvaluationError(Exception):
         self.logger = logger
 
     def __str__(self):
-        log_msg = " ".join(traceback.TracebackException.from_exception(self).format())
-        self.logger.error(log_msg)
+        log_msg = traceback.format_exc()
+        self.logger.info(log_msg)
         return (
             f"{self.instance_id}: {super().__str__()}\n"
             f"Check ({self.log_file}) for more information."
@@ -86,7 +86,7 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
             user="root",
         )
         if val.exit_code != 0:
-            logger.error(f"Error applying patch:\n{val.output.decode('utf-8')}")
+            logger.info(f"Error applying patch:\n{val.output.decode('utf-8')}")
             raise EvaluationError(
                 instance_id,
                 f"Error applying patch:\n{val.output.decode('utf-8')}",
@@ -111,13 +111,14 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         )
         logger.info(f"Git diff after:\n{git_diff_output_after}")
         if git_diff_output_after != git_diff_output_before:
-            logger.error(f"Git diff changed after running eval script")
+            logger.info(f"Git diff changed after running eval script")
             # "Git diff changed after running eval script"
 
         logger.info(f"Grading answer for {instance_id}...")
-        report = get_model_report(
-            predictions=[pred],
-            log_paths=[test_output_path],
+        report = get_pred_report(
+            test_spec=test_spec,
+            prediction=pred,
+            log_path=test_output_path,
             include_tests_status=True,
         )
         logger.info(

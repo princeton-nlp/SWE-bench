@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import hashlib
 import re
 import platform
+import json
 
 from datasets import Dataset, load_dataset
 from swebench.harness.swebench_instance import SwebenchInstance
@@ -40,6 +41,8 @@ class TestSpec:
     eval_script_list: str
     env_script_list: str
     arch: str
+    FAIL_TO_PASS: list[str]
+    PASS_TO_PASS: list[str]
 
     @property
     def setup_env_script(self):
@@ -242,6 +245,8 @@ def make_test_spec(instance: SwebenchInstance) -> TestSpec:
     problem_statement = instance["problem_statement"]
     hints_text = instance["hints_text"]  # Unused
     test_patch = instance["test_patch"]
+    pass_to_pass = json.loads(instance["PASS_TO_PASS"])
+    fail_to_pass = json.loads(instance["FAIL_TO_PASS"])
 
     env_name = "testbed"
     repo_directory = f"/{env_name}"
@@ -265,4 +270,6 @@ def make_test_spec(instance: SwebenchInstance) -> TestSpec:
         eval_script_list=eval_script_list,
         version=version,
         arch=arch,
+        FAIL_TO_PASS=fail_to_pass,
+        PASS_TO_PASS=pass_to_pass,
     )
