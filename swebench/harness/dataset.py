@@ -1,39 +1,30 @@
-from typing import Union, cast
-from dataclasses import dataclass
 import hashlib
-import re
-import platform
 import json
+import platform
+import re
 
-from datasets import Dataset, load_dataset
-from swebench.harness.swebench_instance import SwebenchInstance
-from swebench.harness.dockerfiles import (
-    get_dockerfile_base,
-    get_dockerfile_env,
-    get_dockerfile_instance,
-)
-from swebench.harness.utils import (
-    get_requirements,
-    get_environment_yml,
-    get_test_directives,
-)
+from dataclasses import dataclass
+from typing import Union
+
 from swebench.harness.constants import (
     MAP_REPO_TO_INSTALL,
     MAP_VERSION_TO_INSTALL,
     MAP_REPO_TO_TEST_FRAMEWORK,
     USE_X86,
 )
+from swebench.harness.dockerfiles import (
+    get_dockerfile_base,
+    get_dockerfile_env,
+    get_dockerfile_instance,
+)
+from swebench.harness.swebench_instance import SwebenchInstance
+from swebench.harness.utils import (
+    get_requirements,
+    get_environment_yml,
+    get_test_directives,
+)
 
 DIFF_MODIFIED_FILE_REGEX = r"--- a/(.*)"
-
-
-def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
-    if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
-        name = "princeton-nlp/SWE-bench"
-    elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
-        name = "princeton-nlp/SWE-bench_Lite"
-    dataset = cast(Dataset, load_dataset(name, split=split))
-    return [cast(SwebenchInstance, instance) for instance in dataset]
 
 
 @dataclass
