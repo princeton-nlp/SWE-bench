@@ -47,6 +47,15 @@ def write_to_container(container: Container, data: str, dst: Path):
 
 
 def cleanup_image(client, image_id, rm_image, logger=None):
+    """
+    Remove a Docker image by ID.
+
+    Args:
+        client (docker.client.DockerClient): Docker client.
+        image_id (str): Image ID.
+        rm_image (bool): Whether to remove the image.
+        logger (logging.Logger): Logger to use for output. If None, print to stdout.
+    """
     if not logger:
         log_info = print
         log_error = print
@@ -73,6 +82,15 @@ def cleanup_image(client, image_id, rm_image, logger=None):
 
 
 def cleanup_container(client, container, logger):
+    """
+    Stop and remove a Docker container.
+    Performs this forcefully if the container cannot be stopped with the python API.
+
+    Args:
+        client (docker.client.DockerClient): Docker client.
+        container (docker.models.containers.Container): Container to remove.
+        logger (logging.Logger): Logger to use for output. If None, print to stdout
+    """
     if not container:
         return
 
@@ -130,6 +148,14 @@ def cleanup_container(client, container, logger):
 
 
 def exec_run_with_timeout(container, cmd, timeout=60):
+    """
+    Run a command in a container with a timeout.
+
+    Args:
+        container (docker.Container): Container to run the command in.
+        cmd (str): Command to run.
+        timeout (int): Timeout in seconds.
+    """
     exec_result = None
     exec_id = None
     exception = None
@@ -190,16 +216,31 @@ def find_dependent_images(client, image_name):
 
 
 def list_images(client):
+    """
+    List all images from the Docker client.
+    """
     # don't use this in multi-threaded context
     return {tag for i in client.images.list(all=True) for tag in i.tags}
 
 
-def clean_images(client, prior_images, cache, clean):
+def clean_images(client, prior_images, cache_level, clean):
+    """
+    Clean Docker images based on cache level and clean flag.
+
+    Args:
+        client (docker.client.DockerClient): Docker client.
+        prior_images (set): Set of images that existed before the current run.
+        cache (str): Cache level to use.
+        clean (bool): Whether to clean; remove images that are higher in the cache hierarchy than the current
+            cache level. E.g. if cache_level is set to env, remove all previously built instances images. if
+            clean is false, previously built instances images will not be removed, but instance images built
+            in the current run will be removed.
+    """
     images = list_images(client)
     removed = 0
     print(f"Cleaning cached images...")
     for image_name in images:
-        if should_remove(image_name, cache, clean, prior_images):
+        if should_remove(image_name, cache_level, clean, prior_images):
             try:
                 cleanup_image(client, image_name, True, "quiet")
                 removed += 1
@@ -209,18 +250,18 @@ def clean_images(client, prior_images, cache, clean):
     print(f"Removed {removed} images.")
 
 
-def should_remove(image_name, cache, clean, prior_images):
+def should_remove(image_name, cache_level, clean, prior_images):
     """
     Determine if an image should be removed based on cache level and clean flag.
     """
     existed_before = image_name in prior_images
     if image_name.startswith("sweb.base"):
-        if cache in {"none"} and (clean or not existed_before):
+        if cache_level in {"none"} and (clean or not existed_before):
             return True
     elif image_name.startswith("sweb.env"):
-        if cache in {"none", "base"} and (clean or not existed_before):
+        if cache_level in {"none", "base"} and (clean or not existed_before):
             return True
     elif image_name.startswith("sweb.eval"):
-        if cache in {"none", "base", "env"} and (clean or not existed_before):
+        if cache_level in {"none", "base", "env"} and (clean or not existed_before):
             return True
     return False

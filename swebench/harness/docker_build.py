@@ -37,6 +37,10 @@ class BuildImageError(Exception):
 
 
 def setup_logger(instance_id, log_file: Path, mode="w"):
+    """
+    This logger is used for logging the build process of images and containers.
+    It writes logs to the log file.
+    """
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(f"{instance_id}.{log_file.name}")
     handler = logging.FileHandler(log_file, mode=mode)
@@ -59,6 +63,18 @@ def close_logger(logger):
 def build_image(
     image_name, setup_scripts, dockerfile, platform, client, build_dir, nocache=False
 ):
+    """
+    Builds a docker image with the given name, setup scripts, dockerfile, and platform.
+
+    Args:
+        image_name (str): Name of the image to build
+        setup_scripts (dict): Dictionary of setup script names to setup script contents
+        dockerfile (str): Contents of the Dockerfile
+        platform (str): Platform to build the image for
+        client (docker.DockerClient): Docker client to use for building the image
+        build_dir (Path): Directory for the build context (will also contain logs, scripts, and artifacts)
+        nocache (bool): Whether to use the cache when building
+    """
     logger = setup_logger(image_name, build_dir / "build_image.log")
     logger.info(
         f"Building image {image_name}\n"
@@ -118,6 +134,14 @@ def build_image(
 
 
 def build_base_images(client, dataset, force_rebuild=False):
+    """
+    Builds the base images required for the dataset if they do not already exist.
+
+    Args:
+        client (docker.DockerClient): Docker client to use for building the images
+        dataset (list): List of test specs or dataset to build images for
+        force_rebuild (bool): Whether to force rebuild the images even if they already exist
+    """
     test_specs = get_test_specs_from_dataset(dataset)
     base_images = {
         x.base_image_key: (x.base_dockerfile, x.platform) for x in test_specs
@@ -148,6 +172,11 @@ def get_env_configs_to_build(client, dataset, force_rebuild=False):
     """
     Returns a dictionary of image names to build scripts and dockerfiles for environment images.
     Returns only the environment images that need to be built.
+
+    Args:
+        client (docker.DockerClient): Docker client to use for building the images
+        dataset (list): List of test specs or dataset to build images for
+        force_rebuild (bool): Whether to force rebuild the images even if they already exist
     """
     image_scripts = dict()
     base_images = dict()
@@ -189,16 +218,16 @@ def get_env_configs_to_build(client, dataset, force_rebuild=False):
     return image_scripts
 
 
-# def build_x_images(dataset, client, force_rebuild=False, max_workers=4):
-#    first, we need to get all the base images, if the base images are not there, we build them
-#    then, we need to get all the env images, if the env images are not there, we build them
-#        if the env images are older than their base images, we rebuild them
-#    then, we need to get all the instance images, if the instance images are not there, we build them
-#        if the instance images are older than their env images, we rebuild them
-#    return the list of successful and failed images
-
-
 def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
+    """
+    Builds the environment images required for the dataset if they do not already exist.
+
+    Args:
+        client (docker.DockerClient): Docker client to use for building the images
+        dataset (list): List of test specs or dataset to build images for
+        force_rebuild (bool): Whether to force rebuild the images even if they already exist
+        max_workers (int): Maximum number of workers to use for building images
+    """
     build_base_images(client, dataset, force_rebuild)
     configs_to_build = get_env_configs_to_build(client, dataset, force_rebuild)
     if len(configs_to_build) == 0:
@@ -246,6 +275,15 @@ def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
 
 
 def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
+    """
+    Builds the instance images required for the dataset if they do not already exist.
+    
+    Args:
+        dataset (list): List of test specs or dataset to build images for
+        client (docker.DockerClient): Docker client to use for building the images
+        force_rebuild (bool): Whether to force rebuild the images even if they already exist
+        max_workers (int): Maximum number of workers to use for building images
+    """
     test_specs = list(map(make_test_spec, dataset))
     env_success, env_failed = build_env_images(client, test_specs, force_rebuild, max_workers)
     if len(env_failed) > 0:
@@ -293,6 +331,16 @@ def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
 
 
 def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False):
+    """
+    Builds the instance image for the given test spec if it does not already exist.
+
+    Args:
+        test_spec (TestSpec): Test spec to build the instance image for
+        client (docker.DockerClient): Docker client to use for building the image
+        logger (logging.Logger): Logger to use for logging the build process
+        nocache (bool): Whether to use the cache when building
+        force_rebuild (bool): Whether to force rebuild the image even if it already exists
+    """
     build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
     new_logger = False
     if logger is None:
@@ -373,4 +421,3 @@ def build_container(
         logger.info(traceback.format_exc())
         cleanup_container(client, container, logger)
         raise BuildImageError(test_spec.instance_id, str(e), logger) from e
-
