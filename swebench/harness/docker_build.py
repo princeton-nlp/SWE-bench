@@ -192,7 +192,7 @@ def get_env_configs_to_build(client, dataset, force_rebuild=False):
 
 def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
     build_base_images(client, dataset, force_rebuild)
-    configs_to_build = list(get_env_configs_to_build(client, dataset, force_rebuild).items())
+    configs_to_build = get_env_configs_to_build(client, dataset, force_rebuild)
     if len(configs_to_build) == 0:
         print("No environment images need to be built.")
         return
@@ -213,7 +213,7 @@ def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
                     client,
                     ENV_IMAGE_BUILD_DIR / image_name.replace(":", "__"),
                 ): image_name
-                for image_name, config in configs_to_build
+                for image_name, config in configs_to_build.items()
             }
             for future in as_completed(futures):
                 pbar.update(1)
@@ -239,8 +239,11 @@ def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
 
 def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
     test_specs = list(map(make_test_spec, dataset))
-    build_base_images(client, test_specs, force_rebuild, max_workers)
-    build_env_images(client, test_specs, force_rebuild, max_workers)
+    env_success, env_failed = build_env_images(client, test_specs, force_rebuild, max_workers)
+    if len(env_failed) > 0:
+        dont_run_specs = [spec for spec in test_specs if spec.env_image_key in env_failed]
+        test_specs = [spec for spec in test_specs if spec.env_image_key not in env_failed]
+        print(f"Skipping {len(dont_run_specs)} instances - due to failed env image builds")
     print(f"Building instance images for {len(test_specs)} instances")
     successful = list()
     failed = list()
