@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description=__doc__)
     parser.add_argument(
         "--instance_ids",
-        help="Instance IDs to build images for",
+        help="Instance IDs to remove containers for",
     )
     parser.add_argument(
         "--predictions_path",
