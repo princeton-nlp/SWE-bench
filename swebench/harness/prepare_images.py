@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 from swebench.harness.utils import str2bool
 from swebench.harness.docker_utils import (
-    get_session_id,
     list_images,
     clean_images,
 )
