@@ -7,7 +7,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from swebench.harness.constants import MAP_VERSION_TO_INSTALL
-from swebench.harness.test_spec import make_test_spec, get_test_specs_from_dataset
+from swebench.harness.test_spec import (
+    get_test_specs_from_dataset,
+    make_test_spec,
+    TestSpec
+)
 from swebench.harness.docker_utils import (
     cleanup_container,
     cleanup_image,
@@ -36,7 +40,7 @@ class BuildImageError(Exception):
         )
 
 
-def setup_logger(instance_id, log_file: Path, mode="w"):
+def setup_logger(instance_id: str, log_file: Path, mode="w"):
     """
     This logger is used for logging the build process of images and containers.
     It writes logs to the log file.
@@ -61,8 +65,14 @@ def close_logger(logger):
 
 
 def build_image(
-    image_name, setup_scripts, dockerfile, platform, client, build_dir, nocache=False
-):
+        image_name: str,
+        setup_scripts: dict,
+        dockerfile: str,
+        platform: str,
+        client: docker.DockerClient,
+        build_dir: Path,
+        nocache: bool = False
+    ):
     """
     Builds a docker image with the given name, setup scripts, dockerfile, and platform.
 
@@ -133,7 +143,11 @@ def build_image(
         close_logger(logger)  # functions that create loggers should close them
 
 
-def build_base_images(client, dataset, force_rebuild=False):
+def build_base_images(
+        client: docker.DockerClient,
+        dataset: list,
+        force_rebuild: bool = False
+    ):
     """
     Builds the base images required for the dataset if they do not already exist.
 
@@ -168,7 +182,11 @@ def build_base_images(client, dataset, force_rebuild=False):
     print("Base images built successfully.")
 
 
-def get_env_configs_to_build(client, dataset, force_rebuild=False):
+def get_env_configs_to_build(
+        client: docker.DockerClient,
+        dataset: list,
+        force_rebuild: bool = False,
+    ):
     """
     Returns a dictionary of image names to build scripts and dockerfiles for environment images.
     Returns only the environment images that need to be built.
@@ -218,7 +236,12 @@ def get_env_configs_to_build(client, dataset, force_rebuild=False):
     return image_scripts
 
 
-def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
+def build_env_images(
+        client: docker.DockerClient,
+        dataset: list,
+        force_rebuild: bool = False,
+        max_workers: int = 4
+    ):
     """
     Builds the environment images required for the dataset if they do not already exist.
 
@@ -274,7 +297,12 @@ def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
     return successful, failed
 
 
-def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
+def build_instance_images(
+        client: docker.DockerClient,
+        dataset: list,
+        force_rebuild: bool = False,
+        max_workers: int = 4
+    ):
     """
     Builds the instance images required for the dataset if they do not already exist.
     
@@ -330,7 +358,13 @@ def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
     return successful, failed
 
 
-def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False):
+def build_instance_image(
+        test_spec: TestSpec,
+        client: docker.DockerClient,
+        logger: logging.Logger,
+        nocache: bool,
+        force_rebuild: bool = False
+    ):
     """
     Builds the instance image for the given test spec if it does not already exist.
 
@@ -395,14 +429,29 @@ def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False
 
 
 def build_container(
-    test_spec, client, session_id, logger, nocache, force_rebuild=False
-):
+        test_spec: TestSpec,
+        client: docker.DockerClient,
+        session_id: str,
+        logger: logging.Logger,
+        nocache: bool,
+        force_rebuild: bool = False
+    ):
+    """
+    Builds the instance image for the given test spec and creates a container from the image.
+
+    Args:
+        test_spec (TestSpec): Test spec to build the instance image and container for
+        client (docker.DockerClient): Docker client for building image + creating the container
+        session_id (str): Session ID identifying process, used for the container name
+        logger (logging.Logger): Logger to use for logging the build process
+        nocache (bool): Whether to use the cache when building
+        force_rebuild (bool): Whether to force rebuild the image even if it already exists
+    """
     build_instance_image(test_spec, client, logger, nocache, force_rebuild)
     container = None
     try:
         config = MAP_VERSION_TO_INSTALL[test_spec.repo][test_spec.version]
         user = "root" if not config.get("execute_test_as_nonroot", False) else "nonroot"
-        # user = "root"
         nano_cpus = config.get("nano_cpus")
         logger.info(f"Creating container for {test_spec.instance_id}...")
         container = client.containers.create(

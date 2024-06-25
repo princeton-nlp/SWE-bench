@@ -67,8 +67,8 @@ def main(
     dataset = load_swebench_dataset(dataset_name, split)
     dataset = filter_dataset_to_build(dataset, instance_ids, client, force_rebuild)
     successful, failed = build_instance_images(
-        dataset=dataset,
         client=client,
+        dataset=dataset,
         force_rebuild=force_rebuild,
         max_workers=max_workers,
     )
