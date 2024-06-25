@@ -122,7 +122,7 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         )
         logger.info(
             f"report: {report}\n"
-            "Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
+            f"Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
         )
 
         with open(report_path, "w") as f:
