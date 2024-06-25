@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tqdm import tqdm
 
-from swebench.harness.utils import str2bool
+from swebench.harness.utils import load, str2bool
 from swebench.harness.grading import get_pred_report
 from swebench.harness.docker_utils import (
     cleanup_image,
@@ -27,7 +27,7 @@ from swebench.harness.docker_build import (
     close_logger,
     setup_logger,
 )
-from swebench.harness.dataset import load, make_test_spec
+from swebench.harness.dataset import make_test_spec
 
 
 RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")

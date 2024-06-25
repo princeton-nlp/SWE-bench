@@ -4,19 +4,27 @@ import re
 import requests
 
 from argparse import ArgumentTypeError
-from swebench.harness.swebench_instance import SwebenchInstance
-from functools import cache
+from datasets import Dataset, load_dataset
 from datetime import datetime
 from dotenv import load_dotenv
+from functools import cache
 from git import Repo
+from typing import cast
+
 from swebench.harness.constants import (
     MAP_REPO_TO_ENV_YML_PATHS,
     MAP_REPO_TO_REQS_PATHS,
     NON_TEST_EXTS,
     SWE_BENCH_URL_RAW,
 )
+from swebench.harness.swebench_instance import SwebenchInstance
 
 load_dotenv()
+
+
+def load(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
+    dataset = cast(Dataset, load_dataset(name, split=split))
+    return [cast(SwebenchInstance, instance) for instance in dataset]
 
 
 def get_instances(instance_path: str) -> list:

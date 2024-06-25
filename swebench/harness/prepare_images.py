@@ -8,7 +8,7 @@ from pathlib import Path
 import docker
 from tqdm import tqdm
 
-from swebench.harness.utils import str2bool
+from swebench.harness.utils import load, str2bool
 from swebench.harness.docker_utils import (
     list_images,
     clean_images,
@@ -16,7 +16,7 @@ from swebench.harness.docker_utils import (
 from swebench.harness.docker_build import (
     build_instance_images,
 )
-from swebench.harness.dataset import load, make_test_spec
+from swebench.harness.dataset import make_test_spec
 
 
 def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
