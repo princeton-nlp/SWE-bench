@@ -23,6 +23,11 @@ load_dotenv()
 
 
 def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
+    if any([name.endswith(ext) for ext for [".json", ".jsonl"]]):
+        return [
+            cast(SwebenchInstance, instance)
+            for instance in json.load(open(name))
+        ]
     if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
         name = "princeton-nlp/SWE-bench"
     elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
