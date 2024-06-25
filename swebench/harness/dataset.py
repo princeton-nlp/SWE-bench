@@ -27,13 +27,20 @@ from swebench.harness.constants import (
 DIFF_MODIFIED_FILE_REGEX = r"--- a/(.*)"
 
 
-def load(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
+def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
+    if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
+        name = "princeton-nlp/SWE-bench"
+    elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
+        name = "princeton-nlp/SWE-bench_Lite"
     dataset = cast(Dataset, load_dataset(name, split=split))
     return [cast(SwebenchInstance, instance) for instance in dataset]
 
 
 @dataclass
 class TestSpec:
+    """
+    A dataclass that represents a test specification for a single instance of SWE-bench.
+    """
     instance_id: str
     repo: str
     version: str
@@ -63,6 +70,12 @@ class TestSpec:
 
     @property
     def env_image_key(self):
+        """
+        The key for the environment image is based on the hash of the environment script list.
+        If the environment script list changes, the image will be rebuilt automatically.
+
+        Note that old images are not automatically deleted, so consider cleaning up old images periodically.
+        """
         hash_object = hashlib.sha256()
         hash_object.update(str(self.env_script_list).encode("utf-8"))
         hash_value = hash_object.hexdigest()
@@ -101,12 +114,19 @@ class TestSpec:
         
 
 def get_test_specs_from_dataset(dataset: Union[list[SwebenchInstance], list[TestSpec]]) -> list[TestSpec]:
+    """
+    Idempotent function that converts a list of SwebenchInstance objects to a list of TestSpec objects.
+    """
     if isinstance(dataset[0], TestSpec):
         return dataset
     return list(map(make_test_spec, dataset))
 
 
 def make_repo_script_list(install, repo, repo_directory, base_commit, env_name):
+    """
+    Create a list of bash commands to set up the repository for testing.
+    This is the setup script for the instance image.
+    """
     setup_commands = [
         f"git clone -o origin https://github.com/{repo} {repo_directory}",
         f"chmod -R 777 {repo_directory}",  # So nonroot user can run tests
@@ -133,6 +153,10 @@ def make_repo_script_list(install, repo, repo_directory, base_commit, env_name):
 
 
 def make_env_script_list(instance, install, env_name):
+    """
+    Creates the list of commands to set up the conda environment for testing.
+    This is the setup script for the environment image.
+    """
     HEREDOC_DELIMITER = "EOF_59812759871"
     reqs_commands = [
         "source /opt/miniconda3/bin/activate",
@@ -194,9 +218,12 @@ def make_env_script_list(instance, install, env_name):
 
 
 def make_eval_script_list(instance, install, env_name, repo_directory, base_commit, test_patch):
+    """
+    Applies the test patch and runs the tests.
+    """
     HEREDOC_DELIMITER = "EOF_114329324912"
-    # Reset test files to the state they should be in before the patch.
     test_files = re.findall(DIFF_MODIFIED_FILE_REGEX, test_patch)
+    # Reset test files to the state they should be in before the patch.
     reset_tests_command = f"git checkout {base_commit} {' '.join(test_files)}"
     apply_test_patch_command = (
         f"git apply -v - <<'{HEREDOC_DELIMITER}'\n{test_patch}\n{HEREDOC_DELIMITER}"
@@ -258,6 +285,7 @@ def make_test_spec(instance: SwebenchInstance) -> TestSpec:
         instance, install, env_name, repo_directory, base_commit, test_patch
     )
     if platform.machine() in {"aarch64", "arm64"}:
+        # use arm64 unless explicitly specified
         arch = "arm64" if instance_id not in USE_X86 else "x86_64"
     else:
         arch = "x86_64"

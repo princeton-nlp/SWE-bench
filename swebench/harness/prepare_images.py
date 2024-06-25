@@ -16,7 +16,7 @@ from swebench.harness.docker_utils import (
 from swebench.harness.docker_build import (
     build_instance_images,
 )
-from swebench.harness.dataset import load, make_test_spec
+from swebench.harness.dataset import load_swebench_dataset, make_test_spec
 
 
 def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
@@ -44,7 +44,7 @@ def main(
 ):
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
-    dataset = load()
+    dataset = load_swebench_dataset()
     dataset = filter_dataset_to_build(dataset, instance_ids, client, force_rebuild)
     successful, failed = build_instance_images(
         dataset=dataset,
