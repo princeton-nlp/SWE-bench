@@ -7,8 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from swebench.harness.constants import MAP_VERSION_TO_INSTALL
-from swebench.harness.dataset import make_test_spec
-from swebench.harness.docker_utils import cleanup_image, list_images, cleanup_container
+from swebench.harness.dataset import make_test_spec, get_test_specs_from_dataset
+from swebench.harness.docker_utils import cleanup_image, cleanup_container
 
 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 INSTANCE_IMAGE_BUILD_DIR = Path("image_build_logs/instances")
@@ -17,9 +17,9 @@ BASE_IMAGE_BUILD_DIR = Path("image_build_logs/base")
 
 
 class BuildImageError(Exception):
-    def __init__(self, instance_id, message, logger):
+    def __init__(self, image_name, message, logger):
         super().__init__(message)
-        self.instance_id = instance_id
+        self.image_name = image_name
         self.log_path = logger.log_file
         self.logger = logger
 
@@ -27,7 +27,7 @@ class BuildImageError(Exception):
         log_msg = " ".join(traceback.TracebackException.from_exception(self).format())
         self.logger.error(log_msg)
         return (
-            f"{self.instance_id}: {super().__str__()}\n"
+            f"{self.image_name}: {super().__str__()}\n"
             f"Check ({self.log_path}) for more information."
         )
 
@@ -113,11 +113,21 @@ def build_image(
         close_logger(logger)  # functions that create loggers should close them
 
 
-def build_base_images(client, test_specs):
+def build_base_images(client, dataset, force_rebuild=False):
+    test_specs = get_test_specs_from_dataset(dataset)
     base_images = {
         x.base_image_key: (x.base_dockerfile, x.platform) for x in test_specs
     }
     for image_name, (dockerfile, platform) in base_images.items():
+        try:
+            client.images.get(image_name)
+            if force_rebuild:
+                cleanup_image(client, image_name, True, "quiet")
+            else:
+                print(f"Base image {image_name} already exists, skipping build.")
+                continue
+        except docker.errors.ImageNotFound:
+            pass
         print(f"Building base image ({image_name})")
         build_image(
             image_name=image_name,
@@ -130,47 +140,62 @@ def build_base_images(client, test_specs):
     print("Base images built successfully.")
 
 
-def get_env_configs(test_specs, force_rebuild, client):
-    all_image_names = list_images(client)
+def get_env_configs_to_build(client, dataset, force_rebuild=False):
+    """
+    Returns a dictionary of image names to build scripts and dockerfiles for environment images.
+    Returns only the environment images that need to be built.
+    """
     image_scripts = dict()
+    base_images = dict()
+    test_specs = get_test_specs_from_dataset(dataset)
     for test_spec in test_specs:
-        image_key = test_spec.env_image_key
-        dockerfile = test_spec.env_dockerfile
-        if image_key not in all_image_names or force_rebuild:
-            if image_key in all_image_names and force_rebuild:
-                cleanup_image(client, image_key, True, "quiet")
-            image_scripts[image_key] = {
+        try:
+            if test_spec.base_image_key not in base_images:
+                base_images[test_spec.base_image_key] = client.images.get(
+                    test_spec.base_image_key
+                )
+            base_image = base_images[test_spec.base_image_key]
+        except docker.errors.ImageNotFound:
+            raise Exception(
+                f"Base image {test_spec.base_image_key} not found for {test_spec.env_image_key}\n."
+                "Please build the base images first."
+            )
+        image_exists = False
+        try:
+            env_image = client.images.get(test_spec.env_image_key)
+            image_exists = True
+            if env_image.attrs["Created"] < base_image.attrs["Created"]:
+                cleanup_image(client, test_spec.env_image_key, True, "quiet")
+                image_exists = False
+        except docker.errors.ImageNotFound:
+            pass
+        if image_exists and force_rebuild:
+            cleanup_image(client, test_spec.env_image_key, True, "quiet")
+            image_exists = False
+        if not image_exists:
+            image_scripts[test_spec.env_image_key] = {
                 "setup_script": test_spec.setup_env_script,
-                "dockerfile": dockerfile,
+                "dockerfile": test_spec.env_dockerfile,
                 "platform": test_spec.platform,
             }
     return image_scripts
 
 
-def build_env_images(dataset, client, force_rebuild=False, max_workers=4):
-    test_specs = list(map(make_test_spec, dataset))
-    image_configs = get_env_configs(test_specs, force_rebuild, client)
-    all_image_names = list_images(client)
-    base_image_names = {x.base_image_key for x in test_specs}
-    if not all(
-        base_image_name in all_image_names for base_image_name in base_image_names
-    ):
-        build_base_images(client, test_specs)
-    elif force_rebuild:
-        print("Rebuilding base image(s)")
-        for base_image_name in base_image_names:
-            if base_image_name in all_image_names:
-                cleanup_image(client, base_image_name, True, "quiet")
-        build_base_images(client, test_specs)
-    else:
-        print(f"Base image(s) {base_image_names} already exist, skipping build.")
+# def build_x_images(dataset, client, force_rebuild=False, max_workers=4):
+#    first, we need to get all the base images, if the base images are not there, we build them
+#    then, we need to get all the env images, if the env images are not there, we build them
+#        if the env images are older than their base images, we rebuild them
+#    then, we need to get all the instance images, if the instance images are not there, we build them
+#        if the instance images are older than their env images, we rebuild them
+#    return the list of successful and failed images
 
-    configs_to_build = [
-        (image_name, scripts)
-        for image_name, scripts in image_configs.items()
-        if image_name not in all_image_names or force_rebuild
-    ]
 
+def build_env_images(client, dataset, force_rebuild=False, max_workers=4):
+    build_base_images(client, dataset, force_rebuild)
+    configs_to_build = list(get_env_configs_to_build(client, dataset, force_rebuild).items())
+    if len(configs_to_build) == 0:
+        print("No environment images need to be built.")
+        return
     print(f"Total environment images to build: {len(configs_to_build)}")
     successful = list()
     failed = list()
@@ -196,7 +221,7 @@ def build_env_images(dataset, client, force_rebuild=False, max_workers=4):
                     future.result()
                     successful.append(futures[future])
                 except BuildImageError as e:
-                    print(f"BuildImageError {e.instance_id}")
+                    print(f"BuildImageError {e.image_name}")
                     traceback.print_exc()
                     failed.append(futures[future])
                     continue
@@ -214,19 +239,8 @@ def build_env_images(dataset, client, force_rebuild=False, max_workers=4):
 
 def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
     test_specs = list(map(make_test_spec, dataset))
-    all_image_names = list_images(client)
-    env_image_names = {x.env_image_key for x in test_specs}
-    if not all(env_image_name in all_image_names for env_image_name in env_image_names):
-        build_env_images(dataset, client, force_rebuild, max_workers)
-    elif force_rebuild:
-        print("Rebuilding environment image(s)")
-        for env_image_name in env_image_names:
-            if env_image_name in all_image_names:
-                cleanup_image(client, env_image_name, True, "quiet")
-        build_env_images(dataset, client, force_rebuild, max_workers)
-    else:
-        print(f"Environment image(s) {env_image_names} already exist, skipping build.")
-
+    build_base_images(client, test_specs, force_rebuild, max_workers)
+    build_env_images(client, test_specs, force_rebuild, max_workers)
     print(f"Building instance images for {len(test_specs)} instances")
     successful = list()
     failed = list()
@@ -251,7 +265,7 @@ def build_instance_images(dataset, client, force_rebuild=False, max_workers=4):
                     future.result()
                     successful.append(futures[future])
                 except BuildImageError as e:
-                    print(f"BuildImageError {e.instance_id}")
+                    print(f"BuildImageError {e.image_name}")
                     traceback.print_exc()
                     failed.append(futures[future])
                     continue
@@ -277,7 +291,7 @@ def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False
     env_image_name = test_spec.env_image_key
     dockerfile = test_spec.instance_dockerfile
     try:
-        client.images.get(env_image_name)
+        env_image = client.images.get(env_image_name)
     except docker.errors.ImageNotFound as e:
         raise BuildImageError(
             test_spec.instance_id,
@@ -290,8 +304,13 @@ def build_instance_image(test_spec, client, logger, nocache, force_rebuild=False
     )
     image_exists = False
     try:
-        client.images.get(image_name)
-        image_exists = True
+        instance_image = client.images.get(image_name)
+        if instance_image.attrs["Created"] < env_image.attrs["Created"]:
+            # the environment image is newer than the instance image, meaning the instance image may be outdated
+            cleanup_image(client, image_name, True, "quiet")
+            image_exists = False
+        else:
+            image_exists = True
     except docker.errors.ImageNotFound:
         pass
     if image_exists and force_rebuild:

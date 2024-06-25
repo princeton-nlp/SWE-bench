@@ -184,8 +184,8 @@ def run_instances(predictions, instances, cache, clean, force_rebuild, max_worke
     print("All instances run.")
 
 
-def get_dataset_from_preds(instance_ids, predictions, exclude_completed=True):
-    dataset = load()
+def get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclude_completed=True):
+    dataset = load(dataset_name, split)
     dataset_ids = {i["instance_id"] for i in dataset}
     if instance_ids:
         instance_ids = set(instance_ids)
@@ -291,6 +291,8 @@ def make_run_report(predictions, dataset, client, session_id):
 
 
 def main(
+    dataset_name,
+    split,
     instance_ids,
     predictions_path,
     max_workers,
@@ -310,14 +312,14 @@ def main(
     with open(predictions_path, "r") as f:
         predictions = json.loads(f.read())
     predictions = {pred["instance_id"]: pred for pred in predictions}
-    dataset = get_dataset_from_preds(instance_ids, predictions)
-    full_dataset = get_dataset_from_preds(instance_ids, predictions, exclude_completed=False)
+    dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions)
+    full_dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclude_completed=False)
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
         print("No instances to run.")
     else:
-        build_env_images(dataset, client, force_rebuild, max_workers)
+        build_env_images(client, dataset, force_rebuild, max_workers)
         run_instances(predictions, dataset, cache, clean, force_rebuild, max_workers, session_id, timeout)
     clean_images(client, existing_images, cache, clean)
     make_run_report(predictions, full_dataset, client, session_id)
@@ -325,6 +327,8 @@ def main(
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+    parser.add_argument("--dataset_name", default="princeton-nlp/SWE-bench", type=str, help="name of dataset")
+    parser.add_argument("--split", type=str, default="test")
     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file")
     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers")

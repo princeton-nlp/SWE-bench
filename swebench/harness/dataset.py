@@ -1,4 +1,4 @@
-from typing import TypedDict, cast
+from typing import Union, cast
 from dataclasses import dataclass
 import hashlib
 import re
@@ -95,6 +95,12 @@ class TestSpec:
             return "linux/arm64/v8"
         else:
             raise ValueError(f"Invalid architecture: {self.arch}")
+        
+
+def get_test_specs_from_dataset(dataset: Union[list[SwebenchInstance], list[TestSpec]]) -> list[TestSpec]:
+    if isinstance(dataset[0], TestSpec):
+        return dataset
+    return list(map(make_test_spec, dataset))
 
 
 def make_repo_script_list(install, repo, repo_directory, base_commit, env_name):
