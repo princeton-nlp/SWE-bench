@@ -1,12 +1,13 @@
+import docker
+import hashlib
 import os
+import secrets
 import signal
 import string
-import time
-import hashlib
-import secrets
 import tarfile
-import traceback
 import threading
+import time
+import traceback
 from pathlib import Path
 
 from docker.models.containers import Container
@@ -152,6 +153,40 @@ def exec_run_with_timeout(container, cmd, timeout=60):
         raise TimeoutError(f"Command '{cmd}' timed out after {timeout} seconds")
 
     return exec_result
+
+
+def find_dependent_images(client, image_name):
+    """
+    Find all images that are built upon `image_name` image
+    """
+    dependent_images = []
+
+    # Get all local images
+    all_images = client.images.list()
+
+    # Get the ID of the base image
+    try:
+        base_image = client.images.get(image_name)
+        base_image_id = base_image.id
+    except docker.errors.ImageNotFound:
+        print(f"Base image {image_name} not found.")
+        return []
+
+    for image in all_images:
+        # Skip the base image itself
+        if image.id == base_image_id:
+            continue
+
+        # Check if the base image is in this image's history
+        history = image.history()
+        for layer in history:
+            if layer['Id'] == base_image_id:
+                # If found, add this image to the dependent images list
+                tags = image.tags
+                dependent_images.append(tags[0] if tags else image.id)
+                break
+
+    return dependent_images
 
 
 def list_images(client):

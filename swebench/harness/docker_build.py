@@ -8,7 +8,11 @@ from pathlib import Path
 
 from swebench.harness.constants import MAP_VERSION_TO_INSTALL
 from swebench.harness.dataset import make_test_spec, get_test_specs_from_dataset
-from swebench.harness.docker_utils import cleanup_image, cleanup_container
+from swebench.harness.docker_utils import (
+    cleanup_container,
+    cleanup_image,
+    find_dependent_images
+)
 
 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 INSTANCE_IMAGE_BUILD_DIR = Path("image_build_logs/instances")
@@ -165,6 +169,10 @@ def get_env_configs_to_build(client, dataset, force_rebuild=False):
             env_image = client.images.get(test_spec.env_image_key)
             image_exists = True
             if env_image.attrs["Created"] < base_image.attrs["Created"]:
+                # Remove the environment image if it was built after the base_image
+                for dep in find_dependent_images(env_image):
+                    # Remove instance images that depend on this environment image
+                    cleanup_image(client, dep.image_id, True, "quiet")
                 cleanup_image(client, test_spec.env_image_key, True, "quiet")
                 image_exists = False
         except docker.errors.ImageNotFound:
