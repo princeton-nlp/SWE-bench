@@ -3,6 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, List
 
+from swebench.harness.dataset import load
 from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
 
 # TODO remove unused constants
@@ -230,7 +231,6 @@ def get_resolution_status(report: dict[str, dict[str, Any]]) -> str:
 
 def get_model_report(
     predictions: list[dict[str, str]],
-    swe_bench_tasks: str,
     log_paths: List[str],
     include_tests_status: bool,
 ) -> dict[str, dict[str, Any]]:
@@ -240,7 +240,6 @@ def get_model_report(
 
     Args:
         predictions (List[dict]): list of predictions containing keys "instance_id", "model_name_or_path", and "model_patch"
-        swe_bench_tasks (str): path to eval references (swe-bench-eval-refs.json)
         log_path (List[str]): list of paths to evaluation logs. Must be in consistent order as predictions arg
         include_tests_status (bool): whether to include the status of each test in the returned report
     Returns:
@@ -250,9 +249,10 @@ def get_model_report(
         log_paths
     ), "Num. evaluations logs must equal number of predictions"
 
-    eval_refs = json.load(open(swe_bench_tasks))
+    dataset = load()
     eval_refs = [
-        {key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]} for t in eval_refs
+        {key: t[key] for key in ["instance_id", "FAIL_TO_PASS", "PASS_TO_PASS"]}
+        for t in dataset
     ]
     eval_refs = {t["instance_id"]: t for t in eval_refs}
 
