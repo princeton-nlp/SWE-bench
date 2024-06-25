@@ -535,28 +535,30 @@ MAP_VERSION_TO_INSTALL_PYLINT.update(
         for k in ["3.0"]
     }
 )
-MAP_VERSION_TO_INSTALL_PYLINT["2.14"]["nano_cpus"] = int(2e9)
-MAP_VERSION_TO_INSTALL_PYLINT["2.15"]["nano_cpus"] = int(2e9)
-MAP_VERSION_TO_INSTALL_PYLINT["2.17"]["nano_cpus"] = int(2e9)
-MAP_VERSION_TO_INSTALL_PYLINT["3.0"]["nano_cpus"] = int(2e9)
+for v in ["2.14", "2.15", "2.17", "3.0"]:
+    MAP_VERSION_TO_INSTALL_PYLINT[v]["nano_cpus"] = int(2e9)
+
 MAP_VERSION_TO_INSTALL_XARRAY = {
     k: {
         "python": "3.10",
         "packages": "environment.yml",
         "install": "python -m pip install -e .",
         "pip_packages": [
-            "numpy==1.25.2",
+            "numpy==1.23.0",
             "packaging==23.1",
             "pandas==1.5.3",
             "pytest==7.4.0",
             "python-dateutil==2.8.2",
             "pytz==2023.3",
             "six==1.16.0",
+            "scipy==1.11.1",
+            "setuptools==68.0.0"
         ],
         "no_use_env": True,
     }
     for k in ["0.12", "0.18", "0.19", "0.20", "2022.03", "2022.06", "2022.09"]
 }
+
 MAP_VERSION_TO_INSTALL_SQLFLUFF = {
     k: {
         "python": "3.9",

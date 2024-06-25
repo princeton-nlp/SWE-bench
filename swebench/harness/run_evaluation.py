@@ -117,7 +117,6 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         logger.info(f"Grading answer for {instance_id}...")
         report = get_model_report(
             predictions=[pred],
-            swe_bench_tasks="swe-bench_test.json",
             log_paths=[test_output_path],
             include_tests_status=True,
         )
