@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from swebench.harness.constants import MAP_VERSION_TO_INSTALL
-from swebench.harness.dataset import make_test_spec, get_test_specs_from_dataset
+from swebench.harness.test_spec import make_test_spec, get_test_specs_from_dataset
 from swebench.harness.docker_utils import (
     cleanup_container,
     cleanup_image,

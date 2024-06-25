@@ -27,7 +27,7 @@ from swebench.harness.docker_build import (
     close_logger,
     setup_logger,
 )
-from swebench.harness.dataset import make_test_spec
+from swebench.harness.test_spec import make_test_spec
 
 
 RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")

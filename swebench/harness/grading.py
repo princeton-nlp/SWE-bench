@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, List
 
-from swebench.harness.dataset import TestSpec
+from swebench.harness.test_spec import TestSpec
 from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
 
 # TODO remove unused constants

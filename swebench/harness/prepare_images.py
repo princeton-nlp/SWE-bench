@@ -16,7 +16,7 @@ from swebench.harness.docker_utils import (
 from swebench.harness.docker_build import (
     build_instance_images,
 )
-from swebench.harness.dataset import make_test_spec
+from swebench.harness.test_spec import make_test_spec
 
 
 def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
