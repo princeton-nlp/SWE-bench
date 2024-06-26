@@ -112,7 +112,7 @@ def parse_log_django(log: str) -> dict[str, str]:
     patterns = [
         r"^(.*?)\s\.\.\.\sTesting\ against\ Django\ installed\ in\ ((?s:.*?))\ silenced\)\.\nok$",
         r"^(.*?)\s\.\.\.\sInternal\ Server\ Error:\ \/(.*)\/\nok$",
-        r"^(.*?)\s\.\.\.\sSystem check identified no issues \(0 silenced\)\nok$"
+        r"^(.*?)\s\.\.\.\sSystem check identified no issues \(0 silenced\)\.\nok$"
     ]
     for pattern in patterns:
         for match in re.finditer(pattern, log, re.MULTILINE):
