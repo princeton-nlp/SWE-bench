@@ -484,7 +484,7 @@ def build_instance_image(
 def build_container(
         test_spec: TestSpec,
         client: docker.DockerClient,
-        session_id: str,
+        run_id: str,
         logger: logging.Logger,
         nocache: bool,
         force_rebuild: bool = False
@@ -495,7 +495,7 @@ def build_container(
     Args:
         test_spec (TestSpec): Test spec to build the instance image and container for
         client (docker.DockerClient): Docker client for building image + creating the container
-        session_id (str): Session ID identifying process, used for the container name
+        run_id (str): Run ID identifying process, used for the container name
         logger (logging.Logger): Logger to use for logging the build process
         nocache (bool): Whether to use the cache when building
         force_rebuild (bool): Whether to force rebuild the image even if it already exists
@@ -516,7 +516,7 @@ def build_container(
         logger.info(f"Creating container for {test_spec.instance_id}...")
         container = client.containers.create(
             image=test_spec.instance_image_key,
-            name=test_spec.get_instance_container_name(session_id),
+            name=test_spec.get_instance_container_name(run_id),
             user=user,
             detach=True,
             command="tail -f /dev/null",
