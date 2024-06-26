@@ -358,6 +358,7 @@ def make_run_report(
     error_ids = set()
     unstopped_containers = set()
     unremoved_images = set()
+    unresolved_ids = set()
 
     # iterate through dataset and check if the instance has been run
     for instance in dataset:
@@ -377,6 +378,8 @@ def make_run_report(
             if report[instance_id]["resolved"]:
                 # Record if the instance was resolved
                 resolved_ids.add(instance_id)
+            else:
+                unresolved_ids.add(instance_id)
         else:
             # Otherwise, the instance was not run successfully
             error_ids.add(instance_id)
@@ -397,6 +400,7 @@ def make_run_report(
     print(f"Total instances: {len(dataset)}")
     print(f"Instances completed: {len(completed_ids)}")
     print(f"Instances resolved: {len(resolved_ids)}")
+    print(f"Instances unresolved: {len(unresolved_ids)}")
     print(f"Instances with errors: {len(error_ids)}")
     print(f"Instances still running: {len(unstopped_containers)}")
     print(f"Still existing images: {len(unremoved_images)}")
@@ -406,10 +410,12 @@ def make_run_report(
         "total_instances": len(dataset),
         "completed_instances": len(completed_ids),
         "resolved_instances": len(resolved_ids),
+        "unresolved_instances": len(unresolved_ids),
         "error_instances": len(error_ids),
         "unstopped_instances": len(unstopped_containers),
         "completed_ids": list(sorted(completed_ids)),
         "resolved_ids": list(sorted(resolved_ids)),
+        "unresolved_ids": list(sorted(unresolved_ids)),
         "error_ids": list(sorted(error_ids)),
         "unstopped_containers": list(sorted(unstopped_containers)),
         "unremoved_images": list(sorted(unremoved_images)),
