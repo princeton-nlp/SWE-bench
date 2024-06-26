@@ -1,26 +1,24 @@
-import json
-from enum import Enum
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
-from swebench.harness.dataset import TestSpec
+from swebench.harness.constants import (
+    APPLY_PATCH_FAIL,
+    APPLY_PATCH_PASS,
+    FAIL_TO_FAIL,
+    FAIL_TO_PASS,
+    PASS_TO_FAIL,
+    PASS_TO_PASS,
+    RESET_FAILED,
+    TESTS_ERROR,
+    TESTS_TIMEOUT,
+    ResolvedStatus,
+    TestStatus,
+)
+from swebench.harness.test_spec import TestSpec
 from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
 
-# TODO remove unused constants
-# Evaluation Log Constants
-APPLY_PATCH_FAIL = ">>>>> Patch Apply Failed"
-APPLY_PATCH_PASS = ">>>>> Applied Patch"
-RESET_FAILED = ">>>>> Reset Failed"
-TESTS_TIMEOUT = "Tests Timed Out"
-TESTS_ERROR = "Tests Errored"
 
-# Result Categories
-FAIL_TO_PASS = "FAIL_TO_PASS"
-FAIL_TO_FAIL = "FAIL_TO_FAIL"
-PASS_TO_PASS = "PASS_TO_PASS"
-PASS_TO_FAIL = "PASS_TO_FAIL"
-
-
+# MARK: Utility functions
 def get_file_name_from_lp(x: str) -> str:
     return x.rsplit("/", 1)[-1]
 
@@ -31,13 +29,6 @@ def get_id_from_lp(x: str) -> str:
 
 def get_repo_from_lp(x: str) -> str:
     return get_id_from_lp(x).rsplit("-", 1)[0].replace("__", "/")
-
-
-class TestStatus(Enum):
-    FAILED = "FAILED"
-    PASSED = "PASSED"
-    SKIPPED = "SKIPPED"
-    ERROR = "ERROR"
 
 
 def test_passed(case: str, sm: dict[str, str]) -> bool:
@@ -59,6 +50,8 @@ def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
     Returns:
         bool: whether the patch applied successfully
         dict: status map
+    
+    TODO(john-b-yang): Check this is working properly...
     """
     # Convert e.g. "logs/scikit-learn__scikit-learn-12421/test_output.txt" to "scikit-learn/scikit-learn"
     sample_id = str(Path(log_fp).parent.stem)  # e.g. scikit-learn__scikit-learn-12421
@@ -180,12 +173,6 @@ def get_eval_report(
         }
     )
     return results
-
-
-class ResolvedStatus(Enum):
-    NO = "RESOLVED_NO"
-    PARTIAL = "RESOLVED_PARTIAL"
-    FULL = "RESOLVED_FULL"
 
 
 def compute_fail_to_pass(report: dict[str, dict[str, Any]]) -> float:

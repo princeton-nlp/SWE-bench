@@ -12,139 +12,34 @@ from git import Repo
 from typing import cast
 
 from swebench.harness.constants import (
+    SWEbenchInstance,
     MAP_REPO_TO_ENV_YML_PATHS,
     MAP_REPO_TO_REQS_PATHS,
     NON_TEST_EXTS,
     SWE_BENCH_URL_RAW,
 )
-from swebench.harness.swebench_instance import SwebenchInstance
 
 load_dotenv()
 
 
-def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
+def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SWEbenchInstance]:
+    """
+    Load SWE-bench dataset from Hugging Face Datasets or local .json/.jsonl file
+    """
+    # Load from local .json/.jsonl file
+    if name.endswith(".json") or name.endswith(".jsonl"):
+        return [
+            cast(SWEbenchInstance, instance)
+            for instance in json.load(open(name))
+        ]
+
+    # Load from Hugging Face Datasets
     if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
         name = "princeton-nlp/SWE-bench"
     elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
         name = "princeton-nlp/SWE-bench_Lite"
     dataset = cast(Dataset, load_dataset(name, split=split))
-    return [cast(SwebenchInstance, instance) for instance in dataset]
-
-
-def get_instances(instance_path: str) -> list:
-    """
-    Get task instances from given path
-
-    Args:
-        instance_path (str): Path to task instances
-    Returns:
-        task_instances (list): List of task instances
-    """
-    if any([instance_path.endswith(x) for x in [".jsonl", ".jsonl.all"]]):
-        task_instances = list()
-        with open(instance_path) as f:
-            for line in f.readlines():
-                task_instances.append(json.loads(line))
-        return task_instances
-
-    with open(instance_path) as f:
-        task_instances = json.load(f)
-    return task_instances
-
-
-def clone_repo(repo_name: str, path: str, token: str = None) -> bool:
-    """
-    Wrapper for cloning repo from swe-bench organization
-
-    Args:
-        repo_name (str): Name of repo to clone
-        path (str): Path to clone repo to
-        token (str): GitHub token to use for cloning
-    Returns:
-        success (bool): True if repo cloned successfully, False otherwise
-    """
-    try:
-        if token is None:
-            token = os.environ.get("GITHUB_TOKEN", "git")
-        repo_url = (
-            f"https://{token}@github.com/swe-bench/"
-            + repo_name.replace("/", "__")
-            + ".git"
-        )
-        Repo.clone_from(repo_url, path)
-        return True
-    except Exception as e:
-        print(e)
-        return False
-
-
-def split_instances(input_list: list, n: int) -> list:
-    """
-    Split a list into n approximately equal length sublists
-
-    Args:
-        input_list (list): List to split
-        n (int): Number of sublists to split into
-    Returns:
-        result (list): List of sublists
-    """
-    avg_length = len(input_list) // n
-    remainder = len(input_list) % n
-    result, start = [], 0
-
-    for i in range(n):
-        length = avg_length + 1 if i < remainder else avg_length
-        sublist = input_list[start : start + length]
-        result.append(sublist)
-        start += length
-
-    return result
-
-
-def find_python_by_date(target_date, date_format="%Y%m%d"):
-    """
-    Find python version closest to given date
-
-    Args:
-        target_date (str): Date to find python version for
-        date_format (str): Format of target_date
-    Returns:
-        python_version (str): Python version closest to target_date
-    """
-    # Make web request to versions + date page
-    url = f"https://www.python.org/doc/versions/"
-    response = requests.get(url)
-
-    # Look for all matches
-    pattern = r"Python (.*)</a>, documentation released on (.*)\.</"
-    matches = re.findall(pattern, response.text)
-
-    # Convert NL dates to date time format
-    def convert_to_yyyymmdd(input_date):
-        # Parse the input date string using datetime
-        date_obj = datetime.strptime(input_date, date_format)
-        # Format the date object into YYYYMMDD format
-        return date_obj.strftime("%Y%m%d")
-
-    version_to_date = [(match[0], convert_to_yyyymmdd(match[1])) for match in matches]
-
-    # Find Python
-    for x in version_to_date:
-        if target_date >= x[1]:
-            return x[0]
-    return None
-
-
-class DotDict:
-    """
-    Wrapper class for accessing dictionary keys as attributes
-    """
-
-    def __init__(self, data):
-        self.data = data
-
-    def __getattr__(self, key):
-        return self.data.get(key)
+    return [cast(SWEbenchInstance, instance) for instance in dataset]
 
 
 ### MARK - Patch Correction
@@ -289,7 +184,7 @@ def get_environment_yml_by_commit(repo: str, commit: str, env_name: str) -> str:
     return "\n".join(cleaned)
 
 
-def get_environment_yml(instance: SwebenchInstance, env_name: str) -> str:
+def get_environment_yml(instance: SWEbenchInstance, env_name: str) -> str:
     """
     Get environment.yml for given task instance
 
@@ -357,7 +252,7 @@ def get_requirements_by_commit(repo: str, commit: str) -> str:
     return all_reqs
 
 
-def get_requirements(instance: SwebenchInstance) -> str:
+def get_requirements(instance: SWEbenchInstance) -> str:
     """
     Get requirements.txt for given task instance
 
@@ -376,7 +271,7 @@ def get_requirements(instance: SwebenchInstance) -> str:
     return get_requirements_by_commit(instance["repo"], commit)
 
 
-def get_test_directives(instance: SwebenchInstance) -> list:
+def get_test_directives(instance: SWEbenchInstance) -> list:
     """
     Get test directives from the test_patch of a task instance
 
@@ -411,6 +306,9 @@ def get_test_directives(instance: SwebenchInstance) -> list:
 
 
 def str2bool(v):
+    """
+    Minor helper function to convert string to boolean
+    """
     if isinstance(v, bool):
         return v
     if v.lower() in ("yes", "true", "t", "y", "1"):

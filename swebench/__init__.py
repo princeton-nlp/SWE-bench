@@ -12,10 +12,6 @@ from swebench.harness.constants import (
     MAP_VERSION_TO_INSTALL,
 )
 
-from swebench.harness.run_evaluation import (
-  main as run_evaluation,
-)
-
 from swebench.harness.docker_build import (
     build_image,
     build_base_images,
@@ -34,9 +30,27 @@ from swebench.harness.docker_utils import (
     list_images,
 )
 
+from swebench.harness.grading import (
+    compute_fail_to_pass,
+    compute_pass_to_pass,
+    get_logs_eval,
+    get_eval_report,
+    get_pred_report,
+    get_resolution_status,
+    ResolvedStatus,
+    TestStatus,
+)
+
+from swebench.harness.log_parsers import (
+    MAP_REPO_TO_PARSER,
+)
+
+from swebench.harness.run_evaluation import (
+    main as run_evaluation,
+)
+
 from swebench.harness.utils import (
     get_environment_yml,
-    get_instances,
     get_requirements,
 )
 
