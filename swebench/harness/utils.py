@@ -12,20 +12,20 @@ from git import Repo
 from typing import cast
 
 from swebench.harness.constants import (
+    SWEbenchInstance,
     MAP_REPO_TO_ENV_YML_PATHS,
     MAP_REPO_TO_REQS_PATHS,
     NON_TEST_EXTS,
     SWE_BENCH_URL_RAW,
 )
-from swebench.harness.swebench_instance import SwebenchInstance
 
 load_dotenv()
 
 
-def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SwebenchInstance]:
-    if any([name.endswith(ext) for ext for [".json", ".jsonl"]]):
+def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SWEbenchInstance]:
+    if name.endswith(".json") or name.endswith(".jsonl"):
         return [
-            cast(SwebenchInstance, instance)
+            cast(SWEbenchInstance, instance)
             for instance in json.load(open(name))
         ]
     if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
@@ -33,7 +33,7 @@ def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[
     elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
         name = "princeton-nlp/SWE-bench_Lite"
     dataset = cast(Dataset, load_dataset(name, split=split))
-    return [cast(SwebenchInstance, instance) for instance in dataset]
+    return [cast(SWEbenchInstance, instance) for instance in dataset]
 
 
 def get_instances(instance_path: str) -> list:
@@ -294,7 +294,7 @@ def get_environment_yml_by_commit(repo: str, commit: str, env_name: str) -> str:
     return "\n".join(cleaned)
 
 
-def get_environment_yml(instance: SwebenchInstance, env_name: str) -> str:
+def get_environment_yml(instance: SWEbenchInstance, env_name: str) -> str:
     """
     Get environment.yml for given task instance
 
@@ -362,7 +362,7 @@ def get_requirements_by_commit(repo: str, commit: str) -> str:
     return all_reqs
 
 
-def get_requirements(instance: SwebenchInstance) -> str:
+def get_requirements(instance: SWEbenchInstance) -> str:
     """
     Get requirements.txt for given task instance
 
@@ -381,7 +381,7 @@ def get_requirements(instance: SwebenchInstance) -> str:
     return get_requirements_by_commit(instance["repo"], commit)
 
 
-def get_test_directives(instance: SwebenchInstance) -> list:
+def get_test_directives(instance: SWEbenchInstance) -> list:
     """
     Get test directives from the test_patch of a task instance
 

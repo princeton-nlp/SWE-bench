@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Union
 
 from swebench.harness.constants import (
+    SWEbenchInstance,
     MAP_REPO_TO_INSTALL,
     MAP_VERSION_TO_INSTALL,
     MAP_REPO_TO_TEST_FRAMEWORK,
@@ -17,7 +18,6 @@ from swebench.harness.dockerfiles import (
     get_dockerfile_env,
     get_dockerfile_instance,
 )
-from swebench.harness.swebench_instance import SwebenchInstance
 from swebench.harness.utils import (
     get_requirements,
     get_environment_yml,
@@ -104,9 +104,9 @@ class TestSpec:
             raise ValueError(f"Invalid architecture: {self.arch}")
         
 
-def get_test_specs_from_dataset(dataset: Union[list[SwebenchInstance], list[TestSpec]]) -> list[TestSpec]:
+def get_test_specs_from_dataset(dataset: Union[list[SWEbenchInstance], list[TestSpec]]) -> list[TestSpec]:
     """
-    Idempotent function that converts a list of SwebenchInstance objects to a list of TestSpec objects.
+    Idempotent function that converts a list of SWEbenchInstance objects to a list of TestSpec objects.
     """
     if isinstance(dataset[0], TestSpec):
         return dataset
@@ -253,7 +253,7 @@ def make_eval_script_list(instance, install, env_name, repo_directory, base_comm
     return eval_commands
 
 
-def make_test_spec(instance: SwebenchInstance) -> TestSpec:
+def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
     if isinstance(instance, TestSpec):
         return instance
     instance_id = instance["instance_id"]
