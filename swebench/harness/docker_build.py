@@ -467,7 +467,6 @@ def build_instance_image(
             image_name=image_name,
             setup_scripts={
                 "setup_repo.sh": test_spec.install_repo_script,
-                "eval.sh": test_spec.eval_script,
             },
             dockerfile=dockerfile,
             platform=test_spec.platform,

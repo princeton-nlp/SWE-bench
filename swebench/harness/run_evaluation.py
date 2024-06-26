@@ -105,9 +105,8 @@ def run_instance(
         logger.info(f"Container for {instance_id} started: {container.id}")
 
         # Copy model prediction as patch file to container
-        patch_file = log_dir / "patch.diff"
-        with open(patch_file, "w") as f:
-            f.write(pred["model_patch"])
+        patch_file = Path(log_dir / "patch.diff")
+        patch_file.write_text(pred["model_patch"])
         logger.info(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
@@ -134,6 +133,13 @@ def run_instance(
             container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
+
+        eval_file = Path(log_dir / "eval.sh")
+        eval_file.write_text(test_spec.eval_script)
+        logger.info(
+            f"Eval script for {instance_id} written to {patch_file}, now applying to container..."
+        )
+        copy_to_container(container, eval_file, Path("/eval.sh"))
 
         # Run eval script, write output to logs
         result = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout=timeout)

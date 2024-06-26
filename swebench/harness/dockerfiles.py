@@ -52,8 +52,6 @@ _DOCKERFILE_INSTANCE = r"""FROM --platform={platform} {env_image_name}
 COPY ./setup_repo.sh /root/
 RUN /bin/bash /root/setup_repo.sh
 
-COPY ./eval.sh /eval.sh
-
 WORKDIR /testbed/
 """
 
