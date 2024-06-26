@@ -172,6 +172,9 @@ def build_base_images(
     base_images = {
         x.base_image_key: (x.base_dockerfile, x.platform) for x in test_specs
     }
+    if force_rebuild:
+        for key in base_images:
+            cleanup_image(client, key, True, "quiet")
 
     # Build the base images
     for image_name, (dockerfile, platform) in base_images.items():
@@ -202,7 +205,6 @@ def build_base_images(
 def get_env_configs_to_build(
         client: docker.DockerClient,
         dataset: list,
-        force_rebuild: bool = False,
     ):
     """
     Returns a dictionary of image names to build scripts and dockerfiles for environment images.
@@ -211,7 +213,6 @@ def get_env_configs_to_build(
     Args:
         client (docker.DockerClient): Docker client to use for building the images
         dataset (list): List of test specs or dataset to build images for
-        force_rebuild (bool): Whether to force rebuild the images even if they already exist
     """
     image_scripts = dict()
     base_images = dict()
@@ -246,11 +247,6 @@ def get_env_configs_to_build(
                 image_exists = False
         except docker.errors.ImageNotFound:
             pass
-
-        if image_exists and force_rebuild:
-            # Remove env image if it exists and force rebuild is enabled
-            cleanup_image(client, test_spec.env_image_key, True, "quiet")
-            image_exists = False
         if not image_exists:
             # Add the environment image to the list of images to build
             image_scripts[test_spec.env_image_key] = {
@@ -277,8 +273,12 @@ def build_env_images(
         max_workers (int): Maximum number of workers to use for building images
     """
     # Get the environment images to build from the dataset
+    if force_rebuild:
+        env_image_keys = {x.env_image_key for x in get_test_specs_from_dataset(dataset)}
+        for key in env_image_keys:
+            cleanup_image(client, key, True, "quiet")
     build_base_images(client, dataset, force_rebuild)
-    configs_to_build = get_env_configs_to_build(client, dataset, force_rebuild)
+    configs_to_build = get_env_configs_to_build(client, dataset)
     if len(configs_to_build) == 0:
         print("No environment images need to be built.")
         return
@@ -349,6 +349,9 @@ def build_instance_images(
     """
     # Build environment images (and base images as needed) first
     test_specs = list(map(make_test_spec, dataset))
+    if force_rebuild:
+        for spec in test_specs:
+            cleanup_image(client, spec.instance_image_key, True, "quiet")
     _, env_failed = build_env_images(client, test_specs, force_rebuild, max_workers)
 
     if len(env_failed) > 0:
@@ -372,7 +375,6 @@ def build_instance_images(
                     client,
                     None,  # logger is created in build_instance_image, don't make loggers before you need them
                     False,
-                    force_rebuild,
                 ): test_spec
                 for test_spec in test_specs
             }
@@ -410,7 +412,6 @@ def build_instance_image(
         client: docker.DockerClient,
         logger: logging.Logger,
         nocache: bool,
-        force_rebuild: bool = False
     ):
     """
     Builds the instance image for the given test spec if it does not already exist.
@@ -420,7 +421,6 @@ def build_instance_image(
         client (docker.DockerClient): Docker client to use for building the image
         logger (logging.Logger): Logger to use for logging the build process
         nocache (bool): Whether to use the cache when building
-        force_rebuild (bool): Whether to force rebuild the image even if it already exists
     """
     # Set up logging for the build process
     build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
@@ -460,11 +460,6 @@ def build_instance_image(
             image_exists = True
     except docker.errors.ImageNotFound:
         pass
-
-    # Remove the instance image if it exists and force rebuild is enabled
-    if image_exists and force_rebuild:
-        cleanup_image(client, image_name, True, "quiet")
-        image_exists = False
 
     # Build the instance image
     if not image_exists:
@@ -507,7 +502,9 @@ def build_container(
         force_rebuild (bool): Whether to force rebuild the image even if it already exists
     """
     # Build corresponding instance image
-    build_instance_image(test_spec, client, logger, nocache, force_rebuild)
+    if force_rebuild:
+        cleanup_image(client, test_spec.instance_image_key, True, "quiet")
+    build_instance_image(test_spec, client, logger, nocache)
 
     container = None
     try:
