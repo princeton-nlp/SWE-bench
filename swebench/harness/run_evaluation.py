@@ -365,6 +365,7 @@ def make_run_report(
         prediction = predictions[instance_id]
         report_file = (
             RUN_INSTANCE_LOG_DIR
+            / run_id
             / prediction["model_name_or_path"].replace("/", "__")
             / prediction["instance_id"]
             / "report.json"
