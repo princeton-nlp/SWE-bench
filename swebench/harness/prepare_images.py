@@ -26,7 +26,7 @@ def filter_dataset_to_build(dataset, instance_ids, client, force_rebuild):
     Args:
         dataset (list): List of instances.
         instance_ids (list): List of instance IDs to build.
-        client (docker.client.DockerClient): Docker client.
+        client (docker.DockerClient): Docker client.
         force_rebuild (bool): Whether to force rebuild all images.
     """
     existing_images = list_images(client)
