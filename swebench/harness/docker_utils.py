@@ -56,7 +56,7 @@ def write_to_container(container: Container, data: str, dst: Path):
     container.exec_run(command)
 
 
-def cleanup_image(client, image_id, rm_image, logger=None):
+def remove_image(client, image_id, logger=None):
     """
     Remove a Docker image by ID.
 
@@ -82,18 +82,16 @@ def cleanup_image(client, image_id, rm_image, logger=None):
         log_info = logger.info
         raise_error = False
 
-    if rm_image:
-        # Remove the image
-        try:
-            log_info(f"Attempting to remove image {image_id}...")
-            client.images.remove(image_id, force=True)
-            log_info(f"Image {image_id} removed.")
-        except Exception as e:
-            if raise_error:
-                raise e
-            log_error(
-                f"Failed to remove image {image_id}: {e}\n" f"{traceback.format_exc()}"
-            )
+    try:
+        log_info(f"Attempting to remove image {image_id}...")
+        client.images.remove(image_id, force=True)
+        log_info(f"Image {image_id} removed.")
+    except Exception as e:
+        if raise_error:
+            raise e
+        log_error(
+            f"Failed to remove image {image_id}: {e}\n" f"{traceback.format_exc()}"
+        )
 
 
 def cleanup_container(client, container, logger):
@@ -279,7 +277,7 @@ def clean_images(
     for image_name in images:
         if should_remove(image_name, cache_level, clean, prior_images):
             try:
-                cleanup_image(client, image_name, True, "quiet")
+                remove_image(client, image_name, "quiet")
                 removed += 1
             except Exception as e:
                 print(f"Error removing image {image_name}: {e}")

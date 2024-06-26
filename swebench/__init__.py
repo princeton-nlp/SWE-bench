@@ -24,7 +24,7 @@ from swebench.harness.docker_build import (
 
 from swebench.harness.docker_utils import (
     cleanup_container,
-    cleanup_image,
+    remove_image,
     copy_to_container,
     exec_run_with_timeout,
     list_images,

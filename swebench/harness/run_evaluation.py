@@ -16,7 +16,7 @@ from swebench.harness.constants import (
     RUN_INSTANCE_LOG_DIR,
 )
 from swebench.harness.docker_utils import (
-    cleanup_image,
+    remove_image,
     copy_to_container,
     exec_run_with_timeout,
     cleanup_container,
@@ -179,7 +179,8 @@ def run_instance(
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
-        cleanup_image(client, test_spec.instance_image_key, rm_image, logger)
+        if rm_image:
+            remove_image(client, test_spec.instance_image_key, logger)
         close_logger(logger)
 
 

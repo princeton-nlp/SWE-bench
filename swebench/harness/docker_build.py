@@ -19,7 +19,7 @@ from swebench.harness.test_spec import (
 )
 from swebench.harness.docker_utils import (
     cleanup_container,
-    cleanup_image,
+    remove_image,
     find_dependent_images
 )
 
@@ -174,7 +174,7 @@ def build_base_images(
     }
     if force_rebuild:
         for key in base_images:
-            cleanup_image(client, key, True, "quiet")
+            remove_image(client, key, "quiet")
 
     # Build the base images
     for image_name, (dockerfile, platform) in base_images.items():
@@ -183,7 +183,7 @@ def build_base_images(
             client.images.get(image_name)
             if force_rebuild:
                 # Remove the base image if it exists and force rebuild is enabled
-                cleanup_image(client, image_name, True, "quiet")
+                remove_image(client, image_name, "quiet")
             else:
                 print(f"Base image {image_name} already exists, skipping build.")
                 continue
@@ -242,8 +242,8 @@ def get_env_configs_to_build(
                 # Remove the environment image if it was built after the base_image
                 for dep in find_dependent_images(env_image):
                     # Remove instance images that depend on this environment image
-                    cleanup_image(client, dep.image_id, True, "quiet")
-                cleanup_image(client, test_spec.env_image_key, True, "quiet")
+                    remove_image(client, dep.image_id, "quiet")
+                remove_image(client, test_spec.env_image_key, "quiet")
                 image_exists = False
         except docker.errors.ImageNotFound:
             pass
@@ -276,7 +276,7 @@ def build_env_images(
     if force_rebuild:
         env_image_keys = {x.env_image_key for x in get_test_specs_from_dataset(dataset)}
         for key in env_image_keys:
-            cleanup_image(client, key, True, "quiet")
+            remove_image(client, key, "quiet")
     build_base_images(client, dataset, force_rebuild)
     configs_to_build = get_env_configs_to_build(client, dataset)
     if len(configs_to_build) == 0:
@@ -351,7 +351,7 @@ def build_instance_images(
     test_specs = list(map(make_test_spec, dataset))
     if force_rebuild:
         for spec in test_specs:
-            cleanup_image(client, spec.instance_image_key, True, "quiet")
+            remove_image(client, spec.instance_image_key, "quiet")
     _, env_failed = build_env_images(client, test_specs, force_rebuild, max_workers)
 
     if len(env_failed) > 0:
@@ -454,7 +454,7 @@ def build_instance_image(
         instance_image = client.images.get(image_name)
         if instance_image.attrs["Created"] < env_image.attrs["Created"]:
             # the environment image is newer than the instance image, meaning the instance image may be outdated
-            cleanup_image(client, image_name, True, "quiet")
+            remove_image(client, image_name, "quiet")
             image_exists = False
         else:
             image_exists = True
@@ -503,7 +503,7 @@ def build_container(
     """
     # Build corresponding instance image
     if force_rebuild:
-        cleanup_image(client, test_spec.instance_image_key, True, "quiet")
+        remove_image(client, test_spec.instance_image_key, "quiet")
     build_instance_image(test_spec, client, logger, nocache)
 
     container = None
