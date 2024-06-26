@@ -83,6 +83,11 @@ def parse_log_django(log: str) -> dict[str, str]:
         pass_suffixes = (" ... ok", " ... OK", " ...  OK")
         for suffix in pass_suffixes:
             if line.endswith(suffix):
+                # TODO: Temporary, exclusive fix for django__django-7188
+                # The proper fix should involve somehow getting the test results to
+                # print on a separate line, rather than the same line
+                if line.strip().startswith("Applying sites.0002_alter_domain_unique...test_no_migrations"):
+                    line = line.split("...", 1)[-1].strip()
                 test = line.rsplit(suffix, 1)[0]
                 test_status_map[test] = TestStatus.PASSED.value
                 break
