@@ -31,7 +31,7 @@ from swebench.harness.docker_build import (
     setup_logger,
 )
 from swebench.harness.grading import get_pred_report
-from swebench.harness.test_spec import make_test_spec
+from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
 
 
@@ -51,7 +51,15 @@ class EvaluationError(Exception):
         )
 
 
-def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, timeout=None):
+def run_instance(
+        test_spec: TestSpec,
+        pred: dict,
+        rm_image: bool,
+        force_rebuild: bool,
+        client: docker.DockerClient,
+        session_id: str,
+        timeout: int = None,
+    ):
     """
     Run a single instance with the given prediction.
 
@@ -64,10 +72,13 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         session_id (str): Session ID
         timeout (int): Timeout for running tests
     """
+    # Set up logging directory
     instance_id = test_spec.instance_id
     model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
     log_dir = RUN_INSTANCE_LOG_DIR / model_name_or_path / instance_id
     log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Link the image build dir in the log dir
     build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
     image_build_link = log_dir / "image_build_dir"
     if not image_build_link.exists():
@@ -78,16 +89,22 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
             # some error, idk why
             pass
     log_file = log_dir / "run_instance.log"
+
+    # Set up report file + logger
     report_path = log_dir / "report.json"
     if report_path.exists():
         return instance_id, json.loads(report_path.read_text())
     logger = setup_logger(instance_id, log_file)
+
+    # Run the instance
     container = None
     try:
+        # Build + start instance container (instance image should already be built)
         container = build_container(test_spec, client, session_id, logger, rm_image, force_rebuild)
         container.start()
         logger.info(f"Container for {instance_id} started: {container.id}")
 
+        # Copy model prediction as patch file to container
         patch_file = log_dir / "patch.diff"
         with open(patch_file, "w") as f:
             f.write(pred["model_patch"])
@@ -95,6 +112,8 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
         copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
+
+        # Attempt to apply patch to container
         val = container.exec_run(
             "git apply -v /tmp/patch.diff",
             workdir="/testbed",
@@ -110,11 +129,13 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         else:
             logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
 
+        # Get git diff before running eval script
         git_diff_output_before = (
             container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
 
+        # Run eval script, write output to logs
         result = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout=timeout)
         test_output = result.decode("utf-8")
         test_output_path = log_dir / "test_output.txt"
@@ -122,14 +143,17 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
             f.write(test_output)
         logger.info(f"Test output for {instance_id} written to {test_output_path}")
 
+        # Get git diff after running eval script
         git_diff_output_after = (
             container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
         )
+
+        # Check if git diff changed after running eval script
         logger.info(f"Git diff after:\n{git_diff_output_after}")
         if git_diff_output_after != git_diff_output_before:
             logger.info(f"Git diff changed after running eval script")
-            # "Git diff changed after running eval script"
 
+        # Get report from test output
         logger.info(f"Grading answer for {instance_id}...")
         report = get_pred_report(
             test_spec=test_spec,
@@ -142,6 +166,7 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
             f"Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
         )
 
+        # Write report to report.json
         with open(report_path, "w") as f:
             f.write(json.dumps(report, indent=4))
         return instance_id, report
@@ -152,6 +177,7 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         logger.info(traceback.format_exc())
         raise EvaluationError(instance_id, str(e), logger) from e
     finally:
+        # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
         cleanup_image(client, test_spec.instance_image_key, rm_image, logger)
         close_logger(logger)
