@@ -9,8 +9,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tqdm import tqdm
 
-from swebench.harness.utils import load_swebench_dataset, str2bool
-from swebench.harness.grading import get_pred_report
+from swebench.harness.constants import (
+    APPLY_PATCH_FAIL,
+)
 from swebench.harness.docker_utils import (
     cleanup_image,
     copy_to_container,
@@ -27,7 +28,9 @@ from swebench.harness.docker_build import (
     close_logger,
     setup_logger,
 )
+from swebench.harness.grading import get_pred_report
 from swebench.harness.test_spec import make_test_spec
+from swebench.harness.utils import load_swebench_dataset, str2bool
 
 
 RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")
@@ -99,10 +102,10 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
             user="root",
         )
         if val.exit_code != 0:
-            logger.info(f"Error applying patch:\n{val.output.decode('utf-8')}")
+            logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
             raise EvaluationError(
                 instance_id,
-                f"Error applying patch:\n{val.output.decode('utf-8')}",
+                f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
                 logger,
             )
 
@@ -111,7 +114,6 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
 
-        # result = container.exec_run("/bin/bash /eval.sh")
         result = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout=timeout)
         test_output = result.decode("utf-8")
         test_output_path = log_dir / "test_output.txt"
