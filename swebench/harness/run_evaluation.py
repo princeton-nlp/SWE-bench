@@ -421,6 +421,20 @@ def make_run_report(
     print(f"Report written to {report_file}")
 
 
+def get_gold_predictions(dataset_name: str, split: str):
+    """
+    Get gold predictions for the given dataset and split.
+    """
+    dataset = load_swebench_dataset(dataset_name, split)
+    return [
+        {
+            "instance_id": datum["instance_id"],
+            "model_patch": datum["patch"],
+            "model_name_or_path": "gold",
+        } for datum in dataset
+    ]
+
+
 def main(
         dataset_name: str,
         split: str,
@@ -446,8 +460,12 @@ def main(
     client = docker.from_env()
 
     # load predictions as map of instance_id to prediction
-    with open(predictions_path, "r") as f:
-        predictions = json.loads(f.read())
+    if predictions_path == 'gold':
+        print("Using gold predictions - ignoring predictions_path")
+        predictions = get_gold_predictions(dataset_name, split)
+    else:
+        with open(predictions_path, "r") as f:
+            predictions = json.loads(f.read())
     predictions = {pred["instance_id"]: pred for pred in predictions}
 
     # get dataset from predictions
