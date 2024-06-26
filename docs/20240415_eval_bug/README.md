@@ -91,7 +91,7 @@ Examples of this can be found throughout the `swebench/harness/constants.py` fil
 
 The fix shown for Failure Mode #3 also resolves this situation.
 
-**5. P2P Tests with Machine-Specific Paths**: We found that some P2P tests collected automatically via the harness picked up on tests with machine-specific paths to local testing files (e.g. a test named `test-validation.py:[/n/fs/p-swe-bench/temp/pytest-tmpdir/TEXT_001.txt]`), which are impossible to resolve on other machines. To remedy this, we have either 1. Rewritten the log parsing logic to refactor machine-specific paths into just keeping the file name (see [here](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/metrics/log_parsers.py#L28)), or 2. Removed these tests entirely.
+**5. P2P Tests with Machine-Specific Paths**: We found that some P2P tests collected automatically via the harness picked up on tests with machine-specific paths to local testing files (e.g. a test named `test-validation.py:[/n/fs/p-swe-bench/temp/pytest-tmpdir/TEXT_001.txt]`), which are impossible to resolve on other machines. To remedy this, we have either 1. Rewritten the log parsing logic to refactor machine-specific paths into just keeping the file name (see [here](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/harness/log_parsers.py#L28)), or 2. Removed these tests entirely.
 - 🟡 Low (< 10)
 - Affected Repositories: requests, sympy
 
