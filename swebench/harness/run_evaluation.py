@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
+    APPLY_PATCH_PASS,
 )
 from swebench.harness.docker_utils import (
     cleanup_image,
@@ -108,6 +109,8 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
                 f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
                 logger,
             )
+        else:
+            logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
 
         git_diff_output_before = (
             container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
@@ -156,7 +159,16 @@ def run_instance(test_spec, pred, rm_image, force_rebuild, client, session_id, t
         close_logger(logger)
 
 
-def run_instances(predictions, instances, cache_level, clean, force_rebuild, max_workers, session_id, timeout):
+def run_instances(
+        predictions: dict,
+        instances: list,
+        cache_level: str,
+        clean: bool,
+        force_rebuild: bool,
+        max_workers: int,
+        session_id: str,
+        timeout: int,
+    ):
     """
     Run all instances for the given predictions in parallel.
 
@@ -172,22 +184,28 @@ def run_instances(predictions, instances, cache_level, clean, force_rebuild, max
     """
     client = docker.from_env()
     test_specs = list(map(make_test_spec, instances))
+
+    # print number of existing instance images
     instance_image_ids = {x.instance_image_key for x in test_specs}
     existing_images = {
-        tag for i in client.images.list(all=True) for tag in i.tags if tag in instance_image_ids
+        tag for i in client.images.list(all=True)
+        for tag in i.tags if tag in instance_image_ids
     }
     if not force_rebuild and len(existing_images):
         print(f"Found {len(existing_images)} existing instance images. Will reuse them.")
+
+    # run instances in parallel
     print(f"Running {len(instances)} instances...")
     with tqdm(total=len(instances), smoothing=0) as pbar:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Create a future for running each instance
             futures = {
                 executor.submit(
                     run_instance,
-                    spec,
-                    predictions[spec.instance_id],
+                    test_spec,
+                    predictions[test_spec.instance_id],
                     should_remove(
-                        spec.instance_image_key,
+                        test_spec.instance_image_key,
                         cache_level,
                         clean,
                         existing_images,
@@ -197,11 +215,13 @@ def run_instances(predictions, instances, cache_level, clean, force_rebuild, max
                     session_id,
                     timeout,
                 ): None
-                for spec in test_specs
+                for test_spec in test_specs
             }
+            # Wait for each future to complete
             for future in as_completed(futures):
                 pbar.update(1)
                 try:
+                    # Update progress bar, check if instance ran successfully
                     future.result()
                 except EvaluationError as e:
                     print(f"EvaluationError {e.instance_id}: {e}")
@@ -212,15 +232,24 @@ def run_instances(predictions, instances, cache_level, clean, force_rebuild, max
     print("All instances run.")
 
 
-def get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclude_completed=True):
+def get_dataset_from_preds(
+        dataset_name: str,
+        split: str,
+        instance_ids: list,
+        predictions: dict,
+        exclude_completed: bool = True
+    ):
     """
     Return only instances that have predictions and are in the dataset.
     If instance_ids is provided, only return instances with those IDs.
     If exclude_completed is True, only return instances that have not been run yet.
     """
+    # load dataset
     dataset = load_swebench_dataset(dataset_name, split)
     dataset_ids = {i["instance_id"] for i in dataset}
+
     if instance_ids:
+        # check that all instance IDs are in the dataset
         instance_ids = set(instance_ids)
         if instance_ids - dataset_ids:
             raise ValueError(
@@ -229,9 +258,12 @@ def get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclu
                     f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
                 )
             )
+        # check that all instance IDs have predictions
         missing_preds = instance_ids - set(predictions.keys())
         if missing_preds:
             print(f"Warning: Missing predictions for {len(missing_preds)} instance IDs.")
+    
+    # check that all prediction IDs are in the dataset
     prediction_ids = set(predictions.keys())
     if prediction_ids - dataset_ids:
         raise ValueError(
@@ -240,11 +272,16 @@ def get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclu
                 f"\nMissing IDs:\n{' '.join(prediction_ids - dataset_ids)}"
             )
         )
+
     if instance_ids:
+        # filter dataset to just the instance IDs
         dataset = [i for i in dataset if i["instance_id"] in instance_ids]
+
+    # check which instance IDs have already been run
     completed_ids = set()
     for instance in dataset:
         if instance["instance_id"] not in prediction_ids:
+            # skip instances without predictions
             continue
         prediction = predictions[instance["instance_id"]]
         report_file = (
@@ -255,14 +292,23 @@ def get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclu
         )
         if report_file.exists():
             completed_ids.add(instance["instance_id"])
+
     if completed_ids and exclude_completed:
+        # filter dataset to only instances that have not been run
         print(f"{len(completed_ids)} instances already run, skipping...")
         dataset = [i for i in dataset if i["instance_id"] not in completed_ids]
+
+    # filter dataset to only instances with predictions
     dataset = [i for i in dataset if i["instance_id"] in prediction_ids]
     return dataset
 
 
-def make_run_report(predictions, dataset, client, session_id):
+def make_run_report(
+        predictions: dict,
+        dataset: list,
+        client: docker.DockerClient,
+        session_id: str
+    ):
     """
     Make a final evaluation and run report of the instances that have been run.
     Also reports on images and containers that may still running!
@@ -273,12 +319,14 @@ def make_run_report(predictions, dataset, client, session_id):
         client (docker.DockerClient): Docker client
         session_id (str): Session ID
     """
+    # instantiate sets to store IDs of different outcomes
     completed_ids = set()
     resolved_ids = set()
     error_ids = set()
     unstopped_containers = set()
     unremoved_images = set()
-    test_specs = list(map(make_test_spec, dataset))
+
+    # iterate through dataset and check if the instance has been run
     for instance in dataset:
         instance_id = instance["instance_id"]
         prediction = predictions[instance_id]
@@ -289,28 +337,37 @@ def make_run_report(predictions, dataset, client, session_id):
             / "report.json"
         )
         if report_file.exists():
+            # If report file exists, then the instance has been run
             completed_ids.add(instance_id)
             report = json.loads(report_file.read_text())
             if report[instance_id]["resolved"]:
+                # Record if the instance was resolved
                 resolved_ids.add(instance_id)
         else:
+            # Otherwise, the instance was not run successfully
             error_ids.add(instance_id)
+
+    # get remaining images and containers
     images = list_images(client)
+    test_specs = list(map(make_test_spec, dataset))
     for spec in test_specs:
         image_name = spec.instance_image_key
         if image_name in images:
             unremoved_images.add(image_name)
-    # docker list containers
     containers = client.containers.list(all=True)
     for container in containers:
         if session_id in container.name:
             unstopped_containers.add(container.name)
+
+    # print final report
     print(f"Total instances: {len(dataset)}")
     print(f"Instances completed: {len(completed_ids)}")
     print(f"Instances resolved: {len(resolved_ids)}")
     print(f"Instances with errors: {len(error_ids)}")
     print(f"Instances still running: {len(unstopped_containers)}")
     print(f"Still existing images: {len(unremoved_images)}")
+
+    # write report to file
     report = {
         "total_instances": len(dataset),
         "completed_instances": len(completed_ids),
@@ -334,30 +391,35 @@ def make_run_report(predictions, dataset, client, session_id):
 
 
 def main(
-    dataset_name,
-    split,
-    instance_ids,
-    predictions_path,
-    max_workers,
-    force_rebuild,
-    cache_level,
-    clean,
-    open_file_limit,
-    session_id,
-    timeout,
-):
+        dataset_name: str,
+        split: str,
+        instance_ids: list,
+        predictions_path: str,
+        max_workers: int,
+        force_rebuild: bool,
+        cache_level: str,
+        clean: bool,
+        open_file_limit: int,
+        session_id: str,
+        timeout: int,
+    ):
     """
     Run evaluation harness for the given dataset and predictions.
     """
+    # set open file limit
     if not session_id:
         session_id = str(uuid.uuid1())[:8]
     else:
         assert len(session_id) == 8, "Session ID must be 8 characters long."
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
+
+    # load predictions as map of instance_id to prediction
     with open(predictions_path, "r") as f:
         predictions = json.loads(f.read())
     predictions = {pred["instance_id"]: pred for pred in predictions}
+
+    # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions)
     full_dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclude_completed=False)
     existing_images = list_images(client)
@@ -365,8 +427,11 @@ def main(
     if not dataset:
         print("No instances to run.")
     else:
+        # build environment images + run instances
         build_env_images(client, dataset, force_rebuild, max_workers)
         run_instances(predictions, dataset, cache_level, clean, force_rebuild, max_workers, session_id, timeout)
+
+    # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
     make_run_report(predictions, full_dataset, client, session_id)
 

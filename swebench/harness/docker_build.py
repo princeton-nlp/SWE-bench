@@ -306,7 +306,7 @@ def build_env_images(
             for future in as_completed(futures):
                 pbar.update(1)
                 try:
-                    # Update progress bar, check if image buitl successfully
+                    # Update progress bar, check if image built successfully
                     future.result()
                     successful.append(futures[future])
                 except BuildImageError as e:
