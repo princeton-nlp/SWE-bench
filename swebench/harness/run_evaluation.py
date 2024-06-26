@@ -358,6 +358,7 @@ def make_run_report(
     error_ids = set()
     unstopped_containers = set()
     unremoved_images = set()
+    unresolved_ids = set()
 
     # iterate through dataset and check if the instance has been run
     for instance in dataset:
@@ -365,6 +366,7 @@ def make_run_report(
         prediction = predictions[instance_id]
         report_file = (
             RUN_INSTANCE_LOG_DIR
+            / run_id
             / prediction["model_name_or_path"].replace("/", "__")
             / prediction["instance_id"]
             / "report.json"
@@ -376,6 +378,8 @@ def make_run_report(
             if report[instance_id]["resolved"]:
                 # Record if the instance was resolved
                 resolved_ids.add(instance_id)
+            else:
+                unresolved_ids.add(instance_id)
         else:
             # Otherwise, the instance was not run successfully
             error_ids.add(instance_id)
@@ -396,6 +400,7 @@ def make_run_report(
     print(f"Total instances: {len(dataset)}")
     print(f"Instances completed: {len(completed_ids)}")
     print(f"Instances resolved: {len(resolved_ids)}")
+    print(f"Instances unresolved: {len(unresolved_ids)}")
     print(f"Instances with errors: {len(error_ids)}")
     print(f"Instances still running: {len(unstopped_containers)}")
     print(f"Still existing images: {len(unremoved_images)}")
@@ -405,10 +410,12 @@ def make_run_report(
         "total_instances": len(dataset),
         "completed_instances": len(completed_ids),
         "resolved_instances": len(resolved_ids),
+        "unresolved_instances": len(unresolved_ids),
         "error_instances": len(error_ids),
         "unstopped_instances": len(unstopped_containers),
         "completed_ids": list(sorted(completed_ids)),
         "resolved_ids": list(sorted(resolved_ids)),
+        "unresolved_ids": list(sorted(unresolved_ids)),
         "error_ids": list(sorted(error_ids)),
         "unstopped_containers": list(sorted(unstopped_containers)),
         "unremoved_images": list(sorted(unremoved_images)),
@@ -490,7 +497,7 @@ if __name__ == "__main__":
     parser.add_argument("--split", type=str, default="test")
     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file - if 'gold', uses gold predictions")
-    parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers (should be <= 75% of CPU cores)")
+    parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers (should be <= 75%% of CPU cores)")
     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
     parser.add_argument("--timeout", type=int, default=1_800, help="Timeout (in seconds) for running tests for each instance")
     parser.add_argument(
