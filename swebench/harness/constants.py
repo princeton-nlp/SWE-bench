@@ -1,7 +1,15 @@
 from enum import Enum
+from pathlib import Path
 from typing import TypedDict
 
+# Constants - Evaluation Log Directories
+BASE_IMAGE_BUILD_DIR = Path("image_build_logs/base")
+ENV_IMAGE_BUILD_DIR = Path("image_build_logs/env")
+INSTANCE_IMAGE_BUILD_DIR = Path("image_build_logs/instances")
+RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")
 
+
+# Constants - Task Instance Class
 class SWEbenchInstance(TypedDict):
     repo: str
     instance_id: str
@@ -17,6 +25,27 @@ class SWEbenchInstance(TypedDict):
     environment_setup_commit: str
 
 
+# Constants - Test Types + Statuses
+FAIL_TO_PASS = "FAIL_TO_PASS"
+FAIL_TO_FAIL = "FAIL_TO_FAIL"
+PASS_TO_PASS = "PASS_TO_PASS"
+PASS_TO_FAIL = "PASS_TO_FAIL"
+
+
+class ResolvedStatus(Enum):
+    NO = "RESOLVED_NO"
+    PARTIAL = "RESOLVED_PARTIAL"
+    FULL = "RESOLVED_FULL"
+
+
+class TestStatus(Enum):
+    FAILED = "FAILED"
+    PASSED = "PASSED"
+    SKIPPED = "SKIPPED"
+    ERROR = "ERROR"
+
+
+# Constants - Installation Specifications
 MAP_VERSION_TO_INSTALL_SKLEARN = {
     k: {
         "python": "3.6",

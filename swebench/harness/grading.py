@@ -1,36 +1,21 @@
-import json
-from enum import Enum
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
+    FAIL_TO_FAIL,
+    FAIL_TO_PASS,
+    PASS_TO_FAIL,
+    PASS_TO_PASS,
     RESET_FAILED,
     TESTS_ERROR,
     TESTS_TIMEOUT,
+    ResolvedStatus,
+    TestStatus,
 )
 from swebench.harness.test_spec import TestSpec
 from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
-
-# MARK: Testing Constants
-FAIL_TO_PASS = "FAIL_TO_PASS"
-FAIL_TO_FAIL = "FAIL_TO_FAIL"
-PASS_TO_PASS = "PASS_TO_PASS"
-PASS_TO_FAIL = "PASS_TO_FAIL"
-
-
-class ResolvedStatus(Enum):
-    NO = "RESOLVED_NO"
-    PARTIAL = "RESOLVED_PARTIAL"
-    FULL = "RESOLVED_FULL"
-
-
-class TestStatus(Enum):
-    FAILED = "FAILED"
-    PASSED = "PASSED"
-    SKIPPED = "SKIPPED"
-    ERROR = "ERROR"
 
 
 # MARK: Utility functions

@@ -6,7 +6,12 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from swebench.harness.constants import MAP_VERSION_TO_INSTALL
+from swebench.harness.constants import (
+    BASE_IMAGE_BUILD_DIR,
+    ENV_IMAGE_BUILD_DIR,
+    INSTANCE_IMAGE_BUILD_DIR,
+    MAP_VERSION_TO_INSTALL,
+)
 from swebench.harness.test_spec import (
     get_test_specs_from_dataset,
     make_test_spec,
@@ -19,9 +24,6 @@ from swebench.harness.docker_utils import (
 )
 
 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
-INSTANCE_IMAGE_BUILD_DIR = Path("image_build_logs/instances")
-ENV_IMAGE_BUILD_DIR = Path("image_build_logs/env")
-BASE_IMAGE_BUILD_DIR = Path("image_build_logs/base")
 
 
 class BuildImageError(Exception):

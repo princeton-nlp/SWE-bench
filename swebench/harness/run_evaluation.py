@@ -12,6 +12,8 @@ from tqdm import tqdm
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
+    INSTANCE_IMAGE_BUILD_DIR,
+    RUN_INSTANCE_LOG_DIR,
 )
 from swebench.harness.docker_utils import (
     cleanup_image,
@@ -25,16 +27,12 @@ from swebench.harness.docker_utils import (
 from swebench.harness.docker_build import (
     build_container,
     build_env_images,
-    INSTANCE_IMAGE_BUILD_DIR,
     close_logger,
     setup_logger,
 )
 from swebench.harness.grading import get_pred_report
 from swebench.harness.test_spec import make_test_spec
 from swebench.harness.utils import load_swebench_dataset, str2bool
-
-
-RUN_INSTANCE_LOG_DIR = Path("run_instance_logs")
 
 
 class EvaluationError(Exception):
