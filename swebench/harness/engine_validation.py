@@ -1,3 +1,10 @@
+"""
+TODO (06/25/2024): THIS CODE IS OUT OF DATE - IT WILL BE UPDATED
+
+This script is used to perform execution based validation of task instances.
+It is used to verify if PRs can be used as SWE-bench style task instances.
+"""
+
 import argparse, os
 
 from multiprocessing import Pool, cpu_count
