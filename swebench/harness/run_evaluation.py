@@ -268,6 +268,7 @@ def get_dataset_from_preds(
         split: str,
         instance_ids: list,
         predictions: dict,
+        run_id: str = None,
         exclude_completed: bool = True
     ):
     """
@@ -317,6 +318,7 @@ def get_dataset_from_preds(
         prediction = predictions[instance["instance_id"]]
         report_file = (
             RUN_INSTANCE_LOG_DIR
+            / run_id
             / prediction["model_name_or_path"].replace("/", "__")
             / prediction["instance_id"]
             / "report.json"
@@ -466,8 +468,8 @@ def main(
     predictions = {pred["instance_id"]: pred for pred in predictions}
 
     # get dataset from predictions
-    dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions)
-    full_dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, exclude_completed=False)
+    dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
+    full_dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id, False)
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
