@@ -470,8 +470,14 @@ def main(
         print("Using gold predictions - ignoring predictions_path")
         predictions = get_gold_predictions(dataset_name, split)
     else:
-        with open(predictions_path, "r") as f:
-            predictions = json.loads(f.read())
+        if predictions_path.endswith(".json"):
+            with open(predictions_path, "r") as f:
+                predictions = json.load(f)
+        elif predictions_path.endswith(".jsonl"):
+            with open(predictions_path, "r") as f:
+                predictions = [json.loads(line) for line in f]
+        else:
+            raise ValueError("Predictions path must be \"gold\", .json, or .jsonl")
     predictions = {pred["instance_id"]: pred for pred in predictions}
 
     # get dataset from predictions
