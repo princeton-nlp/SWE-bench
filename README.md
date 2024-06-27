@@ -91,7 +91,7 @@ The final evaluation results will be stored in the `evaluation_results` director
 
 To see the full list of arguments for the evaluation harness, run:
 ```bash
-python -m swebench.harness.evaluate --help
+python -m swebench.harness.run_evaluation --help
 ```
 
 Additionally, the SWE-Bench repo can help you:
