@@ -1,11 +1,18 @@
 # Containerized Evaluation Harness
 June 27, 2024
 
-## Updates to the structure of swebench
-swebench's structure will be changing to make evaluation as easy as possible.
-We are moving forward with a containerized evaluation harness that will allow you to execute evaluation scripts in isolated environments.
-This change should make running evaluations more reproducible and easier to manage.
+We’re releasing an update that improves the reliability of the SWE-bench evaluation harness using **containerized environments** based on Docker.
 
+In the original setup, we hypothesized that `conda` environments would be enough to enforce reproducible evaluation.
+In hindsight, it is underspecified.
+This past April, we put out [Bug Report 4/5/2024](docs/reports/20240405_eval_bug/README.md), that among several upgrades, adds explicit versioning for packages.
+
+However, SWE-bench evaluation remained sensitive to discrepancies originating from different platforms and user-specific configurations, leading to inconsistent results.
+To eliminate these irregularities, our new harness provisions **per-sample Docker images with Python virtual environments** that have been rigorously tested.
+
+In the new Docker harness, **99.78% (2289/2294) of SWE-bench** tasks and **100% (300/300) of SWE-bench Lite** tasks consistently resolve correctly with the ground truth solution. Furthermore, containers spawned from these images can be used as development environments for agents that run and develop solutions iteratively.
+
+## Running Evaluation
 The main entrypoint for the evaluation harness is the `swebench.harness.run_evaluation` module.
 
 Run the following command to see the available arguments:
@@ -15,9 +22,9 @@ python -m swebench.harness.run_evaluation -h
 
 This module runs docker containers for each evaluation instance in parallel.
 In the process of running the evaluation, the harness will:
-1. build a base image that install basic dependencies for all instances
-2. build "environment" images that initialize the python environment for various configurations that are common to multiple instances (in total there are about 60 of these - or 100GB of images)
-3. build "instance" images that install the specific dependencies and source code for each instance
+1. Build a base image that install basic dependencies for all instances
+2. Build "environment" images that initialize the python environment for various configurations that are common to multiple instances (in total there are about 60 of these - or 100GB of images)
+3. Build "instance" images that install the specific dependencies and source code for each instance
 
 The harness will then run the evaluation script in each instance container, and collect the results.
 After the evaluation is complete, the harness will clean up the containers and images depending on the `--cache_level` argument.
@@ -62,8 +69,8 @@ Users may experience substantial speed degradation when running evaluations on `
 * Please use `swebench>=2.0` for the latest version of the benchmark - the old version is now deprecated but can still be accessed using `swebench<2.0`.
 
 ## Acknowledgements
-We'd like to thank the Preparedness team from OpenAI (including Oliver Jaffe, Chan Jun Shern, James Aung, Giulio Starace, Dane Sherburn, and Neil Chowdhury) for initiating the development of the containerized evaluation harness.
+This work was done in collaboration with the Preparedness team at OpenAI (including Oliver Jaffe, Chan Jun Shern, James Aung, Giulio Starace, Dane Sherburn, and Neil Chowdhury).
 
-We'd also like to acknowledge Cognition Labs for providing inspiration in the design of the harness.
+We'd also like to thank Cognition Labs for providing [inspiration](https://github.com/CognitionAI/devin-swebench-results/tree/main) in the design of the evaluation harness.
 
 ✍️ Carlos & John
