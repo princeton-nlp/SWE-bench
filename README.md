@@ -30,6 +30,7 @@ Code and data for our ICLR 2024 paper <a href="http://swe-bench.github.io/paper.
 Please refer our [website](http://swe-bench.github.io) for the public leaderboard and the [change log](https://github.com/princeton-nlp/SWE-bench/blob/main/CHANGELOG.md) for information on the latest updates to the SWE-bench benchmark.
 
 ## 📰 News
+* **[Jun. 27, 2024]**: We have an exciting update for SWE-bench - with support from [OpenAI's Preparedness](https://openai.com/preparedness/) team: We're moving to a fully containerized evaluation harness using Docker for more reproducible evaluations! Read more in our [report](https://github.com/princeton-nlp/SWE-bench/blob/main/docs/20240627_docker/README.md).
 * **[Apr. 15, 2024]**: SWE-bench has gone through major improvements to resolve issues with the evaluation harness. Read more in our [report](https://github.com/princeton-nlp/SWE-bench/blob/main/docs/20240415_eval_bug/README.md).
 * **[Apr. 2, 2024]**: We have released [SWE-agent](https://github.com/princeton-nlp/SWE-agent), which sets the state-of-the-art on the full SWE-bench test set! ([Tweet 🔗](https://twitter.com/jyangballin/status/1775114444370051582))
 * **[Jan. 16, 2024]**: SWE-bench has been accepted to ICLR 2024 as an oral presentation! ([OpenReview 🔗](https://openreview.net/forum?id=VTF8yNQM66))
@@ -47,19 +48,55 @@ swebench = load_dataset('princeton-nlp/SWE-bench', split='test')
 ```
 
 ## 🚀 Set Up
-To build SWE-bench from source, follow these steps:
-1. Clone this repository locally
-2. `cd` into the repository.
-3. Run `conda env create -f environment.yml` to created a conda environment named `swe-bench`
-4. Activate the environment with `conda activate swe-bench`
+SWE-bench uses Docker for reproducible evaluations.
+Follow the instructions in the [Docker setup guide](https://docs.docker.com/engine/install/) to install Docker on your machine.
+If you're setting up on Linux, we recommend seeing the [post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/) as well.
+
+Finally, to build SWE-bench from source, follow these steps:
+```bash
+git clone git@github.com:princeton-nlp/SWE-bench.git
+cd SWE-bench
+pip install -e .
+```
+
+Test your installation by running:
+```bash
+python -m swebench.harness.run_evaluation \
+    --predictions_path gold \
+    --max_workers 1 \
+    --instance_ids sympy__sympy-20590 \
+    --run_id validate-gold
+```
 
 ## 💽 Usage
-You can download the SWE-bench dataset directly ([dev](https://drive.google.com/uc?export=download&id=1SbOxHiR0eXlq2azPSSOIDZz-Hva0ETpX), [test](https://drive.google.com/uc?export=download&id=164g55i3_B78F6EphCZGtgSrd2GneFyRM) sets) or from [HuggingFace](https://huggingface.co/datasets/princeton-nlp/SWE-bench).
+> [!WARNING]
+> Running fast evaluations on SWE-bench can be resource intensive
+> We recommend running the evaluation harness on an `x86_64` machine with at least 120GB of free storage, 16GB of RAM, and 8 CPU cores.
+> You may need to experiment with the `--max_workers` argument to find the optimal number of workers for your machine, but we recommend using fewer than `min(0.75 * os.cpu_count(), 28)`.
 
-To use SWE-Bench, you can:
+Evaluate model predictions on SWE-bench Lite using the evaluation harness with the following command:
+```bash
+python -m swebench.harness.run_evaluation \
+    --dataset_name princeton-nlp/SWE-bench_Lite \
+    --predictions_path <path_to_predictions> \
+    --max_workers <num_workers> \
+    --run_id <run_id>
+    # use --predictions_path 'gold' to verify the gold patches
+    # use --run_id to name the evaluation run
+```
+
+This command will generate docker build logs (`build_image_logs`) and evaluation logs (`run_instance_logs`) in the current directory.
+
+The final evaluation results will be stored in the `evaluation_results` directory.
+
+To see the full list of arguments for the evaluation harness, run:
+```bash
+python -m swebench.harness.evaluate --help
+```
+
+Additionally, the SWE-Bench repo can help you:
 * Train your own models on our pre-processed datasets  
 * Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/main/inference/) on existing models (either models you have on-disk like LLaMA, or models you have access to through an API like GPT-4). The inference step is where you get a repo and an issue and have the model try to generate a fix for it.
-* [Evaluate](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/harness/) models against SWE-bench. This is where you take a SWE-Bench task and a model-proposed solution and evaluate its correctness. 
 *  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/collect/) on your own repositories, to make new SWE-Bench tasks. 
 
 ## ⬇️ Downloads
@@ -75,8 +112,8 @@ To use SWE-Bench, you can:
 ## 🍎 Tutorials
 We've also written the following blog posts on how to use different parts of SWE-bench.
 If you'd like to see a post about a particular topic, please let us know via an issue.
-* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/tutorials/collection.md))
-* [Nov 6. 2023] Evaluating on SWE-bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/tutorials/evaluation.md))
+* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/collect/collection.md.md))
+* [Nov 6. 2023] Evaluating on SWE-bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/harness/evaluation.md))
 
 ## 💫 Contributions
 We would love to hear from the broader NLP, Machine Learning, and Software Engineering research communities, and we welcome any contributions, pull requests, or issues!
