@@ -72,7 +72,11 @@ python -m swebench.harness.run_evaluation \
 > [!WARNING]
 > Running fast evaluations on SWE-bench can be resource intensive
 > We recommend running the evaluation harness on an `x86_64` machine with at least 120GB of free storage, 16GB of RAM, and 8 CPU cores.
-> You may need to experiment with the `--max_workers` argument to find the optimal number of workers for your machine, but we recommend using fewer than `min(0.75 * os.cpu_count(), 28)`.
+> You may need to experiment with the `--max_workers` argument to find the optimal number of workers for your machine, but we recommend using fewer than `min(0.75 * os.cpu_count(), 24)`.
+>
+> If running with docker desktop, make sure to increase your virtual disk space to have ~120 free GB available, and set max_workers to be consistent with the above for the CPUs available to docker.
+>
+> Support for `arm64` machines is experimental.
 
 Evaluate model predictions on SWE-bench Lite using the evaluation harness with the following command:
 ```bash
