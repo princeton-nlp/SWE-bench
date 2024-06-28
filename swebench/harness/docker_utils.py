@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import docker
 import os
 import signal
@@ -169,7 +171,7 @@ def cleanup_container(client, container, logger):
         )
 
 
-def exec_run_with_timeout(container, cmd, timeout=60):
+def exec_run_with_timeout(container, cmd, timeout: int|None=60):
     """
     Run a command in a container with a timeout.
 

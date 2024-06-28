@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import docker
 import json
 import resource
 import traceback
-import uuid
 
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -58,7 +59,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
-        timeout: int = None,
+        timeout: int|None = None,
     ):
     """
     Run a single instance with the given prediction.
