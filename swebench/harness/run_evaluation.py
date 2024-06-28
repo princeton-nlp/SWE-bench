@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import docker
 import json
 import resource
@@ -58,7 +60,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
-        timeout: int = None,
+        timeout: int|None = None,
     ):
     """
     Run a single instance with the given prediction.
@@ -268,7 +270,7 @@ def get_dataset_from_preds(
         split: str,
         instance_ids: list,
         predictions: dict,
-        run_id: str = None,
+        run_id: str,
         exclude_completed: bool = True
     ):
     """
