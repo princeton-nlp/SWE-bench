@@ -116,7 +116,7 @@ Additionally, the SWE-Bench repo can help you:
 ## 🍎 Tutorials
 We've also written the following blog posts on how to use different parts of SWE-bench.
 If you'd like to see a post about a particular topic, please let us know via an issue.
-* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/collect/collection.md.md))
+* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/collect/collection.md))
 * [Nov 6. 2023] Evaluating on SWE-bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/harness/evaluation.md))
 
 ## 💫 Contributions
