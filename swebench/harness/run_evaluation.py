@@ -249,7 +249,9 @@ def run_instances(
                 for test_spec in test_specs
             }
             # Wait for each future to complete
-            for future in as_completed(futures):
+            # The `timeout` variable so far refers to the test step itself. Let's add
+            # another 1 minute for cleanup etc.
+            for future in as_completed(futures, timeout=timeout + 60):
                 pbar.update(1)
                 try:
                     # Update progress bar, check if instance ran successfully
