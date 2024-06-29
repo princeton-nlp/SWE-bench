@@ -33,7 +33,7 @@ python run_evaluation.py \
 Additional arguments are defined in `run_evaluation.py`. The following diagram captures, at a high level, what `run_evaluation.py` does. More details are provided in `harness/` and the Appendix of the main paper.
 
 <div align="center">
-    <img style="width:70%" src="../assets/evaluation.png">
+    <img style="width:70%" src="../../assets/evaluation.png">
 </div>
 
 ## 📈 Metrics
