@@ -188,11 +188,15 @@ def run_instance(
             f.write(json.dumps(report, indent=4))
         return instance_id, report
     except EvaluationError as e:
-        error_msg = f"EvaluationError {instance_id}: {e}\n{traceback.format_exc()}"
+        error_msg = (f"EvaluationError {instance_id}: {e}\n"
+                     f"{traceback.format_exc()}\n"
+                     f"Check ({logger.log_path}) for more information.")
         logger.info(error_msg)
         print(error_msg)
     except Exception as e:
-        error_msg = f"Error in evaluating model for {instance_id}: {e}\n{traceback.format_exc()}"
+        error_msg = (f"Error in evaluating model for {instance_id}: {e}\n"
+                     f"{traceback.format_exc()}\n"
+                     f"Check ({logger.log_path}) for more information.")
         logger.info(error_msg)
         print(error_msg)
     finally:
