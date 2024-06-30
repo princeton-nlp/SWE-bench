@@ -119,12 +119,23 @@ def run_instance(
             user="root",
         )
         if val.exit_code != 0:
-            logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
-            raise EvaluationError(
-                instance_id,
-                f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
-                logger,
+            logger.info(f"Failed to apply patch to container, trying again...")
+            
+            # try "patch --batch --fuzz=5 -p1 -i {patch_path}" to try again
+            val = container.exec_run(
+                "patch --batch --fuzz=5 -p1 -i /tmp/patch.diff",
+                workdir="/testbed",
+                user="root",
             )
+            if val.exit_code != 0:
+                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+                raise EvaluationError(
+                    instance_id,
+                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
+                    logger,
+                )
+            else:
+                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
         else:
             logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
 
