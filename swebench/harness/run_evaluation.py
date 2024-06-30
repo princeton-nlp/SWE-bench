@@ -177,18 +177,17 @@ def run_instance(
             f.write(json.dumps(report, indent=4))
         return instance_id, report
     except EvaluationError as e:
-        raise EvaluationError(instance_id, str(e), logger) from e
+        print(f"EvaluationError {instance_id}: {e}")
+        print(traceback.format_exc())
     except Exception as e:
-        logger.error(f"Error in evaluating model for {instance_id}: {e}")
-        logger.info(traceback.format_exc())
-        raise EvaluationError(instance_id, str(e), logger) from e
+        print(f"Error in evaluating model for {instance_id}: {e}")
+        print(traceback.format_exc())
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
         if rm_image:
             remove_image(client, test_spec.instance_image_key, logger)
         close_logger(logger)
-
 
 def run_instances(
         predictions: dict,
@@ -254,9 +253,6 @@ def run_instances(
                 try:
                     # Update progress bar, check if instance ran successfully
                     future.result()
-                except EvaluationError as e:
-                    print(f"EvaluationError {e.instance_id}: {e}")
-                    continue
                 except Exception as e:
                     traceback.print_exc()
                     continue
