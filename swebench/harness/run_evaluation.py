@@ -188,11 +188,13 @@ def run_instance(
             f.write(json.dumps(report, indent=4))
         return instance_id, report
     except EvaluationError as e:
-        print(f"EvaluationError {instance_id}: {e}")
-        print(traceback.format_exc())
+        error_msg = f"EvaluationError {instance_id}: {e}\n{traceback.format_exc()}"
+        logger.info(error_msg)
+        print(error_msg)
     except Exception as e:
-        print(f"Error in evaluating model for {instance_id}: {e}")
-        print(traceback.format_exc())
+        error_msg = f"Error in evaluating model for {instance_id}: {e}\n{traceback.format_exc()}"
+        logger.info(error_msg)
+        print(error_msg)
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
