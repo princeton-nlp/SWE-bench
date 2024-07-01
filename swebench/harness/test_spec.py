@@ -4,7 +4,7 @@ import platform
 import re
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Any, Union
 
 from swebench.harness.constants import (
     SWEbenchInstance,
@@ -263,8 +263,15 @@ def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
     problem_statement = instance["problem_statement"]
     hints_text = instance["hints_text"]  # Unused
     test_patch = instance["test_patch"]
-    pass_to_pass = json.loads(instance["PASS_TO_PASS"])
-    fail_to_pass = json.loads(instance["FAIL_TO_PASS"])
+
+    def _from_json_or_obj(key: str) -> Any:
+        """If key points to string, load with json"""
+        if isinstance(instance[key], str):
+            return json.loads(instance[key])
+        return instance[key]
+
+    pass_to_pass = _from_json_or_obj("PASS_TO_PASS")
+    fail_to_pass = _from_json_or_obj("FAIL_TO_PASS")
 
     env_name = "testbed"
     repo_directory = f"/{env_name}"
