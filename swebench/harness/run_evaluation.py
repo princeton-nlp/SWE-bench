@@ -282,7 +282,7 @@ def get_dataset_from_preds(
         split: str,
         instance_ids: list,
         predictions: dict,
-        run_id: str = None,
+        run_id: str,
         exclude_completed: bool = True
     ):
     """
