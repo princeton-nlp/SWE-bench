@@ -119,12 +119,23 @@ def run_instance(
             user="root",
         )
         if val.exit_code != 0:
-            logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
-            raise EvaluationError(
-                instance_id,
-                f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
-                logger,
+            logger.info(f"Failed to apply patch to container, trying again...")
+            
+            # try "patch --batch --fuzz=5 -p1 -i {patch_path}" to try again
+            val = container.exec_run(
+                "patch --batch --fuzz=5 -p1 -i /tmp/patch.diff",
+                workdir="/testbed",
+                user="root",
             )
+            if val.exit_code != 0:
+                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+                raise EvaluationError(
+                    instance_id,
+                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
+                    logger,
+                )
+            else:
+                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
         else:
             logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
 
@@ -177,18 +188,23 @@ def run_instance(
             f.write(json.dumps(report, indent=4))
         return instance_id, report
     except EvaluationError as e:
-        raise EvaluationError(instance_id, str(e), logger) from e
+        error_msg = (f"EvaluationError {instance_id}: {e}\n"
+                     f"{traceback.format_exc()}\n"
+                     f"Check ({logger.log_file}) for more information.")
+        logger.info(error_msg)
+        print(error_msg)
     except Exception as e:
-        logger.error(f"Error in evaluating model for {instance_id}: {e}")
-        logger.info(traceback.format_exc())
-        raise EvaluationError(instance_id, str(e), logger) from e
+        error_msg = (f"Error in evaluating model for {instance_id}: {e}\n"
+                     f"{traceback.format_exc()}\n"
+                     f"Check ({logger.log_file}) for more information.")
+        logger.info(error_msg)
+        print(error_msg)
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
         if rm_image:
             remove_image(client, test_spec.instance_image_key, logger)
         close_logger(logger)
-
 
 def run_instances(
         predictions: dict,
@@ -254,9 +270,6 @@ def run_instances(
                 try:
                     # Update progress bar, check if instance ran successfully
                     future.result()
-                except EvaluationError as e:
-                    print(f"EvaluationError {e.instance_id}: {e}")
-                    continue
                 except Exception as e:
                     traceback.print_exc()
                     continue
