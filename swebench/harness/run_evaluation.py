@@ -107,7 +107,7 @@ def run_instance(
 
         # Copy model prediction as patch file to container
         patch_file = Path(log_dir / "patch.diff")
-        patch_file.write_text(pred["model_patch"])
+        patch_file.write_text(pred["model_patch"] or "")
         logger.info(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
@@ -115,7 +115,7 @@ def run_instance(
 
         # Attempt to apply patch to container
         val = container.exec_run(
-            "git apply -v /tmp/patch.diff",
+            "git apply --allow-empty -v /tmp/patch.diff",
             workdir="/testbed",
             user="root",
         )
