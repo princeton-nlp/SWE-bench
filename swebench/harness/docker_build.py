@@ -281,7 +281,7 @@ def build_env_images(
     configs_to_build = get_env_configs_to_build(client, dataset)
     if len(configs_to_build) == 0:
         print("No environment images need to be built.")
-        return
+        return [], []
     print(f"Total environment images to build: {len(configs_to_build)}")
 
     # Build the environment images
