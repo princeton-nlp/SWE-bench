@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/princeton-nlp/Llamao">
-    <img src="assets/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
+    <img src="assets/figures/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 
@@ -39,7 +39,7 @@ Please refer our [website](http://swe-bench.github.io) for the public leaderboar
 SWE-bench is a benchmark for evaluating large language models on real world software issues collected from GitHub.
 Given a *codebase* and an *issue*, a language model is tasked with generating a *patch* that resolves the described problem.
 
-<img src="assets/teaser.png">
+<img src="assets/figures/teaser.png">
 
 To access SWE-bench, copy and run the following code:
 ```python

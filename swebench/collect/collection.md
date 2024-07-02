@@ -6,7 +6,7 @@ In this tutorial, we explain how to use the SWE-Bench repository to collect eval
 > SWE-bench's collection pipeline is currently designed to target PyPI packages. We hope to expand SWE-bench to more repositories and languages in the future.
 
 <div align="center">
-    <img style="width:70%" src="../assets/collection.png">
+    <img style="width:70%" src="../assets/figures/collection.png">
 </div>
 
 ## 🔍 Selecting a Repository

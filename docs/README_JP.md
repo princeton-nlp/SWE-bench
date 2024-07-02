@@ -4,7 +4,7 @@
 <document_content>
 <p align="center">
   <a href="https://github.com/princeton-nlp/Llamao">
-    <img src="https://raw.githubusercontent.com/Sunwood-ai-labs/SWE-bench/main/assets/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
+    <img src="https://raw.githubusercontent.com/Sunwood-ai-labs/SWE-bench/main/assets/figures/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 
@@ -34,7 +34,7 @@ ICLR 2024 の論文 <a href="http://swe-bench.github.io/paper.pdf">SWE-bench: Ca
 SWE-bench は、GitHub から収集された実世界のソフトウェアの課題に関する大規模言語モデルを評価するためのベンチマークです。
 *コードベース*と*イシュー*が与えられ、言語モデルは記述された問題を解決する*パッチ*を生成するタスクを行います。
 
-<img src="https://raw.githubusercontent.com/Sunwood-ai-labs/SWE-bench/main/assets/teaser.png">
+<img src="https://raw.githubusercontent.com/Sunwood-ai-labs/SWE-bench/main/assets/figures/teaser.png">
 
 ## 🚀 セットアップ
 SWE-bench をソースからビルドするには、以下の手順に従ってください:

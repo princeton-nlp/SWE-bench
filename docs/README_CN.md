@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/princeton-nlp/Llamao">
-    <img src="assets/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
+    <img src="assets/figures/swellama_banner.png" width="50%" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 
@@ -33,7 +33,7 @@
 SWE-bench 是一个用于评估大型语言模型的基准，这些模型是从 GitHub 收集的真实软件问题。
 给定一个 *代码库* 和一个 *问题*，语言模型的任务是生成一个 *补丁* 来解决所描述的问题。
 
-<img src="assets/teaser.png">
+<img src="assets/figures/teaser.png">
 
 ## 🚀 设置
 要从源代码构建 SWE-bench，请按照以下步骤操作:
