@@ -444,7 +444,7 @@ MAP_VERSION_TO_INSTALL_MATPLOTLIB.update(
 MAP_VERSION_TO_INSTALL_SPHINX = {
     k: {
         "python": "3.9",
-        "pip_packages": ["tox"],
+        "pip_packages": ["tox", "tox-current-env"],
         "install": "python -m pip install -e .[test]",
         "pre_install": ["sed -i 's/pytest/pytest -rA/' tox.ini"],
     }
@@ -842,7 +842,7 @@ MAP_REPO_TO_TEST_FRAMEWORK = {
         k: TEST_PYTEST for k in MAP_VERSION_TO_INSTALL_SKLEARN.keys()
     },
     "sphinx-doc/sphinx": {
-        k: "tox -epy39 -v --" for k in MAP_VERSION_TO_INSTALL_SPHINX.keys()
+        k: "tox --current-env -epy39 -v --" for k in MAP_VERSION_TO_INSTALL_SPHINX.keys()
     },
     "sqlfluff/sqlfluff": {
         k: TEST_PYTEST for k in MAP_VERSION_TO_INSTALL_SQLFLUFF.keys()
@@ -906,7 +906,7 @@ MAP_REPO_TO_TEST_FRAMEWORK_VERBOSE = {
         k: TEST_PYTEST_VERBOSE for k in MAP_VERSION_TO_INSTALL_SKLEARN.keys()
     },
     "sphinx-doc/sphinx": {
-        k: "tox -epy39 -v --" for k in MAP_VERSION_TO_INSTALL_SPHINX.keys()
+        k: "tox --current-env -epy39 -v --" for k in MAP_VERSION_TO_INSTALL_SPHINX.keys()
     },
     "sqlfluff/sqlfluff": {
         k: TEST_PYTEST_VERBOSE for k in MAP_VERSION_TO_INSTALL_SQLFLUFF.keys()
