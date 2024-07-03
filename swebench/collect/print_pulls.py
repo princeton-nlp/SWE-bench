@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def log_all_pulls(repo: Repo, output: str):
+def log_all_pulls(repo: Repo, output: str) -> None:
     """
     Iterate over all pull requests in a repository and log them to a file
 
@@ -25,10 +25,10 @@ def log_all_pulls(repo: Repo, output: str):
         repo (Repo): repository object
         output (str): output file name
     """
-    with open(output, "w") as output:
+    with open(output, "w") as file:
         for pull in repo.get_all_pulls():
             setattr(pull, "resolved_issues", repo.extract_resolved_issues(pull))
-            print(json.dumps(obj2dict(pull)), end="\n", flush=True, file=output)
+            print(json.dumps(obj2dict(pull)), end="\n", flush=True, file=file)
 
 
 def main(repo_name: str, output: str, token: Optional[str] = None):
