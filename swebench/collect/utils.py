@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import logging
 import re
 import requests
@@ -6,7 +9,7 @@ import time
 from bs4 import BeautifulSoup
 from ghapi.core import GhApi
 from fastcore.net import HTTP404NotFoundError, HTTP403ForbiddenError
-from typing import Optional
+from typing import Callable, Iterator, Optional
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -30,7 +33,7 @@ class Repo:
         self.api = GhApi(token=token)
         self.repo = self.call_api(self.api.repos.get, owner=owner, repo=name)
 
-    def call_api(self, func: callable, **kwargs) -> dict:
+    def call_api(self, func: Callable, **kwargs) -> dict|None:
         """
         API call wrapper with rate limit handling (checks every 5 minutes if rate limit is reset)
 
@@ -103,12 +106,12 @@ class Repo:
 
     def get_all_loop(
         self,
-        func: callable,
+        func: Callable,
         per_page: int = 100,
         num_pages: Optional[int] = None,
         quiet: bool = False,
         **kwargs,
-    ) -> list:
+    ) -> Iterator:
         """
         Return all values from a paginated API endpoint.
         
@@ -195,7 +198,7 @@ class Repo:
         direction: str = "asc",
         sort: str = "created",
         state: str = "closed",
-        quiet: str = False,
+        quiet: bool = False,
     ) -> list:
         """
         Wrapper for API call to get all PRs from repo
@@ -347,7 +350,7 @@ def extract_patches(pull: dict, repo: Repo) -> tuple[str, str]:
 ### MARK: Repo Specific Parsing Functions ###
 def extract_problem_statement_and_hints_django(
     pull: dict, repo: Repo
-) -> tuple[str, str]:
+) -> tuple[str, list[str]]:
     """
     Get problem statement and hints from issues associated with a pull request
 
@@ -390,7 +393,6 @@ def extract_problem_statement_and_hints_django(
         # Get all comments before first commit
         comments_html = soup.find("div", {"id": "changelog"})
         div_blocks = comments_html.find_all("div", class_="change")
-        comments = []
         # Loop through each div block
         for div_block in div_blocks:
             # Find the comment text and timestamp
