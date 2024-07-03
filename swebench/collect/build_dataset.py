@@ -101,7 +101,7 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
     """
     if token is None:
         # Get GitHub token from environment variable if not provided
-        token = os.environ["GITHUB_TOKEN"]
+        token = os.environ.get("GITHUB_TOKEN")
 
     def load_repo(repo_name):
         # Return repo object for a given repo name
