@@ -4,6 +4,11 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.1.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.1.0 onwards are fully listed.
 
+## [2.0.4] - 7/5/2024
+* #173 Fix: Allow to set GH token from env var in collect/print_pulls
+* #171 Don't let tox install a virtualenv during evaluation
+* #169 Handle failures because of None/empty patches
+
 ## [2.0.3] - 7/2/2024
 * #149 Interface fix: run_id is required
 * #151 Fix: Support JSON datasets (avoid loading json twice)
