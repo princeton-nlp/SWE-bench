@@ -41,7 +41,6 @@ def log_all_pulls(
         for i_pull, pull in enumerate(repo.get_all_pulls()):
             setattr(pull, "resolved_issues", repo.extract_resolved_issues(pull))
             print(json.dumps(obj2dict(pull)), end="\n", flush=True, file=file)
-            breakpoint()
             if max_pulls is not None and i_pull >= max_pulls:
                 break
             if cutoff_date is not None and pull.created_at < cutoff_date:
