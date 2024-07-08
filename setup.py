@@ -38,6 +38,7 @@ setuptools.setup(
         'python-dotenv',
         'requests',
         'rich',
+        'unidiff',
         'tqdm',
     ],
     include_package_data=True,
