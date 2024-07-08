@@ -72,23 +72,17 @@ def construct_data_files(data: dict):
                     max_pulls=max_pulls,
                     cutoff_date=cutoff_date
                 )
-                print(f"Successfully saved PR data for {repo} to {path_pr}")
+                print(f"✅ Successfully saved PR data for {repo} to {path_pr}")
             else:
-                print(
-                    f"Pull request data for {repo} already exists at {path_pr}, skipping..."
-                )
+                print(f"📁 Pull request data for {repo} already exists at {path_pr}, skipping...")
 
             path_task = os.path.join(path_tasks, f"{repo_name}-task-instances.jsonl")
             if not os.path.exists(path_task):
                 print(f"Task instance data for {repo} not found, creating...")
                 build_dataset(path_pr, path_task, token)
-                print(
-                    f"Successfully saved task instance data for {repo} to {path_task}"
-                )
+                print(f"✅ Successfully saved task instance data for {repo} to {path_task}")
             else:
-                print(
-                    f"Task instance data for {repo} already exists at {path_task}, skipping..."
-                )
+                print(f"📁 Task instance data for {repo} already exists at {path_task}, skipping...")
         except Exception as e:
             print("-"*80)
             print(f"Something went wrong for {repo}, skipping: {e}")

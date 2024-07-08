@@ -134,7 +134,7 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
                     completed += 1
                     if has_test_patch(pr):
                         with_tests += 1
-    logger.info(f"{len(seen_prs)} instance_ids previously recorded")
+    logger.info(f"Will skip {len(seen_prs)} pull requests that have already been inspected")
 
     # Write to .all file for all PRs
     write_mode_all = "w" if not os.path.exists(all_output) else "a"
@@ -147,7 +147,8 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
                 pull = json.loads(line)
                 if ix % 100 == 0:
                     logger.info(
-                        f"[{pull['base']['repo']['full_name']}] ( Up to {ix} checked ) {completed} valid, {with_tests} with tests."
+                        f"[{pull['base']['repo']['full_name']}] (Up to {ix} checked) "
+                        f"{completed} valid, {with_tests} with tests."
                     )
                 # Construct instance fields
                 instance_id = (
@@ -176,11 +177,8 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
                         # If has test suite, write to output file
                         print(json.dumps(instance), end="\n", flush=True, file=output)
                         with_tests += 1
-    logger.info(
-        f"Total instances: {total_instances}, completed: {completed}, with tests: {with_tests}"
-    )
-    logger.info(f"Didn't see {len(seen_prs)} instances previously recorded")
-    logger.info("\n".join(sorted(seen_prs)))
+    logger.info(f"[{", ".join(repos.keys())}] Total instances: {total_instances}, completed: {completed}, with tests: {with_tests}")
+    logger.info(f"[{", ".join(repos.keys())}] Skipped {len(seen_prs)} pull requests that have already been inspected")
 
 
 if __name__ == "__main__":

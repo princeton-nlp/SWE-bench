@@ -52,7 +52,8 @@ class Repo:
                 while True:
                     rl = self.api.rate_limit.get()
                     logger.info(
-                        f"[{self.owner}/{self.name}] Rate limit exceeded, waiting for 5 minutes, remaining: {rl.resources.core.remaining}"
+                        f"[{self.owner}/{self.name}] Rate limit exceeded for token {self.token[:10]}, "
+                        f"waiting for 5 minutes, remaining calls: {rl.resources.core.remaining}"
                     )
                     if rl.resources.core.remaining > 0:
                         break
@@ -140,20 +141,25 @@ class Repo:
                 if not quiet:
                     rl = self.api.rate_limit.get()
                     logger.info(
-                        f"[{self.owner}/{self.name}] Processed page {page} ({per_page} values per page). Remaining calls: {rl.resources.core.remaining}"
+                        f"[{self.owner}/{self.name}] Processed page {page} ({per_page} values per page). "
+                        f"Remaining calls: {rl.resources.core.remaining}"
                     )
                 if num_pages is not None and page >= num_pages:
                     break
                 page += 1
             except Exception as e:
                 # Rate limit handling
-                logger.error(f"Error processing page {page}: {e}")
+                logger.error(
+                    f"[{self.owner}/{self.name}] Error processing page {page} "
+                    f"w/ token {self.token[:10]} - {e}"
+                )
                 while True:
                     rl = self.api.rate_limit.get()
                     if rl.resources.core.remaining > 0:
                         break
                     logger.info(
-                        f"[{self.owner}/{self.name}] Waiting for rate limit reset, checking again in 5 minutes"
+                        f"[{self.owner}/{self.name}] Waiting for rate limit reset "
+                        f"for token {self.token[:10]}, checking again in 5 minutes"
                     )
                     time.sleep(60 * 5)
         if not quiet:
