@@ -9,8 +9,7 @@ from typing import Any, Union
 from swebench.harness.constants import (
     SWEbenchInstance,
     MAP_REPO_TO_INSTALL,
-    MAP_VERSION_TO_INSTALL,
-    MAP_REPO_TO_TEST_FRAMEWORK,
+    MAP_REPO_VERSION_TO_SPECS,
     USE_X86,
 )
 from swebench.harness.dockerfiles import (
@@ -221,7 +220,7 @@ def make_eval_script_list(instance, install, env_name, repo_directory, base_comm
     )
     test_command = " ".join(
         [
-            MAP_REPO_TO_TEST_FRAMEWORK[instance["repo"]][instance["version"]],
+            MAP_REPO_VERSION_TO_SPECS[instance["repo"]][instance["version"]]["test_cmd"],
             *get_test_directives(instance),
         ]
     )
@@ -275,7 +274,7 @@ def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
 
     env_name = "testbed"
     repo_directory = f"/{env_name}"
-    install = MAP_VERSION_TO_INSTALL[repo][version]
+    install = MAP_REPO_VERSION_TO_SPECS[repo][version]
 
     repo_script_list = make_repo_script_list(install, repo, repo_directory, base_commit, env_name)
     env_script_list = make_env_script_list(instance, install, env_name)

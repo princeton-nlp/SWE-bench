@@ -10,7 +10,7 @@ from swebench.harness.constants import (
     BASE_IMAGE_BUILD_DIR,
     ENV_IMAGE_BUILD_DIR,
     INSTANCE_IMAGE_BUILD_DIR,
-    MAP_VERSION_TO_INSTALL,
+    MAP_REPO_VERSION_TO_SPECS,
 )
 from swebench.harness.test_spec import (
     get_test_specs_from_dataset,
@@ -508,7 +508,7 @@ def build_container(
     container = None
     try:
         # Get configurations for how container should be created
-        config = MAP_VERSION_TO_INSTALL[test_spec.repo][test_spec.version]
+        config = MAP_REPO_VERSION_TO_SPECS[test_spec.repo][test_spec.version]
         user = "root" if not config.get("execute_test_as_nonroot", False) else "nonroot"
         nano_cpus = config.get("nano_cpus")
 

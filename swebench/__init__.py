@@ -1,4 +1,4 @@
-__version__ = "2.0.7"
+__version__ = "2.0.8"
 
 from swebench.collect.build_dataset import main as build_dataset
 from swebench.collect.get_tasks_pipeline import main as get_tasks_pipeline
@@ -8,8 +8,7 @@ from swebench.harness.constants import (
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
-    MAP_REPO_TO_TEST_FRAMEWORK,
-    MAP_VERSION_TO_INSTALL,
+    MAP_REPO_VERSION_TO_SPECS,
 )
 
 from swebench.harness.docker_build import (
