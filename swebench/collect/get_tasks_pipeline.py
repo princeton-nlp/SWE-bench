@@ -101,7 +101,7 @@ def main(
         repos: list,
         path_prs: str,
         path_tasks: str,
-        max_pulls: int|None = None,
+        max_pulls: int = None,
         cutoff_date: str = None,
     ):
     """

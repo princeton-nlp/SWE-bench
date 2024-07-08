@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def log_all_pulls(
         repo: Repo,
         output: str,
-        max_pulls: int|None = None,
+        max_pulls: int = None,
         cutoff_date: str = None,
     ) -> None:
     """
@@ -50,7 +50,7 @@ def main(
         repo_name: str,
         output: str,
         token: Optional[str] = None,
-        max_pulls: int|None = None,
+        max_pulls: int = None,
         cutoff_date: str = None,
     ):
     """

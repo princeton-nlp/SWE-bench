@@ -59,7 +59,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
-        timeout: int|None = None,
+        timeout: int = None,
     ):
     """
     Run a single instance with the given prediction.
