@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 def log_all_pulls(
         repo: Repo,
         output: str,
-        max_pulls: int|None=None,
-        cutoff_date: str|None=None,
+        max_pulls: int|None = None,
+        cutoff_date: str = None,
     ) -> None:
     """
     Iterate over all pull requests in a repository and log them to a file
@@ -51,8 +51,8 @@ def main(
         repo_name: str,
         output: str,
         token: Optional[str] = None,
-        max_pulls: int|None=None,
-        cutoff_date: str|None=None,
+        max_pulls: int|None = None,
+        cutoff_date: str = None,
     ):
     """
     Logic for logging all pull requests in a repository

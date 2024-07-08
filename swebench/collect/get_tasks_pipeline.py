@@ -94,7 +94,7 @@ def main(
         repos: list,
         path_prs: str,
         path_tasks: str,
-        cutoff_date: str|None = None
+        cutoff_date: str = None,
     ):
     """
     Spawns multiple threads given multiple GitHub tokens for collecting fine tuning data
