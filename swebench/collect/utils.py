@@ -405,7 +405,12 @@ def extract_problem_statement_and_hints_django(
             timestamp = timestamp_resp["title"]
             if timestamp.startswith("See timeline at "):
                 timestamp = timestamp[len("See timeline at ") :]
-            timestamp = time.mktime(time.strptime(timestamp, "%m/%d/%y %H:%M:%S"))
+            if "/" in timestamp:
+                timestamp = time.mktime(time.strptime(timestamp, "%m/%d/%y %H:%M:%S"))
+            elif "," in timestamp:
+                timestamp = time.mktime(time.strptime(timestamp, "%b %d, %Y, %I:%M:%S %p"))
+            else:
+                raise ValueError(f"Timestamp format not recognized: {timestamp}")
 
             # Append the comment and timestamp as a tuple to the comments list
             if timestamp < commit_time:
