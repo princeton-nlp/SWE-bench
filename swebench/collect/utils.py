@@ -164,11 +164,11 @@ class Repo:
         self,
         per_page: int = 100,
         num_pages: Optional[int] = None,
-        direction: str = "asc",
+        direction: str = "desc",
         sort: str = "created",
         state: str = "closed",
         quiet: bool = False,
-    ) -> list:
+    ) -> Iterator:
         """
         Wrapper for API call to get all issues from repo
 
@@ -195,11 +195,11 @@ class Repo:
         self,
         per_page: int = 100,
         num_pages: Optional[int] = None,
-        direction: str = "asc",
+        direction: str = "desc",
         sort: str = "created",
         state: str = "closed",
         quiet: bool = False,
-    ) -> list:
+    ) -> Iterator:
         """
         Wrapper for API call to get all PRs from repo
 

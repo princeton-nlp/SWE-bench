@@ -48,10 +48,11 @@ def construct_data_files(data: dict):
             path_tasks (str): Path to save task instance data files to
             token (str): GitHub token to use for API requests
     """
-    repos, path_prs, path_tasks, token = (
+    repos, path_prs, path_tasks, cutoff_date, token = (
         data["repos"],
         data["path_prs"],
         data["path_tasks"],
+        data["cutoff_date"],
         data["token"],
     )
     for repo in repos:
@@ -59,9 +60,11 @@ def construct_data_files(data: dict):
         repo_name = repo.split("/")[1]
         try:
             path_pr = os.path.join(path_prs, f"{repo_name}-prs.jsonl")
+            if cutoff_date:
+                path_pr = path_pr.replace(".jsonl", f"-{cutoff_date}.jsonl")
             if not os.path.exists(path_pr):
                 print(f"Pull request data for {repo} not found, creating...")
-                print_pulls(repo, path_pr, token)
+                print_pulls(repo, path_pr, token, cutoff_date)
                 print(f"Successfully saved PR data for {repo} to {path_pr}")
             else:
                 print(
@@ -87,7 +90,12 @@ def construct_data_files(data: dict):
             print("-"*80)
 
 
-def main(repos: list, path_prs: str, path_tasks: str):
+def main(
+        repos: list,
+        path_prs: str,
+        path_tasks: str,
+        cutoff_date: str|None = None
+    ):
     """
     Spawns multiple threads given multiple GitHub tokens for collecting fine tuning data
 
@@ -95,6 +103,7 @@ def main(repos: list, path_prs: str, path_tasks: str):
         repos (list): List of repositories to retrieve instruction data for
         path_prs (str): Path to save PR data files to
         path_tasks (str): Path to save task instance data files to
+        cutoff_date (str): Cutoff date for PRs to consider in format YYYYMMDD
     """
     path_prs, path_tasks = os.path.abspath(path_prs), os.path.abspath(path_tasks)
     print(f"Will save PR data to {path_prs}")
@@ -107,7 +116,13 @@ def main(repos: list, path_prs: str, path_tasks: str):
     data_task_lists = split_instances(repos, len(tokens))
 
     data_pooled = [
-        {"repos": repos, "path_prs": path_prs, "path_tasks": path_tasks, "token": token}
+        {
+            "repos": repos,
+            "path_prs": path_prs,
+            "path_tasks": path_tasks,
+            "cutoff_date": cutoff_date,
+            "token": token
+        }
         for repos, token in zip(data_task_lists, tokens)
     ]
 
@@ -127,6 +142,12 @@ if __name__ == "__main__":
         "--path_tasks",
         type=str,
         help="Path to folder to save task instance data files to",
+    )
+    parser.add_argument(
+        "--cutoff_date",
+        type=str,
+        help="Cutoff date for PRs to consider in format YYYYMMDD",
+        default=None,
     )
     args = parser.parse_args()
     main(**vars(args))
