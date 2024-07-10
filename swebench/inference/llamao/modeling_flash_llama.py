@@ -33,7 +33,7 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 from transformers.models.llama.configuration_llama import LlamaConfig
 
-from llamao.distributed_attention import DistributedAttention
+from swebench.inference.llamao.distributed_attention import DistributedAttention
 from flash_attn import flash_attn_kvpacked_func, flash_attn_varlen_kvpacked_func
 from flash_attn.bert_padding import unpad_input, pad_input
 

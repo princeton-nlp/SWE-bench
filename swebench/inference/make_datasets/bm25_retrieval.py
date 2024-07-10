@@ -14,12 +14,7 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from argparse import ArgumentParser
 
-try:
-    from utils import list_files
-    from utils import string_to_bool
-except:
-    from .utils import list_files
-    from .utils import string_to_bool
+from swebench.inference.make_datasets.utils import list_files, string_to_bool
 
 import logging
 

@@ -21,7 +21,7 @@ from tenacity import (
     wait_random_exponential,
 )
 from datasets import load_dataset, load_from_disk
-from make_datasets.utils import extract_diff
+from swebench.inference.make_datasets.utils import extract_diff
 from argparse import ArgumentParser
 import logging
 

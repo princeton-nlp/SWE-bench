@@ -12,14 +12,9 @@ from pathlib import Path
 from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 from tqdm.auto import tqdm
 
-try:
-    from create_instance import PROMPT_FUNCTIONS, add_text_inputs
-    from tokenize_dataset import TOKENIZER_FUNCS
-    from utils import string_to_bool
-except:
-    from .create_instance import PROMPT_FUNCTIONS, add_text_inputs
-    from .tokenize_dataset import TOKENIZER_FUNCS
-    from .utils import string_to_bool
+from swebench.inference.make_datasets.create_instance import add_text_inputs, PROMPT_FUNCTIONS
+from swebench.inference.make_datasets.tokenize_dataset import TOKENIZER_FUNCS
+from swebench.inference.make_datasets.utils import string_to_bool
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)

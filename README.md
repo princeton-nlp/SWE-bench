@@ -99,9 +99,9 @@ python -m swebench.harness.run_evaluation --help
 ```
 
 Additionally, the SWE-Bench repo can help you:
-* Train your own models on our pre-processed datasets  
-* Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/main/inference/) on existing models (either models you have on-disk like LLaMA, or models you have access to through an API like GPT-4). The inference step is where you get a repo and an issue and have the model try to generate a fix for it.
-*  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/collect/) on your own repositories, to make new SWE-Bench tasks. 
+* Train your own models on our pre-processed datasets
+* Run [inference](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/inference/README.md) on existing models (either models you have on-disk like LLaMA, or models you have access to through an API like GPT-4). The inference step is where you get a repo and an issue and have the model try to generate a fix for it.
+*  Run SWE-bench's [data collection procedure](https://github.com/princeton-nlp/SWE-bench/blob/main/swebench/collect/) on your own repositories, to make new SWE-Bench tasks.
 
 ## ⬇️ Downloads
 | Datasets | Models |
