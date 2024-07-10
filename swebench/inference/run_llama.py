@@ -21,7 +21,7 @@ from swebench.inference.make_datasets.utils import extract_diff
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-DEVICE_MAPS = json.load(open("codellama_device_maps.json"))
+DEVICE_MAPS = json.load(open(Path(__file__).parent / "codellama_device_maps.json")) 
 
 def get_output_file(
     output_dir,
