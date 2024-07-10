@@ -1,5 +1,5 @@
 # SWE-bench Inference
-In this package, we provide various tools to get started on SWE-bench inference.
+In this sub-package, we provide various tools to get started on SWE-bench inference.
 In particular, we provide the following important scripts and sub-packages:
 
 - `make_datasets`, this sub-package contains scripts to generate new datasets for SWE-bench inference with your own prompts and issues.
@@ -7,8 +7,14 @@ In particular, we provide the following important scripts and sub-packages:
 - `run_llama.py`, this script is used to run inference using Llama models, i.e. SWE-Llama.
 - `run_live.py`, this script is used to generate model generations for new issues on GitHub in real time.
 
+## Installation
+To install the dependencies for this sub-package, you can run the following command:
+```bash
+pip install -e .[inference]
+```
+
 ## `make_datasets`
-For more information on how to use this sub-package, please refer to the [README](./make_datasets/README.md) in the sub-package.
+For more information on how to use this sub-package, please refer to the [README](./make_datasets/README.md) in the `make_datasets` sub-package.
 
 ## Run API inference on test datasets
 
