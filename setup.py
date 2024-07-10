@@ -41,5 +41,24 @@ setuptools.setup(
         'unidiff',
         'tqdm',
     ],
+    extras_require={
+        'inference': [
+            'tiktoken',
+            'openai',
+            'anthropic',
+            'transformers',
+            'sentencepiece',
+            'protobuf',
+        ],
+        'retrieval': [
+            'tiktoken',
+            'openai',
+            'anthropic',
+            'transformers',
+            'sentencepiece',
+            'protobuf',
+            'pyserini',
+        ],
+    },
     include_package_data=True,
 )

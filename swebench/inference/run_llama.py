@@ -14,17 +14,14 @@ from transformers import (
     StoppingCriteria,
     StoppingCriteriaList,
 )
-
-from llamao.modeling_flash_llama import LlamaForCausalLM as AutoModelForCausalLM
-from make_datasets.utils import extract_diff
+from pathlib import Path
+from swebench.inference.llamao.modeling_flash_llama import LlamaForCausalLM as AutoModelForCausalLM
+from swebench.inference.make_datasets.utils import extract_diff
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 DEVICE_MAPS = json.load(open("codellama_device_maps.json"))
-
-
-from pathlib import Path
 
 def get_output_file(
     output_dir,
