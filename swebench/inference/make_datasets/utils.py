@@ -8,6 +8,10 @@ from git import Repo
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 DIFF_PATTERN = re.compile(r"^diff(?:.*)")
 PATCH_PATTERN = re.compile(
@@ -141,39 +145,75 @@ def is_test(name, test_phrases=None):
     return any(word in words for word in test_phrases)
 
 
+def clone_repo(instance, root_dir, token):
+    """
+    Clones a GitHub repository to a specified directory.
+
+    Args:
+        instance (str): The SWE-bench instance to clone.
+        root_dir (str): The root directory to clone the repository to.
+        token (str): The GitHub personal access token to use for authentication.
+
+    Returns:
+        Path: The path to the cloned repository directory.
+    """
+    repo = instance["repo"]
+    repo_dir = Path(root_dir) / instance["instance_id"]
+
+    if not repo_dir.exists():
+        repo_url = f"https://{token}@github.com/{repo}.git"
+        logger.info(f"Cloning {repo} {os.getpid()}")
+        Repo.clone_from(repo_url, repo_dir)
+    repo_obj = Repo(repo_dir)
+    repo_obj.git.reset("--hard", instance["base_commit"])
+    repo_obj.git.clean("-fdxq")
+    return repo_dir
+
+
 class ContextManager:
+    """
+    A context manager for managing a Git repository at a specific commit.
+
+    Args:
+        repo_path (str): The path to the Git repository.
+        base_commit (str): The commit hash to switch to.
+        verbose (bool, optional): Whether to print verbose output. Defaults to False.
+
+    Attributes:
+        repo_path (str): The path to the Git repository.
+        base_commit (str): The commit hash to switch to.
+        verbose (bool): Whether to print verbose output.
+        repo (git.Repo): The Git repository object.
+
+    Methods:
+        __enter__(): Switches to the specified commit and returns the context manager object.
+        get_readme_files(): Returns a list of filenames for all README files in the repository.
+        __exit__(exc_type, exc_val, exc_tb): Does nothing.
+    """
+
     def __init__(self, repo_path, base_commit, verbose=False):
         self.repo_path = Path(repo_path).resolve().as_posix()
-        self.old_dir = os.getcwd()
         self.base_commit = base_commit
         self.verbose = verbose
+        self.repo = Repo(self.repo_path)
 
     def __enter__(self):
-        os.chdir(self.repo_path)
-        cmd = f"git reset --hard {self.base_commit} && git clean -fdxq"
         if self.verbose:
-            subprocess.run(cmd, shell=True, check=True)
-        else:
-            subprocess.run(
-                cmd,
-                shell=True,
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            print(f"Switching to {self.base_commit}")
+        try:
+            self.repo.git.reset("--hard", self.base_commit)
+            self.repo.git.clean("-fdxq")
+        except Exception as e:
+            logger.error(f"Failed to switch to {self.base_commit}")
+            logger.error(e)
+            raise e
         return self
-
-    def get_environment(self):
-        raise NotImplementedError()  # TODO: activate conda environment and return the environment file
 
     def get_readme_files(self):
         files = os.listdir(self.repo_path)
         files = list(filter(lambda x: os.path.isfile(x), files))
         files = list(filter(lambda x: x.lower().startswith("readme"), files))
         return files
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        os.chdir(self.old_dir)
 
 
 class AutoContextManager(ContextManager):
@@ -182,28 +222,22 @@ class AutoContextManager(ContextManager):
     def __init__(self, instance, root_dir=None, verbose=False, token=None):
         if token is None:
             token = os.environ.get("GITHUB_TOKEN", "git")
+        if verbose: 
+            logger.info(f"Using github token {(len(token) - 4)*'*'}{token[-4:]}")
         self.tempdir = None
         if root_dir is None:
             self.tempdir = TemporaryDirectory()
             root_dir = self.tempdir.name
         self.root_dir = root_dir
-        repo_dir = os.path.join(self.root_dir, instance["repo"].replace("/", "__"))
-        if not os.path.exists(repo_dir):
-            repo_url = (
-                f"https://{token}@github.com/swe-bench/"
-                + instance["repo"].replace("/", "__")
-                + ".git"
-            )
-            if verbose:
-                print(f"Cloning {instance['repo']} to {root_dir}")
-            Repo.clone_from(repo_url, repo_dir)
+        repo_dir = clone_repo(instance, root_dir, token)
+        repo_dir = repo_dir.as_posix()
         super().__init__(repo_dir, instance["base_commit"], verbose=verbose)
         self.instance = instance
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.tempdir is not None:
             self.tempdir.cleanup()
-        return super().__exit__(exc_type, exc_val, exc_tb)
+        return
 
 
 def get_imported_modules(filename):

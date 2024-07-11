@@ -15,16 +15,21 @@ import re
 import time
 from datetime import datetime
 from tqdm.auto import tqdm
-from swebench.inference.make_datasets.utils import ContextManager, string_to_bool, extract_diff, extract_minimal_patch
+from swebench.inference.make_datasets.utils import (
+    ContextManager,
+    string_to_bool,
+    extract_diff,
+    extract_minimal_patch,
+    clone_repo,
+)
 from swebench.inference.make_datasets.create_instance import (
     PROMPT_FUNCTIONS,
-    TOKENIZER_FUNCS,
+    get_tokenizer,
     make_code_text,
     ingest_files,
 )
 from swebench.inference.make_datasets.bm25_retrieval import (
     make_index,
-    clone_repo,
     search,
     DOCUMENT_ENCODING_FUNCTIONS,
 )
@@ -99,9 +104,9 @@ def make_instance(
         dict: The instance.
     """
     thread_id = 0
-    instance = {"instance_id": instance_id, "problem_statement": query}
+    instance = {"instance_id": instance_id, "problem_statement": query, "repo": f'{owner}/{repo}'}
     logger.info(f"Cloning repo {owner}/{repo}")
-    repo_dir = clone_repo(f"{owner}/{repo}", root_dir, token)
+    repo_dir = clone_repo(instance, root_dir, token)
     if commit is None:
         commit = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=repo_dir
@@ -183,7 +188,7 @@ def main(
     if gh_token is not None:
         logger.warning(f'Using GitHub token: {"*" * 8}{gh_token[-4:]}')
     gh = GhApi(token=gh_token)
-    tokenizer, tokenizer_func = TOKENIZER_FUNCS["cl100k"]
+    tokenizer, tokenizer_func = get_tokenizer("llama" if "llama" in model_name.lower() else model_name)
     document_encoding_func = DOCUMENT_ENCODING_FUNCTIONS[document_encoding_func]
     python = subprocess.check_output(["which", "python"]).decode("utf-8").strip()
     outputs = list()

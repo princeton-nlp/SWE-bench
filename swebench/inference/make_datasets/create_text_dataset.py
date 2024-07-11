@@ -13,7 +13,7 @@ from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 from tqdm.auto import tqdm
 
 from swebench.inference.make_datasets.create_instance import add_text_inputs, PROMPT_FUNCTIONS
-from swebench.inference.make_datasets.tokenize_dataset import TOKENIZER_FUNCS
+from swebench.inference.make_datasets.tokenize_dataset import get_tokenizer
 from swebench.inference.make_datasets.utils import string_to_bool
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -78,6 +78,7 @@ def main(
     max_context_len,
     tokenizer_name,
     push_to_hub_user,
+    max_workers,
 ):
     if push_to_hub_user is not None:
         hub_token = os.environ.get("HUGGING_FACE_HUB_TOKEN", None)
@@ -102,7 +103,7 @@ def main(
         assert (
             tokenizer_name is not None
         ), "Must provide tokenizer_name if max_context_len is not None"
-        output_file += f"__mcc-{max_context_len}-{tokenizer_name}"
+        output_file += f"__mcc-{max_context_len}-{tokenizer_name.replace('/', '-')}"
     if push_to_hub_user is None:
         output_file = Path(output_dir, output_file)
         if output_file.exists():
@@ -121,12 +122,13 @@ def main(
         split_instances[split] = {x["instance_id"]: x for x in dataset[split]}
         add_text_inputs(
             split_instances[split],
-            retrieval_file,
-            k,
-            prompt_style,
-            file_source,
+            retrieval_file=retrieval_file,
+            k=k,
+            prompt_style=prompt_style,
+            file_source=file_source,
             max_context_len=max_context_len,
             tokenizer_name=tokenizer_name,
+            max_workers=max_workers,
         )
     columns = [
         "instance_id",
@@ -170,7 +172,7 @@ def main(
         dataset.push_to_hub(f'{push_to_hub_user}/{output_file}', use_auth_token=hub_token)
     else:
         dataset.save_to_disk(output_file)
-    logger.info(f"Finsihed saving to {output_file}")
+    logger.info(f"Finished saving to {output_file}")
 
 
 if __name__ == "__main__":
@@ -231,12 +233,17 @@ if __name__ == "__main__":
         "--tokenizer_name",
         type=str,
         default=None,
-        choices=TOKENIZER_FUNCS.keys(),
-        help="Tokenizer to use for max_context_len. Only needed if max_context_len is specified.",
+        help="Tokenizer to use for max_context_len. Only needed if max_context_len is specified. Choose from HuggingFace or tiktoken tokenizers.",
     )
     parser.add_argument(
         "--push_to_hub_user",
         type=str,
         help="Username to use for pushing to the Hub. If not provided, will save to disk.",
+    )
+    parser.add_argument(
+        "--max_workers",
+        type=int,
+        default=4,
+        help="Number of workers to use for text processing.",
     )
     main(**vars(parser.parse_args()))

@@ -14,61 +14,17 @@ from pathlib import Path
 from tqdm.auto import tqdm
 from argparse import ArgumentParser
 
-from swebench.inference.make_datasets.utils import list_files, string_to_bool
+from swebench.inference.make_datasets.utils import (
+    list_files,
+    string_to_bool,
+    ContextManager,
+    clone_repo,
+)
 
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
-
-
-class ContextManager:
-    """
-    A context manager for managing a Git repository at a specific commit.
-
-    Args:
-        repo_path (str): The path to the Git repository.
-        base_commit (str): The commit hash to switch to.
-        verbose (bool, optional): Whether to print verbose output. Defaults to False.
-
-    Attributes:
-        repo_path (str): The path to the Git repository.
-        base_commit (str): The commit hash to switch to.
-        verbose (bool): Whether to print verbose output.
-        repo (git.Repo): The Git repository object.
-
-    Methods:
-        __enter__(): Switches to the specified commit and returns the context manager object.
-        get_readme_files(): Returns a list of filenames for all README files in the repository.
-        __exit__(exc_type, exc_val, exc_tb): Does nothing.
-    """
-
-    def __init__(self, repo_path, base_commit, verbose=False):
-        self.repo_path = Path(repo_path).resolve().as_posix()
-        self.base_commit = base_commit
-        self.verbose = verbose
-        self.repo = Repo(self.repo_path)
-
-    def __enter__(self):
-        if self.verbose:
-            print(f"Switching to {self.base_commit}")
-        try:
-            self.repo.git.reset("--hard", self.base_commit)
-            self.repo.git.clean("-fdxq")
-        except Exception as e:
-            logger.error(f"Failed to switch to {self.base_commit}")
-            logger.error(e)
-            raise e
-        return self
-
-    def get_readme_files(self):
-        files = os.listdir(self.repo_path)
-        files = list(filter(lambda x: os.path.isfile(x), files))
-        files = list(filter(lambda x: x.lower().startswith("readme"), files))
-        return files
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
 
 
 def file_name_and_contents(filename, relative_path):
@@ -148,27 +104,6 @@ DOCUMENT_ENCODING_FUNCTIONS = {
     "file_name_and_documentation": file_name_and_documentation,
     "file_name_and_docs_jedi": file_name_and_docs_jedi,
 }
-
-
-def clone_repo(repo, root_dir, token):
-    """
-    Clones a GitHub repository to a specified directory.
-
-    Args:
-        repo (str): The GitHub repository to clone.
-        root_dir (str): The root directory to clone the repository to.
-        token (str): The GitHub personal access token to use for authentication.
-
-    Returns:
-        Path: The path to the cloned repository directory.
-    """
-    repo_dir = Path(root_dir, f"repo__{repo.replace('/', '__')}")
-
-    if not repo_dir.exists():
-        repo_url = f"https://{token}@github.com/{repo}.git"
-        logger.info(f"Cloning {repo} {os.getpid()}")
-        Repo.clone_from(repo_url, repo_dir)
-    return repo_dir
 
 
 def build_documents(repo_dir, commit, document_encoding_func):
@@ -395,7 +330,7 @@ def get_index_paths_worker(
     commit = instance["base_commit"]
     instance_id = instance["instance_id"]
     try:
-        repo_dir = clone_repo(repo, root_dir_name, token)
+        repo_dir = clone_repo(instance, root_dir_name, token)
         query = instance["problem_statement"]
         index_path = make_index(
             repo_dir=repo_dir,

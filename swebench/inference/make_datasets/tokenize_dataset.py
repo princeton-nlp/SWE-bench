@@ -11,7 +11,7 @@ from pathlib import Path
 import tiktoken
 from datasets import disable_caching, load_from_disk, load_dataset
 from tqdm.auto import tqdm
-from transformers import LlamaTokenizer
+from transformers import AutoTokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ logger.warning("Disabling caching")
 disable_caching()
 
 
-def cl100k(text, tokenizer):
+def gpt_tokenize(text, tokenizer):
     return tokenizer.encode(text, disallowed_special=())
 
 
@@ -28,11 +28,11 @@ def llama(text, tokenizer):
         "input_ids"
     ]
 
-
-TOKENIZER_FUNCS = {
-    "cl100k": (tiktoken.get_encoding("cl100k_base"), cl100k),
-    "llama": (LlamaTokenizer.from_pretrained("togethercomputer/LLaMA-2-7B-32K"), llama),
-}
+def get_tokenizer(tokenizer_name):
+    if tokenizer_name in tiktoken.model.MODEL_TO_ENCODING.keys():
+        return tiktoken.get_encoding(tokenizer_name), gpt_tokenize
+    else:
+        return AutoTokenizer.from_pretrained(tokenizer_name), llama
 
 
 def extract_fields(instance, tokenizer_name, tokenizer, tokenizer_func, eos_token):
@@ -48,7 +48,7 @@ def extract_fields(instance, tokenizer_name, tokenizer, tokenizer_func, eos_toke
     if len(eos_token) > 0:
         patch += f"\n{eos_token}"
     input_ids = tokenizer_func(text_inputs, tokenizer)
-    if tokenizer_name in {"llama"}:
+    if "llama" in tokenizer_name.lower():
         label_ids = tokenizer_func(
             "\n" + patch, tokenizer
         )  # add newline to tokenize patch
@@ -110,10 +110,10 @@ def main(
         Path(output_dir).mkdir(parents=True)
 
     if tokenizer_name is not None:
-        tokenizer, tokenizer_func = TOKENIZER_FUNCS[tokenizer_name]
+        tokenizer, tokenizer_func = get_tokenizer(tokenizer_name)
         eos_token = getattr(tokenizer, "eos_token", "")
-        if num_proc > 0 and tokenizer_name == 'cl100k':
-            logger.warning('cl100k tokenizer does not support multiprocessing. Ignoring num_proc')
+        if num_proc > 0 and tokenizer_name in tiktoken.model.MODEL_TO_ENCODING.keys():
+            logger.warning('tiktoken tokenizer does not support multiprocessing. Ignoring num_proc')
             num_proc = 0
 
     if Path(dataset_name_or_path).exists():
@@ -182,7 +182,7 @@ def main(
                 )
             )
             dataset[split] = add_columns_from_dict(dataset[split], new_values)
-    output_file = Path(dataset_name_or_path).name + f"__tok-{tokenizer_name}"
+    output_file = Path(dataset_name_or_path).name + f"__tok-{tokenizer_name.replace('/', '-')}"
     if push_to_hub_user is not None:
         output_file = f"{push_to_hub_user}/{output_file}"
         dataset.push_to_hub(output_file, use_auth_token=hub_token)
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name_or_path", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
     parser.add_argument(
-        "--tokenizer_name", type=str, required=True, choices=TOKENIZER_FUNCS.keys()
+        "--tokenizer_name", type=str, required=True, help="Tokenizer to use."
     )
     parser.add_argument("--num_proc", type=int, default=0)
     parser.add_argument(
