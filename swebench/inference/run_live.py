@@ -106,15 +106,15 @@ def make_instance(
         commit = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=repo_dir
         ).decode("utf-8").strip()
-    logger.info(f"Buidling BM25 retrieval index for {owner}/{repo}@{commit}")
+    logger.info(f"Building BM25 retrieval index for {owner}/{repo}@{commit}")
     index_dir = make_index(
-        repo_dir,
-        root_dir,
-        commit,
-        document_encoding_func,
-        python,
-        thread_id,
-        instance_id,
+        repo_dir=repo_dir,
+        root_dir=root_dir,
+        query=query,
+        commit=commit,
+        document_encoding_func=document_encoding_func,
+        python=python,
+        instance_id=instance_id,
     )
     results = search(instance, index_dir)
     hits = results["hits"]
@@ -193,20 +193,20 @@ def main(
         instance_id = f"{owner}__{repo}-{issue_num}"
         logger.info(f"Creating instance {instance_id}")
         instance = make_instance(
-            owner,
-            repo,
-            problem_statement,
-            commit,
-            root_dir,
-            gh_token,
-            document_encoding_func,
-            python,
-            instance_id,
-            tokenizer,
-            tokenizer_func,
-            prompt_style,
-            max_context_length,
-            include_readmes,
+            owner=owner,
+            repo=repo,
+            query=problem_statement,
+            commit=commit,
+            root_dir=root_dir,
+            token=gh_token,
+            document_encoding_func=document_encoding_func,
+            python=python,
+            instance_id=instance_id,
+            tokenizer=tokenizer,
+            tokenizer_func=tokenizer_func,
+            prompt_style=prompt_style,
+            max_context_len=max_context_length,
+            include_readmes=include_readmes,
         )
         logger.info(f"Calling model {model_name}")
         start = time.time()

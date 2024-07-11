@@ -58,7 +58,7 @@ You can also specify further options:
 
 ## Run live inference on open GitHub issues
 
-Follow instructions [here](https://github.com/castorini/pyserini/blob/master/docs/installation.md) to install [Pyserini](https://github.com/castorini/pyserini), to perform BM25 retrieval.
+Follow instructions [here](https://github.com/castorini/pyserini/blob/master/docs/installation.md) to install [Pyserini](https://github.com/castorini/pyserini), to perform BM25 retrieval, and [here](https://github.com/facebookresearch/faiss/blob/main/INSTALL.md) to install [Faiss](https://github.com/facebookresearch/faiss).
 
 Then run `run_live.py` to try solving a new issue. For example, you can try solving [this issue](https://github.com/huggingface/transformers/issues/26706 ) by running the following command:
 
