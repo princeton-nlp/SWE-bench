@@ -12,8 +12,8 @@ import traceback
 from pathlib import Path
 from tqdm.auto import tqdm
 import numpy as np
-import openai
 import tiktoken
+import openai
 from anthropic import HUMAN_PROMPT, AI_PROMPT, Anthropic
 from tenacity import (
     retry,
@@ -127,7 +127,7 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
     user_message = inputs.split("\n", 1)[1]
     try:
         if use_azure:
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 engine=ENGINES[model_name_or_path] if use_azure else None,
                 messages=[
                     {"role": "system", "content": system_messages},
@@ -138,7 +138,7 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
                 **model_args,
             )
         else:
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model=model_name_or_path,
                 messages=[
                     {"role": "system", "content": system_messages},
@@ -152,7 +152,7 @@ def call_chat(model_name_or_path, inputs, use_azure, temperature, top_p, **model
         output_tokens = response.usage.completion_tokens
         cost = calc_cost(response.model, input_tokens, output_tokens)
         return response, cost
-    except openai.error.InvalidRequestError as e:
+    except openai.BadRequestError as e:
         if e.code == "context_length_exceeded":
             print("Context length exceeded")
             return None
@@ -231,7 +231,7 @@ def openai_inference(
                 temperature,
                 top_p,
             )
-            completion = response.choices[0]["message"]["content"]
+            completion = response.choices[0].message.content
             total_cost += cost
             print(f"Total Cost: {total_cost:.2f}")
             output_dict["full_output"] = completion

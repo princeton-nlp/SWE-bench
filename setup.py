@@ -53,6 +53,8 @@ setuptools.setup(
             'torch',
             'flash_attn',
             'triton',
+            'jedi',
+            'tenacity',
         ],
     },
     include_package_data=True,

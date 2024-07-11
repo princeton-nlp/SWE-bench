@@ -398,13 +398,13 @@ def get_index_paths_worker(
         repo_dir = clone_repo(repo, root_dir_name, token)
         query = instance["problem_statement"]
         index_path = make_index(
-            repo_dir,
-            root_dir_name,
-            query,
-            commit,
-            document_encoding_func,
-            python,
-            instance_id,
+            repo_dir=repo_dir,
+            root_dir=root_dir_name,
+            query=query,
+            commit=commit,
+            document_encoding_func=document_encoding_func,
+            python=python,
+            instance_id=instance_id,
         )
     except:
         logger.error(f"Failed to process {repo}/{commit} (instance {instance_id})")
@@ -438,11 +438,11 @@ def get_index_paths(
     all_index_paths = dict()
     for instance in tqdm(remaining_instances, desc="Indexing"):
         instance_id, index_path = get_index_paths_worker(
-            instance,
-            root_dir_name,
-            document_encoding_func,
-            python,
-            token,
+            instance=instance,
+            root_dir_name=root_dir_name,
+            document_encoding_func=document_encoding_func,
+            python=python,
+            token=token,
         )
         if index_path is None:
             continue
