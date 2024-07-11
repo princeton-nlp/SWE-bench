@@ -211,13 +211,11 @@ def main(
         logger.info(f"Calling model {model_name}")
         start = time.time()
         if model_name.startswith("gpt"):
-            import openai
-            openai.api_key = os.environ.get("OPENAI_API_KEY", None)
             inputs = instance["text_inputs"]
             response, _ = call_chat(
                 model_name, inputs, use_azure=False, temperature=0, top_p=1
             )
-            completion = response.choices[0]["message"]["content"]
+            completion = response.choices[0].message.content
             logger.info(f'Generated {response.usage.completion_tokens} tokens in {(time.time() - start):.2f} seconds')
         else:
             from anthropic import Anthropic
