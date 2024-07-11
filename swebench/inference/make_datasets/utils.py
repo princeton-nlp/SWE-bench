@@ -215,6 +215,9 @@ class ContextManager:
         files = list(filter(lambda x: x.lower().startswith("readme"), files))
         return files
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return
+
 
 class AutoContextManager(ContextManager):
     """Automatically clones the repo if it doesn't exist"""

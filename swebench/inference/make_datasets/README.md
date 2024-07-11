@@ -26,28 +26,29 @@ You can also specify further options:
 - `--splits`: To specify the dataset splits to process (default is all splits). If you want to process only the `test` split, you can use `--splits test`.
 - `--validation_ratio`: To specify the ratio of the training set to use for validation (default is 0.01). For example, you can use `--validation_ratio 0.05` to use 5% of the training set for validation.
 - `--max_context_len`: To specify the maximum number of tokens to use for context. For example, `--max_context_len 15000` will limit the context to 15000 tokens.
-- `--tokenizer_name`: To specify the tokenizer to use. You can choose from the available tokenizers defined in `tokenize_dataset.py`. If not specified, the default tokenizer will be used.
+- `--tokenizer_name`: To specify the tokenizer to use. You can choose from the available tokenizers from [`tiktoken`](https://github.com/openai/tiktoken/blob/c0ba74c238d18b4824c25f3c27fc8698055b9a76/tiktoken/model.py#L9) or HuggingFace.
 - `--push_to_hub_user`: If you want to push the dataset to the Hugging Face Hub, you can specify your username with this option. If specified, make sure you have set your API key environment variable `HUGGING_FACE_HUB_TOKEN`. You do not need to specify `--output_dir` if you use this option.
 - `--retrieval_file`: If you want to use BM25 retrieval to create the dataset, you can specify the file containing the retrieval results with this option. The retrieval results should be in the format produced by `bm25_retrieval.py`. You should specify `--file_source bm25` if you use this option.
+- `--max_workers`: To specify the number of workers to use for multiprocessing (default is 4).
 
 The script will create a new dataset in the specified output directory. If you choose to push the dataset to the Hugging Face Hub, it will be available under your username.
 
 ## `tokenize_dataset.py`
 This script is used to tokenize a text dataset with a given tokenizer. You can choose from the available tokenizers defined in the script. The script will create a new tokenized dataset in the specified output directory.
 
-Here's an example of how to call the script to tokenize a dataset with the `llama` tokenizer:
+Here's an example of how to call the script to tokenize a dataset with the `Llama 2` tokenizer:
 
 ```bash
 python -m swebench.inference.make_datasets.tokenize_dataset \
     --dataset_name_or_path ./base_datasets/DATASET_NAME \
     --output_dir ./tokenized_datasets \
-    --tokenizer_name llama \
+    --tokenizer_name meta-llama/ \
     --num_proc 20
 ```
 
 - `--push_to_hub_user`: If you want to push the dataset to the Hugging Face Hub, you can specify your username with this option. If specified, make sure you have set your API key environment variable `HUGGING_FACE_HUB_TOKEN`. You do not need to specify `--output_dir` if you use this option.
 
-__NOTE:__ The `cl100k` tokenizer does not support multiprocessing.
+__NOTE:__ The `tiktoken` tokenizers do not support multiprocessing.
 
 ## `bm25_retrieval.py`
 This script can be used to perform BM25 retrieval on the SWE-bench dataset. It creates a results file in the specified output directory that can be used in `create_text_dataset.py` with the `--retrieval_file` option and `--file_source bm25`.
@@ -56,7 +57,7 @@ Here's an example of how to call the script to perform BM25 retrieval on the `te
 
 ```bash
 python -m swebench.inference.make_datasets.bm25_retrieval \
-    --dataset_name_or_path princeton-nlp/SWE-bench \
+    --dataset_name_or_path princeton-nlp/SWE-bench_Lite \
     --output_dir ./retrieval_results \
     --splits test
 ```
