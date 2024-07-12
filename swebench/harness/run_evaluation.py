@@ -357,7 +357,7 @@ def make_run_report(
         full_dataset: list,
         client: docker.DockerClient,
         run_id: str
-    ):
+    ) -> Path:
     """
     Make a final evaluation and run report of the instances that have been run.
     Also reports on images and containers that may still running!
@@ -367,6 +367,9 @@ def make_run_report(
         full_dataset (list): List of all instances
         client (docker.DockerClient): Docker client
         run_id (str): Run ID
+    
+    Returns:
+        Path to report file
     """
     # instantiate sets to store IDs of different outcomes
     completed_ids = set()
@@ -453,6 +456,7 @@ def make_run_report(
         "error_ids": list(sorted(error_ids)),
         "unstopped_containers": list(sorted(unstopped_containers)),
         "unremoved_images": list(sorted(unremoved_images)),
+        "schema_version": 2,
     }
     report_file = Path(
         list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
@@ -462,6 +466,7 @@ def make_run_report(
     with open(report_file, "w") as f:
         print(json.dumps(report, indent=4), file=f)
     print(f"Report written to {report_file}")
+    return report_file
 
 
 def get_gold_predictions(dataset_name: str, split: str):
