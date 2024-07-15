@@ -14,6 +14,7 @@ from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
     INSTANCE_IMAGE_BUILD_DIR,
+    KEY_INSTANCE_ID,
     RUN_EVALUATION_LOG_DIR,
 )
 from swebench.harness.docker_utils import (
@@ -302,7 +303,7 @@ def get_dataset_from_preds(
     """
     # load dataset
     dataset = load_swebench_dataset(dataset_name, split)
-    dataset_ids = {i["instance_id"] for i in dataset}
+    dataset_ids = {i[KEY_INSTANCE_ID] for i in dataset}
 
     if instance_ids:
         # check that all instance IDs are in the dataset
@@ -331,34 +332,34 @@ def get_dataset_from_preds(
 
     if instance_ids:
         # filter dataset to just the instance IDs
-        dataset = [i for i in dataset if i["instance_id"] in instance_ids]
+        dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in instance_ids]
 
     # check which instance IDs have already been run
     completed_ids = set()
     for instance in dataset:
-        if instance["instance_id"] not in prediction_ids:
+        if instance[KEY_INSTANCE_ID] not in prediction_ids:
             # skip instances without predictions
             continue
-        prediction = predictions[instance["instance_id"]]
+        prediction = predictions[instance[KEY_INSTANCE_ID]]
         report_file = (
             RUN_EVALUATION_LOG_DIR
             / run_id
             / prediction["model_name_or_path"].replace("/", "__")
-            / prediction["instance_id"]
+            / prediction[KEY_INSTANCE_ID]
             / "report.json"
         )
         if report_file.exists():
-            completed_ids.add(instance["instance_id"])
+            completed_ids.add(instance[KEY_INSTANCE_ID])
 
     if completed_ids and exclude_completed:
         # filter dataset to only instances that have not been run
         print(f"{len(completed_ids)} instances already run, skipping...")
-        dataset = [i for i in dataset if i["instance_id"] not in completed_ids]
+        dataset = [i for i in dataset if i[KEY_INSTANCE_ID] not in completed_ids]
 
     empty_patch_ids = {k for k, v in predictions.items() if v["model_patch"] == "" or v["model_patch"] is None}
 
     # filter dataset to only instances with predictions
-    dataset = [i for i in dataset if i["instance_id"] in prediction_ids and i["instance_id"] not in empty_patch_ids]
+    dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in prediction_ids and i[KEY_INSTANCE_ID] not in empty_patch_ids]
     return dataset
 
 
@@ -394,7 +395,7 @@ def make_run_report(
 
     # iterate through dataset and check if the instance has been run
     for instance in full_dataset:
-        instance_id = instance["instance_id"]
+        instance_id = instance[KEY_INSTANCE_ID]
         if instance_id not in predictions:
             # skip instances without 
             incomplete_ids.add(instance_id)
@@ -407,7 +408,7 @@ def make_run_report(
             RUN_EVALUATION_LOG_DIR
             / run_id
             / prediction["model_name_or_path"].replace("/", "__")
-            / prediction["instance_id"]
+            / prediction[KEY_INSTANCE_ID]
             / "report.json"
         )
         if report_file.exists():
@@ -486,7 +487,7 @@ def get_gold_predictions(dataset_name: str, split: str):
     dataset = load_swebench_dataset(dataset_name, split)
     return [
         {
-            "instance_id": datum["instance_id"],
+            KEY_INSTANCE_ID: datum[KEY_INSTANCE_ID],
             "model_patch": datum["patch"],
             "model_name_or_path": "gold",
         } for datum in dataset
@@ -527,7 +528,7 @@ def main(
                 predictions = [json.loads(line) for line in f]
         else:
             raise ValueError("Predictions path must be \"gold\", .json, or .jsonl")
-    predictions = {pred["instance_id"]: pred for pred in predictions}
+    predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)

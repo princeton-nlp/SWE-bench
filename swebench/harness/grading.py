@@ -6,6 +6,7 @@ from swebench.harness.constants import (
     APPLY_PATCH_PASS,
     FAIL_TO_FAIL,
     FAIL_TO_PASS,
+    KEY_INSTANCE_ID,
     PASS_TO_FAIL,
     PASS_TO_PASS,
     RESET_FAILED,
@@ -225,7 +226,7 @@ def get_eval_report(
     """
     report_map = {}
 
-    instance_id = prediction["instance_id"]
+    instance_id = prediction[KEY_INSTANCE_ID]
     if instance_id not in report_map:
         report_map[instance_id] = {
             "patch_is_None": False,
@@ -248,13 +249,13 @@ def get_eval_report(
     report_map[instance_id]["patch_successfully_applied"] = True
 
     eval_ref = {
-        "instance_id": test_spec.instance_id,
-        "FAIL_TO_PASS": test_spec.FAIL_TO_PASS,
-        "PASS_TO_PASS": test_spec.PASS_TO_PASS,
+        KEY_INSTANCE_ID: test_spec.instance_id,
+        FAIL_TO_PASS: test_spec.FAIL_TO_PASS,
+        PASS_TO_PASS: test_spec.PASS_TO_PASS,
     }
 
     report = get_eval_tests_report(eval_sm, eval_ref)
-    if get_resolution_status(report) == "RESOLVED_FULL":
+    if get_resolution_status(report) == ResolvedStatus.FULL.value:
         report_map[instance_id]["resolved"] = True
 
     if include_tests_status:

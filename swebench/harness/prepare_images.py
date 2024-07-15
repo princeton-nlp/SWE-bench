@@ -3,6 +3,7 @@ import resource
 
 from argparse import ArgumentParser
 
+from swebench.harness.constants import KEY_INSTANCE_ID
 from swebench.harness.docker_build import build_instance_images
 from swebench.harness.docker_utils import list_images
 from swebench.harness.test_spec import make_test_spec
@@ -29,12 +30,12 @@ def filter_dataset_to_build(
     data_to_build = []
 
     # Check if all instance IDs are in the dataset
-    not_in_dataset = set(instance_ids).difference(set([instance["instance_id"] for instance in dataset]))
+    not_in_dataset = set(instance_ids).difference(set([instance[KEY_INSTANCE_ID] for instance in dataset]))
     if not_in_dataset:
         raise ValueError(f"Instance IDs not found in dataset: {not_in_dataset}")
 
     for instance in dataset:
-        if instance["instance_id"] not in instance_ids:
+        if instance[KEY_INSTANCE_ID] not in instance_ids:
             # Skip instances not in the list
             continue
 

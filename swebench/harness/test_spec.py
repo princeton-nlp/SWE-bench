@@ -8,6 +8,9 @@ from typing import Any, Union
 
 from swebench.harness.constants import (
     SWEbenchInstance,
+    KEY_INSTANCE_ID,
+    FAIL_TO_PASS,
+    PASS_TO_PASS,
     MAP_REPO_TO_INSTALL,
     MAP_REPO_VERSION_TO_SPECS,
     USE_X86,
@@ -255,7 +258,7 @@ def make_eval_script_list(instance, specs, env_name, repo_directory, base_commit
 def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
     if isinstance(instance, TestSpec):
         return instance
-    instance_id = instance["instance_id"]
+    instance_id = instance[KEY_INSTANCE_ID]
     repo = instance["repo"]
     version = instance["version"]
     base_commit = instance["base_commit"]
@@ -269,8 +272,8 @@ def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
             return json.loads(instance[key])
         return instance[key]
 
-    pass_to_pass = _from_json_or_obj("PASS_TO_PASS")
-    fail_to_pass = _from_json_or_obj("FAIL_TO_PASS")
+    pass_to_pass = _from_json_or_obj(PASS_TO_PASS)
+    fail_to_pass = _from_json_or_obj(FAIL_TO_PASS)
 
     env_name = "testbed"
     repo_directory = f"/{env_name}"

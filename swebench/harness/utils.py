@@ -6,10 +6,8 @@ import requests
 
 from argparse import ArgumentTypeError
 from datasets import Dataset, load_dataset
-from datetime import datetime
 from dotenv import load_dotenv
 from functools import cache
-from git import Repo
 from typing import cast
 
 from swebench.harness.constants import (

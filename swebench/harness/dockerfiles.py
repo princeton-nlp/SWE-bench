@@ -1,5 +1,3 @@
-from functools import partial
-
 # IF you change the base image, you need to rebuild all images (run with --force_rebuild)
 _DOCKERFILE_BASE = r"""
 FROM --platform={platform} ubuntu:22.04
