@@ -19,18 +19,6 @@ from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
 
 
 # MARK: Utility functions
-def get_file_name_from_lp(x: str) -> str:
-    return x.rsplit("/", 1)[-1]
-
-
-def get_id_from_lp(x: str) -> str:
-    return get_file_name_from_lp(x).split(".")[0]
-
-
-def get_repo_from_lp(x: str) -> str:
-    return get_id_from_lp(x).rsplit("-", 1)[0].replace("__", "/")
-
-
 def test_passed(case: str, sm: dict[str, str]) -> bool:
     return case in sm and sm[case] == TestStatus.PASSED.value
 
@@ -41,6 +29,7 @@ def test_failed(case: str, sm: dict[str, str]) -> bool:
     )
 
 
+# MARK: Evaluation report functions
 def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
     """
     Retrieve evaluation results for a task instance from its corresponding log file
