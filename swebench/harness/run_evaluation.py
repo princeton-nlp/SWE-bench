@@ -154,10 +154,6 @@ def run_instance(
         copy_to_container(container, eval_file, Path("/eval.sh"))
 
         # Run eval script, write output to logs
-        # eval_cmd = "/bin/bash /eval.sh"
-        # if timeout:
-        #     eval_cmd = f"timeout -s SIGKILL {timeout} {eval_cmd}"
-        # result = container.exec_run(eval_cmd)
         test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
         test_output_path = log_dir / "test_output.txt"
         logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
