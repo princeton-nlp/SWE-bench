@@ -31,7 +31,7 @@ from swebench.harness.docker_build import (
     close_logger,
     setup_logger,
 )
-from swebench.harness.grading import get_pred_report
+from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
 
@@ -173,7 +173,7 @@ def run_instance(
 
         # Get report from test output
         logger.info(f"Grading answer for {instance_id}...")
-        report = get_pred_report(
+        report = get_eval_report(
             test_spec=test_spec,
             prediction=pred,
             log_path=test_output_path,

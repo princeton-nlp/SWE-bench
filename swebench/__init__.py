@@ -34,7 +34,6 @@ from swebench.harness.grading import (
     compute_pass_to_pass,
     get_logs_eval,
     get_eval_report,
-    get_pred_report,
     get_resolution_status,
     ResolvedStatus,
     TestStatus,

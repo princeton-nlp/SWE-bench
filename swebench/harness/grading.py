@@ -84,7 +84,7 @@ def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
         return log_parser(content), True
 
 
-def get_eval_report(
+def get_eval_tests_report(
     eval_sm: dict[str, str],
     gold_results: dict[str, str],
     calculate_to_fail: bool = False,
@@ -216,7 +216,7 @@ def get_resolution_status(report: dict[str, dict[str, Any]]) -> str:
         return ResolvedStatus.NO.value
     
 
-def get_pred_report(
+def get_eval_report(
     test_spec: TestSpec,
     prediction: dict[str, str],
     log_path: str,
@@ -264,7 +264,7 @@ def get_pred_report(
         "PASS_TO_PASS": test_spec.PASS_TO_PASS,
     }
 
-    report = get_eval_report(eval_sm, eval_ref)
+    report = get_eval_tests_report(eval_sm, eval_ref)
     if get_resolution_status(report) == "RESOLVED_FULL":
         report_map[instance_id]["resolved"] = True
 
