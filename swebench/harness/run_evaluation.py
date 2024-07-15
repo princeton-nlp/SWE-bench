@@ -14,7 +14,7 @@ from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
     INSTANCE_IMAGE_BUILD_DIR,
-    RUN_INSTANCE_LOG_DIR,
+    RUN_EVALUATION_LOG_DIR,
 )
 from swebench.harness.docker_utils import (
     remove_image,
@@ -76,7 +76,7 @@ def run_instance(
     # Set up logging directory
     instance_id = test_spec.instance_id
     model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
-    log_dir = RUN_INSTANCE_LOG_DIR / run_id / model_name_or_path / instance_id
+    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Link the image build dir in the log dir
@@ -331,7 +331,7 @@ def get_dataset_from_preds(
             continue
         prediction = predictions[instance["instance_id"]]
         report_file = (
-            RUN_INSTANCE_LOG_DIR
+            RUN_EVALUATION_LOG_DIR
             / run_id
             / prediction["model_name_or_path"].replace("/", "__")
             / prediction["instance_id"]
@@ -394,7 +394,7 @@ def make_run_report(
             empty_patch_ids.add(instance_id)
             continue
         report_file = (
-            RUN_INSTANCE_LOG_DIR
+            RUN_EVALUATION_LOG_DIR
             / run_id
             / prediction["model_name_or_path"].replace("/", "__")
             / prediction["instance_id"]

@@ -6,7 +6,7 @@ from typing import TypedDict
 BASE_IMAGE_BUILD_DIR = Path("logs/build_images/base")
 ENV_IMAGE_BUILD_DIR = Path("logs/build_images/env")
 INSTANCE_IMAGE_BUILD_DIR = Path("logs/build_images/instances")
-RUN_INSTANCE_LOG_DIR = Path("logs/run_evaluation")
+RUN_EVALUATION_LOG_DIR = Path("logs/run_evaluation")
 
 # Constants - Task Instance Class
 class SWEbenchInstance(TypedDict):
