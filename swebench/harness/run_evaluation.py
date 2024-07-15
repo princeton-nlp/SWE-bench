@@ -26,6 +26,7 @@ from swebench.harness.docker_utils import (
     clean_images,
 )
 from swebench.harness.docker_build import (
+    BuildImageError,
     build_container,
     build_env_images,
     close_logger,
@@ -39,15 +40,14 @@ from swebench.harness.utils import load_swebench_dataset, str2bool
 class EvaluationError(Exception):
     def __init__(self, instance_id, message, logger):
         super().__init__(message)
+        self.super_str = super().__str__()
         self.instance_id = instance_id
         self.log_file = logger.log_file
         self.logger = logger
 
     def __str__(self):
-        log_msg = traceback.format_exc()
-        self.logger.info(log_msg)
         return (
-            f"{self.instance_id}: {super().__str__()}\n"
+            f"Evaluation error for {self.instance_id}: {self.super_str}\n"
             f"Check ({self.log_file}) for more information."
         )
 
@@ -59,7 +59,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
-        timeout: int = None,
+        timeout: int | None = None,
     ):
     """
     Run a single instance with the given prediction.
@@ -149,17 +149,28 @@ def run_instance(
         eval_file = Path(log_dir / "eval.sh")
         eval_file.write_text(test_spec.eval_script)
         logger.info(
-            f"Eval script for {instance_id} written to {patch_file}, now applying to container..."
+            f"Eval script for {instance_id} written to {eval_file}; copying to container..."
         )
         copy_to_container(container, eval_file, Path("/eval.sh"))
 
         # Run eval script, write output to logs
-        result = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout=timeout)
-        test_output = result.decode("utf-8")
+        # eval_cmd = "/bin/bash /eval.sh"
+        # if timeout:
+        #     eval_cmd = f"timeout -s SIGKILL {timeout} {eval_cmd}"
+        # result = container.exec_run(eval_cmd)
+        test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
         test_output_path = log_dir / "test_output.txt"
+        logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
         with open(test_output_path, "w") as f:
             f.write(test_output)
-        logger.info(f"Test output for {instance_id} written to {test_output_path}")
+            logger.info(f"Test output for {instance_id} written to {test_output_path}")
+            if timed_out:
+                f.write(f"\n\nTimeout error: {timeout} seconds exceeded.")
+                raise EvaluationError(
+                    instance_id,
+                    f"Test timed out after {timeout} seconds.",
+                    logger,
+                )
 
         # Get git diff after running eval script
         git_diff_output_after = (
@@ -189,23 +200,26 @@ def run_instance(
             f.write(json.dumps(report, indent=4))
         return instance_id, report
     except EvaluationError as e:
-        error_msg = (f"EvaluationError {instance_id}: {e}\n"
-                     f"{traceback.format_exc()}\n"
-                     f"Check ({logger.log_file}) for more information.")
+        error_msg = traceback.format_exc()
         logger.info(error_msg)
-        print(error_msg)
+        print(e)
+    except BuildImageError as e:
+        error_msg = traceback.format_exc()
+        logger.info(error_msg)
+        print(e)
     except Exception as e:
         error_msg = (f"Error in evaluating model for {instance_id}: {e}\n"
                      f"{traceback.format_exc()}\n"
                      f"Check ({logger.log_file}) for more information.")
-        logger.info(error_msg)
-        print(error_msg)
+        logger.error(error_msg)
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
         if rm_image:
             remove_image(client, test_spec.instance_image_key, logger)
         close_logger(logger)
+    return
+
 
 def run_instances(
         predictions: dict,
