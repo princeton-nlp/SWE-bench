@@ -44,8 +44,6 @@ class EvaluationError(Exception):
         self.logger = logger
 
     def __str__(self):
-        log_msg = traceback.format_exc()
-        self.logger.info(log_msg)
         return (
             f"{self.instance_id}: {super().__str__()}\n"
             f"Check ({self.log_file}) for more information."
@@ -59,7 +57,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
-        timeout: int = None,
+        timeout: int | None = None,
     ):
     """
     Run a single instance with the given prediction.
@@ -154,11 +152,22 @@ def run_instance(
         copy_to_container(container, eval_file, Path("/eval.sh"))
 
         # Run eval script, write output to logs
-        result = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout=timeout)
-        test_output = result.decode("utf-8")
+        # eval_cmd = "/bin/bash /eval.sh"
+        # if timeout:
+        #     eval_cmd = f"timeout -s SIGKILL {timeout} {eval_cmd}"
+        # result = container.exec_run(eval_cmd)
+        test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
         test_output_path = log_dir / "test_output.txt"
+        logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
         with open(test_output_path, "w") as f:
             f.write(test_output)
+            if timed_out:
+                f.write(f"\n\nTimeout error: {timeout} seconds exceeded.")
+                raise EvaluationError(
+                    instance_id,
+                    f"Timeout error: {timeout} seconds exceeded. See {test_output_path} for test output.",
+                    logger,
+                )
         logger.info(f"Test output for {instance_id} written to {test_output_path}")
 
         # Get git diff after running eval script
