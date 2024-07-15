@@ -4,7 +4,7 @@ All notable changes to the PyPI package for SWE-bench ([`swebench`](https://pypi
 
 Prior to version 1.1.0, not all deployed versions are listed, as the PyPI package was going through development and testing. The noteworthy versions and the respective changes that were introduced by that version are included. All versions 1.1.0 onwards are fully listed.
 
-## [2.0.10] - 7/15/2024
+## [2.0.11] - 7/15/2024
 * Minor naming changes
 * #183 Fix timeout
 * #178 Add schema version to report card
