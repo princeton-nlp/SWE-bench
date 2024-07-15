@@ -5,6 +5,7 @@ import os
 import signal
 import tarfile
 import threading
+import time
 import traceback
 from pathlib import Path
 
@@ -181,21 +182,25 @@ def exec_run_with_timeout(container, cmd, timeout: int|None=60):
         timeout (int): Timeout in seconds.
     """
     # Local variables to store the result of executing the command
-    exec_result = None
+    exec_result = ''
     exec_id = None
     exception = None
+    timed_out = False
 
     # Wrapper function to run the command
     def run_command():
         nonlocal exec_result, exec_id, exception
         try:
             exec_id = container.client.api.exec_create(container.id, cmd)["Id"]
-            exec_result = container.client.api.exec_start(exec_id)
+            exec_stream = container.client.api.exec_start(exec_id, stream=True)
+            for chunk in exec_stream:
+                exec_result += chunk.decode()
         except Exception as e:
             exception = e
 
     # Start the command in a separate thread
     thread = threading.Thread(target=run_command)
+    start_time = time.time()
     thread.start()
     thread.join(timeout)
 
@@ -204,9 +209,12 @@ def exec_run_with_timeout(container, cmd, timeout: int|None=60):
 
     # If the thread is still alive, the command timed out
     if thread.is_alive():
-        raise TimeoutError(f"Command '{cmd}' timed out after {timeout} seconds")
-
-    return exec_result
+        if exec_id is not None:
+            exec_pid = container.client.api.exec_inspect(exec_id)["Pid"]
+            container.exec_run(f"kill -TERM {exec_pid}", detach=True)
+        timed_out = True
+    end_time = time.time()
+    return exec_result, timed_out, end_time - start_time
 
 
 def find_dependent_images(client: docker.DockerClient, image_name: str):

@@ -29,15 +29,14 @@ ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 class BuildImageError(Exception):
     def __init__(self, image_name, message, logger):
         super().__init__(message)
+        self.super_str = super().__str__()
         self.image_name = image_name
         self.log_path = logger.log_file
         self.logger = logger
 
     def __str__(self):
-        log_msg = traceback.format_exc()
-        self.logger.info(log_msg)
         return (
-            f"{self.image_name}: {super().__str__()}\n"
+            f"Error building image {self.image_name}: {self.super_str}\n"
             f"Check ({self.log_path}) for more information."
         )
 
