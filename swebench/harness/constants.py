@@ -43,6 +43,7 @@ class TestStatus(Enum):
 
 TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
 TEST_PYTEST_VERBOSE = "pytest -rA --tb=long -p no:cacheprovider"
+TEST_ASTROPY_PYTEST = "pytest -rA -vv -o console_output_style=classic --tb=no"
 TEST_DJANGO = "./tests/runtests.py --verbosity 2 --settings=test_sqlite --parallel 1"
 TEST_DJANGO_NO_PARALLEL = "./tests/runtests.py --verbosity 2"
 TEST_SEABORN = "pytest --no-header -rA"
@@ -570,9 +571,50 @@ SPECS_ASTROPY = {
         ],
         "test_cmd": TEST_PYTEST,
     }
-    for k in ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3", "3.0", "3.1", "3.2"]
-    + ["4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]
+    for k in ["3.0", "3.1", "3.2", "4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]
 }
+
+SPECS_ASTROPY.update(
+    {
+        k:  {
+            "python": "3.6",
+            "install": "python -m pip install -e .[test] --verbose",
+            "packages": "setuptools==38.2.4",
+            "pip_packages": [
+                "attrs==17.3.0",
+                "exceptiongroup==0.0.0a0",
+                "execnet==1.5.0",
+                "hypothesis==3.44.2",
+                "cython==0.27.3",
+                "jinja2==2.10",
+                "MarkupSafe==1.0",
+                "numpy==1.16.0",
+                "packaging==16.8",
+                "pluggy==0.6.0",
+                "psutil==5.4.2",
+                "pyerfa==1.7.0",
+                "pytest-arraydiff==0.1",
+                "pytest-astropy-header==0.1",
+                "pytest-astropy==0.2.1",
+                "pytest-cov==2.5.1",
+                "pytest-doctestplus==0.1.2",
+                "pytest-filter-subpackage==0.1",
+                "pytest-forked==0.2",
+                "pytest-mock==1.6.3",
+                "pytest-openfiles==0.2.0",
+                "pytest-remotedata==0.2.0",
+                "pytest-xdist==1.20.1",
+                "pytest==3.3.1",
+                "PyYAML==3.12",
+                "sortedcontainers==1.5.9",
+                "tomli==0.2.0"
+            ],
+            "test_cmd": TEST_PYTEST_VERBOSE,
+        }
+        for k in ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3"]
+    }
+)
+
 for k in ["4.1", "4.2", "4.3", "5.0", "5.1", "5.2"]:
     SPECS_ASTROPY[k]["pre_install"] = [
         'sed -i \'s/requires = \\["setuptools",/requires = \\["setuptools==68.0.0",/\' pyproject.toml'
@@ -652,7 +694,8 @@ SPECS_XARRAY = {
             "pytz==2023.3",
             "six==1.16.0",
             "scipy==1.11.1",
-            "setuptools==68.0.0"
+            "setuptools==68.0.0",
+            "dask==2022.8.1"
         ],
         "no_use_env": True,
         "test_cmd": TEST_PYTEST,
