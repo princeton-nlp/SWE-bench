@@ -823,6 +823,7 @@ SPECS_PYDICOM = {
         "python": "3.6",
         "install": "python -m pip install -e .",
         "packages": "numpy",
+        "pip_packages": ["pytest"],
         "test_cmd": TEST_PYTEST,
     }
     for k in [
