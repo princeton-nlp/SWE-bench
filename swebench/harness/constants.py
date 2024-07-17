@@ -609,7 +609,7 @@ SPECS_ASTROPY.update(
                 "sortedcontainers==1.5.9",
                 "tomli==0.2.0"
             ],
-            "test_cmd": TEST_PYTEST_VERBOSE,
+            "test_cmd": TEST_ASTROPY_PYTEST,
         }
         for k in ["0.1", "0.2", "0.3", "0.4", "1.1", "1.2", "1.3"]
     }
