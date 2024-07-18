@@ -86,7 +86,7 @@ def run_instance(
     if not image_build_link.exists():
         try:
             # link the image build dir in the log dir
-            image_build_link.symlink_to(build_dir, target_is_directory=True)
+            image_build_link.symlink_to(build_dir.absolute(), target_is_directory=True)
         except:
             # some error, idk why
             pass
