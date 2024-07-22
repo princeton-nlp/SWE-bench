@@ -239,7 +239,7 @@ def get_env_configs_to_build(
 
             if env_image.attrs["Created"] < base_image.attrs["Created"]:
                 # Remove the environment image if it was built after the base_image
-                for dep in find_dependent_images(env_image):
+                for dep in find_dependent_images(client, test_spec.env_image_key):
                     # Remove instance images that depend on this environment image
                     remove_image(client, dep.image_id, "quiet")
                 remove_image(client, test_spec.env_image_key, "quiet")
@@ -339,7 +339,7 @@ def build_instance_images(
     ):
     """
     Builds the instance images required for the dataset if they do not already exist.
-    
+
     Args:
         dataset (list): List of test specs or dataset to build images for
         client (docker.DockerClient): Docker client to use for building the images
