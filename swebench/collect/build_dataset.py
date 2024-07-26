@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from typing import Optional
+from tqdm.auto import tqdm
 
 from swebench.collect.utils import (
     extract_patches,
@@ -142,7 +143,9 @@ def main(pr_file: str, output: str, token: Optional[str] = None):
         # Write to output file for PRs with test suites
         write_mode = "w" if not os.path.exists(output) else "a"
         with open(output, write_mode) as output:
-            for ix, line in enumerate(open(pr_file)):
+            with open(pr_file, 'r') as file:
+                total_lines = sum(1 for line in file)
+            for ix, line in tqdm(enumerate(open(pr_file)), total=total_lines):
                 total_instances += 1
                 pull = json.loads(line)
                 if ix % 100 == 0:

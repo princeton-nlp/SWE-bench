@@ -1,4 +1,5 @@
 import argparse, glob, json, logging, os, re, requests, subprocess, sys
+from tqdm.auto import tqdm
 
 from multiprocessing import Pool, Manager
 
@@ -19,6 +20,7 @@ INSTALL_CMD = {
     "pytest-dev/pytest": "pip install -e .",
     "matplotlib/matplotlib": "python -m pip install -e .",
     "pydata/xarray": "pip install -e .",
+    "pallets/flask": "pip install -e .",
 }
 
 
@@ -85,7 +87,8 @@ def get_version(instance, is_build=False, path_repo=None):
                 path_to_version,
             )
             init_text = requests.get(url).text
-        version = _find_version_in_text(init_text, instance)
+        if init_text is not None:
+            version = _find_version_in_text(init_text, instance)
         if version is not None:
             if "." in version:
                 version = keep_major_minor(version, ".")
@@ -146,7 +149,7 @@ def get_versions_from_build(data: dict):
     cwd = os.getcwd()
     os.chdir(path_repo)
 
-    for instance in data_tasks[::-1]:
+    for instance in tqdm(data_tasks[::-1]):
         # Reset repo to base commit
         subprocess.run(
             "git restore .", check=True, shell=True, stdout=subprocess.DEVNULL
@@ -160,24 +163,28 @@ def get_versions_from_build(data: dict):
         out_check = subprocess.run(
             f"git -c advice.detachedHead=false checkout {instance['base_commit']}",
             shell=True,
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         if out_check.returncode != 0:
-            logger.error(f"[{instance['instance_id']}] Checkout failed")
+            logger.error(f"[{instance['instance_id']}] Checkout failed.")
+            logger.error(out_check.stderr.decode("utf-8"))
             continue
 
         # Run installation command in repo
         out_install = subprocess.run(
             f"{cmd_source}; {cmd_activate} {conda_env}; {cmd_install}",
             shell=True,
-            stdout=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         if out_install.returncode != 0:
             logger.error(f"[{instance['instance_id']}] Installation failed")
+            logger.error(out_install.stderr.decode("utf-8"))
             continue
 
         # Look up version according to repo-specific paths
-        version = get_version(instance, is_build=True, path_repo=path_repo)
+        version = get_version(instance, is_build=True, path_repo="./")
         instance["version"] = version
         logger.info(f'For instance {instance["instance_id"]}, version is {version}')
 
@@ -231,9 +238,10 @@ def merge_results(instances_path: str, repo_prefix: str, output_dir: str = None)
 
     # Save merged results to original task instances file's path with `_versions` suffix
     old_path_file = instances_path.split("/")[-1]
-    instances_path_new = f"{old_path_file.split('.')[0]}_versions.json"
-    if output_dir is not None:
-        instances_path_new = os.path.join(output_dir, instances_path_new)
+    instances_path_new = old_path_file[:old_path_file.rfind(".")] + "_versions" + old_path_file[old_path_file.rfind("."):]
+    if output_dir is None:
+        output_dir = os.path.dirname(instances_path)
+    instances_path_new = os.path.join(output_dir, instances_path_new)
     with open(f"{instances_path_new}", "w") as f:
         json.dump(merged, fp=f)
     logger.info(f"Saved merged results to {instances_path_new} ({len(merged)} instances)")

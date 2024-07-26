@@ -2,6 +2,7 @@ import hashlib
 import json
 import platform
 import re
+from tqdm.auto import tqdm
 
 from dataclasses import dataclass
 from typing import Any, Union, cast
@@ -112,7 +113,7 @@ def get_test_specs_from_dataset(dataset: Union[list[SWEbenchInstance], list[Test
     """
     if isinstance(dataset[0], TestSpec):
         return cast(list[TestSpec], dataset)
-    return list(map(make_test_spec, cast(list[SWEbenchInstance], dataset)))
+    return list(map(make_test_spec, cast(list[SWEbenchInstance], tqdm(dataset, desc="Converting instances"))))
 
 
 def make_repo_script_list(specs, repo, repo_directory, base_commit, env_name):
