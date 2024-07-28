@@ -32,7 +32,7 @@ def copy_to_container(container: Container, src: Path, dst: Path):
     # temporary tar file
     tar_path = src.with_suffix(".tar")
     with tarfile.open(tar_path, "w") as tar:
-        tar.add(src, arcname=src.name)
+        tar.add(src, arcname=dst.name)  # use destination name, so after `put_archive`, name is correct
 
     # get bytes for put_archive cmd
     with open(tar_path, "rb") as tar_file:
@@ -43,11 +43,9 @@ def copy_to_container(container: Container, src: Path, dst: Path):
 
     # Send tar file to container and extract
     container.put_archive(os.path.dirname(dst), data)
-    container.exec_run(f"tar -xf {dst}.tar -C {dst.parent}")
 
     # clean up in locally and in container
     tar_path.unlink()
-    container.exec_run(f"rm {dst}.tar")
 
 
 def write_to_container(container: Container, data: str, dst: Path):
