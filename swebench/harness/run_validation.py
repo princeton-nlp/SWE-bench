@@ -27,7 +27,6 @@ from swebench.harness.docker_utils import (
     clean_images,
 )
 from swebench.harness.docker_build import (
-    BuildImageError,
     build_container,
     build_env_images,
     close_logger,
@@ -36,21 +35,8 @@ from swebench.harness.docker_build import (
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
-
-
-class EvaluationError(Exception):
-    def __init__(self, instance_id, message, logger):
-        super().__init__(message)
-        self.super_str = super().__str__()
-        self.instance_id = instance_id
-        self.log_file = logger.log_file
-        self.logger = logger
-
-    def __str__(self):
-        return (
-            f"Evaluation error for {self.instance_id}: {self.super_str}\n"
-            f"Check ({self.log_file}) for more information."
-        )
+from swebench.harness.grading import get_logs_eval   
+from swebench.harness.run_evaluation import get_gold_predictions, EvaluationError, get_dataset_from_preds
 
 
 def run_instance(
@@ -73,7 +59,7 @@ def run_instance(
         client (docker.DockerClient): Docker client
         run_id (str): Run ID
         timeout (int): Timeout for running tests
-    """
+    """ 
     # Set up logging directory
     instance_id = test_spec.instance_id
     model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
@@ -97,6 +83,13 @@ def run_instance(
     if report_path.exists():
         return instance_id, json.loads(report_path.read_text())
     logger = setup_logger(instance_id, log_file)
+    
+    if test_spec.version is None:
+        raise EvaluationError(
+            instance_id,
+            "No version found for instance",
+            logger,
+        )
 
     # Run the instance
     container = None
@@ -105,7 +98,25 @@ def run_instance(
         container = build_container(test_spec, client, run_id, logger, rm_image, force_rebuild)
         container.start()
         logger.info(f"Container for {instance_id} started: {container.id}")
-
+        
+        # Run eval script before patch, write output to logs
+        eval_file = Path(log_dir / "eval.sh")
+        eval_file.write_text(test_spec.eval_script)
+        copy_to_container(container, eval_file, Path("/eval.sh"))
+        test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
+        test_output_before_patch_path = log_dir / "test_output_before_patch.txt"
+        logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
+        with open(test_output_before_patch_path, "w") as f:
+            f.write(test_output)
+            logger.info(f"Test output before patch for {instance_id} written to {test_output_before_patch_path}")
+            if timed_out:
+                f.write(f"\n\nTimeout error: {timeout} seconds exceeded.")
+                raise EvaluationError(
+                    instance_id,
+                    f"Test timed out after {timeout} seconds.",
+                    logger,
+                )
+        
         # Copy model prediction as patch file to container
         patch_file = Path(log_dir / "patch.diff")
         patch_file.write_text(pred["model_patch"] or "")
@@ -147,13 +158,6 @@ def run_instance(
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
 
-        eval_file = Path(log_dir / "eval.sh")
-        eval_file.write_text(test_spec.eval_script)
-        logger.info(
-            f"Eval script for {instance_id} written to {eval_file}; copying to container..."
-        )
-        copy_to_container(container, eval_file, Path("/eval.sh"))
-
         # Run eval script, write output to logs
         test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
         test_output_path = log_dir / "test_output.txt"
@@ -179,23 +183,29 @@ def run_instance(
         if git_diff_output_after != git_diff_output_before:
             logger.info(f"Git diff changed after running eval script")
 
-        # Get report from test output
-        logger.info(f"Grading answer for {instance_id}...")
-        report = get_eval_report(
-            test_spec=test_spec,
-            prediction=pred,
-            log_path=test_output_path,
-            include_tests_status=True,
-        )
-        logger.info(
-            f"report: {report}\n"
-            f"Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
-        )
-
-        # Write report to report.json
-        with open(report_path, "w") as f:
-            f.write(json.dumps(report, indent=4))
-        return instance_id, report
+        report_map = {
+            "instance_id": test_spec.instance_id,
+            "FAIL_TO_PASS": [],
+            "PASS_TO_PASS": [],
+            "FAIL_TO_FAIL": [],
+            "PASS_TO_FAIL": [],
+        }
+        
+        
+        eval_sm, found = get_logs_eval(test_output_path)
+        eval_sm_ref, found_ref = get_logs_eval(test_output_before_patch_path)
+        assert found and found_ref, f"Could not find logs in {test_output_path} or {test_output_before_patch_path}"        
+        for test, status in eval_sm.items():
+            if status == "PASSED" and eval_sm_ref.get(test, None) == "FAILED":
+                report_map["FAIL_TO_PASS"].append(test)
+            elif status == "PASSED" and eval_sm_ref.get(test, None) == "PASSED":
+                report_map["PASS_TO_PASS"].append(test)
+            elif status == "FAILED" and eval_sm_ref.get(test, None) == "FAILED":
+                report_map["FAIL_TO_FAIL"].append(test)
+            elif status == "FAILED" and eval_sm_ref.get(test, None) == "PASSED":
+                report_map["PASS_TO_FAIL"].append(test)
+                
+        return report_map
     except EvaluationError as e:
         error_msg = traceback.format_exc()
         logger.info(error_msg)
@@ -276,229 +286,27 @@ def run_instances(
                 ): None
                 for test_spec in test_specs
             }
+            results = {}
             # Wait for each future to complete
             for future in as_completed(futures):
                 pbar.update(1)
                 try:
                     # Update progress bar, check if instance ran successfully
-                    future.result()
+                    res = future.result()
+                    instance_id = res['instance_id']
+                    del res['instance_id']
+                    results[instance_id] = res
                 except Exception as e:
                     traceback.print_exc()
                     continue
     print("All instances run.")
-
-
-def get_dataset_from_preds(
-        dataset_name: str,
-        split: str,
-        instance_ids: list,
-        predictions: dict,
-        run_id: str,
-        exclude_completed: bool = True
-    ):
-    """
-    Return only instances that have predictions and are in the dataset.
-    If instance_ids is provided, only return instances with those IDs.
-    If exclude_completed is True, only return instances that have not been run yet.
-    """
-    # load dataset
-    dataset = load_swebench_dataset(dataset_name, split)
-    dataset_ids = {i[KEY_INSTANCE_ID] for i in dataset}
-
-    if instance_ids:
-        # check that all instance IDs are in the dataset
-        instance_ids = set(instance_ids)
-        if instance_ids - dataset_ids:
-            raise ValueError(
-                (
-                    "Some instance IDs not found in dataset!"
-                    f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
-                )
-            )
-        # check that all instance IDs have predictions
-        missing_preds = instance_ids - set(predictions.keys())
-        if missing_preds:
-            print(f"Warning: Missing predictions for {len(missing_preds)} instance IDs.")
-    
-    # check that all prediction IDs are in the dataset
-    prediction_ids = set(predictions.keys())
-    if prediction_ids - dataset_ids:
-        raise ValueError(
-            (
-                "Some prediction IDs not found in dataset!"
-                f"\nMissing IDs:\n{' '.join(prediction_ids - dataset_ids)}"
-            )
-        )
-
-    if instance_ids:
-        # filter dataset to just the instance IDs
-        dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in instance_ids]
-
-    # check which instance IDs have already been run
-    completed_ids = set()
-    for instance in dataset:
-        if instance[KEY_INSTANCE_ID] not in prediction_ids:
-            # skip instances without predictions
-            continue
-        prediction = predictions[instance[KEY_INSTANCE_ID]]
-        report_file = (
-            RUN_EVALUATION_LOG_DIR
-            / run_id
-            / prediction["model_name_or_path"].replace("/", "__")
-            / prediction[KEY_INSTANCE_ID]
-            / "report.json"
-        )
-        if report_file.exists():
-            completed_ids.add(instance[KEY_INSTANCE_ID])
-
-    if completed_ids and exclude_completed:
-        # filter dataset to only instances that have not been run
-        print(f"{len(completed_ids)} instances already run, skipping...")
-        dataset = [i for i in dataset if i[KEY_INSTANCE_ID] not in completed_ids]
-
-    empty_patch_ids = {k for k, v in predictions.items() if v["model_patch"] == "" or v["model_patch"] is None}
-
-    # filter dataset to only instances with predictions
-    dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in prediction_ids and i[KEY_INSTANCE_ID] not in empty_patch_ids]
-    return dataset
-
-
-def make_run_report(
-        predictions: dict,
-        full_dataset: list,
-        client: docker.DockerClient,
-        run_id: str
-    ) -> Path:
-    """
-    Make a final evaluation and run report of the instances that have been run.
-    Also reports on images and containers that may still running!
-
-    Args:
-        predictions (dict): Predictions dict generated by the model
-        full_dataset (list): List of all instances
-        client (docker.DockerClient): Docker client
-        run_id (str): Run ID
-    
-    Returns:
-        Path to report file
-    """
-    # instantiate sets to store IDs of different outcomes
-    completed_ids = set()
-    resolved_ids = set()
-    error_ids = set()
-    unstopped_containers = set()
-    unremoved_images = set()
-    unresolved_ids = set()
-    incomplete_ids = set()
-    # get instances with empty patches
-    empty_patch_ids = set()
-
-    # iterate through dataset and check if the instance has been run
-    for instance in full_dataset:
-        instance_id = instance[KEY_INSTANCE_ID]
-        if instance_id not in predictions:
-            # skip instances without 
-            incomplete_ids.add(instance_id)
-            continue
-        prediction = predictions[instance_id]
-        if prediction.get("model_patch", None) in ["", None]:
-            empty_patch_ids.add(instance_id)
-            continue
-        report_file = (
-            RUN_EVALUATION_LOG_DIR
-            / run_id
-            / prediction["model_name_or_path"].replace("/", "__")
-            / prediction[KEY_INSTANCE_ID]
-            / "report.json"
-        )
-        if report_file.exists():
-            # If report file exists, then the instance has been run
-            completed_ids.add(instance_id)
-            report = json.loads(report_file.read_text())
-            if report[instance_id]["resolved"]:
-                # Record if the instance was resolved
-                resolved_ids.add(instance_id)
-            else:
-                unresolved_ids.add(instance_id)
-        else:
-            # Otherwise, the instance was not run successfully
-            error_ids.add(instance_id)
-
-    # get remaining images and containers
-    images = list_images(client)
-    test_specs = list(map(make_test_spec, full_dataset))
-    for spec in test_specs:
-        image_name = spec.instance_image_key
-        if image_name in images:
-            unremoved_images.add(image_name)
-    containers = client.containers.list(all=True)
-    for container in containers:
-        if run_id in container.name:
-            unstopped_containers.add(container.name)
-
-    # print final report
-    print(f"Total instances: {len(full_dataset)}")
-    print(f"Instances submitted: {len(predictions)}")
-    print(f"Instances completed: {len(completed_ids)}")
-    print(f"Instances incomplete: {len(incomplete_ids)}")
-    print(f"Instances resolved: {len(resolved_ids)}")
-    print(f"Instances unresolved: {len(unresolved_ids)}")
-    print(f"Instances with empty patches: {len(empty_patch_ids)}")
-    print(f"Instances with errors: {len(error_ids)}")
-    print(f"Unstopped containers: {len(unstopped_containers)}")
-    print(f"Unremoved images: {len(unremoved_images)}")
-
-    # write report to file
-    report = {
-        "total_instances": len(full_dataset),
-        "submitted_instances": len(predictions),
-        "completed_instances": len(completed_ids),
-        "resolved_instances": len(resolved_ids),
-        "unresolved_instances": len(unresolved_ids),
-        "empty_patch_instances": len(empty_patch_ids),
-        "error_instances": len(error_ids),
-        "unstopped_instances": len(unstopped_containers),
-        "completed_ids": list(sorted(completed_ids)),
-        "incomplete_ids": list(sorted(incomplete_ids)),
-        "empty_patch_ids": list(sorted(empty_patch_ids)),
-        "submitted_ids": list(sorted(predictions.keys())),
-        "resolved_ids": list(sorted(resolved_ids)),
-        "unresolved_ids": list(sorted(unresolved_ids)),
-        "error_ids": list(sorted(error_ids)),
-        "unstopped_containers": list(sorted(unstopped_containers)),
-        "unremoved_images": list(sorted(unremoved_images)),
-        "schema_version": 2,
-    }
-    report_file = Path(
-        list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
-        + f".{run_id}"
-        + ".json"
-    )
-    with open(report_file, "w") as f:
-        print(json.dumps(report, indent=4), file=f)
-    print(f"Report written to {report_file}")
-    return report_file
-
-
-def get_gold_predictions(dataset_name: str, split: str):
-    """
-    Get gold predictions for the given dataset and split.
-    """
-    dataset = load_swebench_dataset(dataset_name, split)
-    return [
-        {
-            KEY_INSTANCE_ID: datum[KEY_INSTANCE_ID],
-            "model_patch": datum["patch"],
-            "model_name_or_path": "gold",
-        } for datum in dataset
-    ]
+    return results
 
 
 def main(
         dataset_name: str,
         split: str,
         instance_ids: list,
-        predictions_path: str,
         max_workers: int,
         force_rebuild: bool,
         cache_level: str,
@@ -515,24 +323,15 @@ def main(
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
 
-    # load predictions as map of instance_id to prediction
-    if predictions_path == 'gold':
-        print("Using gold predictions - ignoring predictions_path")
-        predictions = get_gold_predictions(dataset_name, split)
-    else:
-        if predictions_path.endswith(".json"):
-            with open(predictions_path, "r") as f:
-                predictions = json.load(f)
-        elif predictions_path.endswith(".jsonl"):
-            with open(predictions_path, "r") as f:
-                predictions = [json.loads(line) for line in f]
-        else:
-            raise ValueError("Predictions path must be \"gold\", .json, or .jsonl")
+    predictions = get_gold_predictions(dataset_name, split)
+    
     predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
-    full_dataset = load_swebench_dataset(dataset_name, split)
+    for instance in dataset:
+        instance['FAIL_TO_PASS'] = []
+        instance['PASS_TO_PASS'] = []
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
@@ -540,11 +339,29 @@ def main(
     else:
         # build environment images + run instances
         build_env_images(client, dataset, force_rebuild, max_workers)
-        run_instances(predictions, dataset, cache_level, clean, force_rebuild, max_workers, run_id, timeout)
+        results = run_instances(predictions, dataset, cache_level, clean, force_rebuild, max_workers, run_id, timeout)
 
     # clean images + make final report
     clean_images(client, existing_images, cache_level, clean)
-    make_run_report(predictions, full_dataset, client, run_id)
+    
+    # open dataset_name and add the results fields to it 
+    with open(dataset_name, "r") as f:
+        data = [json.loads(task) for task in Path(dataset_name).read_text().strip().split('\n')]
+        for instance in data:
+            instance_id = instance["instance_id"]
+            if instance_id in results:
+                # merge two dictionaries, crash on duplicate keys
+                assert not any(k in instance for k in results[instance_id]), f"Duplicate keys in {instance_id}"
+                instance.update(results[instance_id])
+                
+    last_dot_idx = dataset_name.rfind(".")   
+    dataset_name_w_results_all = dataset_name[:last_dot_idx] + "_validated.all" + dataset_name[last_dot_idx:]
+    dataset_name_w_results = dataset_name[:last_dot_idx] + "_validated" + dataset_name[last_dot_idx:]
+    with open(dataset_name_w_results, "w") as f, open(dataset_name_w_results_all, "w") as f_all:
+        for instance in data:
+            print(json.dumps(instance), file=f_all)
+            if len(instance["FAIL_TO_PASS"]) > 0:
+                print(json.dumps(instance), file=f)
 
 
 if __name__ == "__main__":
@@ -552,7 +369,6 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name", default="princeton-nlp/SWE-bench_Lite", type=str, help="Name of dataset or path to JSON file.")
     parser.add_argument("--split", type=str, default="test", help="Split of the dataset")
     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
-    parser.add_argument("--predictions_path", type=str, help="Path to predictions file - if 'gold', uses gold predictions", required=True)
     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers (should be <= 75%% of CPU cores)")
     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
     parser.add_argument(
