@@ -27,6 +27,7 @@ from swebench.harness.docker_utils import (
     clean_images,
 )
 from swebench.harness.docker_build import (
+    BuildImageError,
     build_container,
     build_env_images,
     close_logger,
@@ -83,17 +84,16 @@ def run_instance(
     if report_path.exists():
         return instance_id, json.loads(report_path.read_text())
     logger = setup_logger(instance_id, log_file)
-    
-    if test_spec.version is None:
-        raise EvaluationError(
-            instance_id,
-            "No version found for instance",
-            logger,
-        )
 
     # Run the instance
     container = None
     try:
+        if test_spec.version is None:
+            raise EvaluationError(
+                instance_id,
+                "No version found for instance",
+                logger,
+            )
         # Build + start instance container (instance image should already be built)
         container = build_container(test_spec, client, run_id, logger, rm_image, force_rebuild)
         container.start()
@@ -192,9 +192,20 @@ def run_instance(
         }
         
         
-        eval_sm, found = get_logs_eval(test_output_path)
-        eval_sm_ref, found_ref = get_logs_eval(test_output_before_patch_path)
-        assert found and found_ref, f"Could not find logs in {test_output_path} or {test_output_before_patch_path}"        
+        eval_sm, found = get_logs_eval(log_file, test_output_path)
+        eval_sm_ref, found_ref = get_logs_eval(log_file, test_output_before_patch_path)
+        if not found:
+            raise EvaluationError(
+                instance_id,
+                "No evaluation logs found",
+                logger,
+            )
+        if not found_ref:
+            raise EvaluationError(
+                instance_id,
+                "No reference evaluation logs found",
+                logger,
+            )
         for test, status in eval_sm.items():
             if status == "PASSED" and eval_sm_ref.get(test, None) == "FAILED":
                 report_map["FAIL_TO_PASS"].append(test)
@@ -219,6 +230,7 @@ def run_instance(
                      f"{traceback.format_exc()}\n"
                      f"Check ({logger.log_file}) for more information.")
         logger.error(error_msg)
+        print(e)
     finally:
         # Remove instance container + image, close logger
         cleanup_container(client, container, logger)
@@ -253,14 +265,16 @@ def run_instances(
     """
     client = docker.from_env()
     test_specs = list(map(make_test_spec, instances))
+    test_specs = [test_spec for test_spec in test_specs if test_spec is not None]
 
     # print number of existing instance images
     instance_image_ids = {x.instance_image_key for x in test_specs}
     existing_images = {
-        tag for i in client.images.list(all=True)
-        for tag in i.tags if tag in instance_image_ids
+        tag for image in client.images.list(all=True)
+        for tag in image.tags
     }
-    if not force_rebuild and len(existing_images):
+    reusable_images = instance_image_ids.intersection(existing_images)
+    if not force_rebuild and reusable_images:
         print(f"Found {len(existing_images)} existing instance images. Will reuse them.")
 
     # run instances in parallel
@@ -277,7 +291,7 @@ def run_instances(
                         test_spec.instance_image_key,
                         cache_level,
                         clean,
-                        existing_images,
+                        reusable_images,
                     ),
                     force_rebuild,
                     client,
@@ -293,9 +307,10 @@ def run_instances(
                 try:
                     # Update progress bar, check if instance ran successfully
                     res = future.result()
-                    instance_id = res['instance_id']
-                    del res['instance_id']
-                    results[instance_id] = res
+                    if res:
+                        instance_id = res['instance_id']
+                        del res['instance_id']
+                        results[instance_id] = res
                 except Exception as e:
                     traceback.print_exc()
                     continue

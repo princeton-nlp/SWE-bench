@@ -47,7 +47,7 @@ Determining a version for each task instance can be accomplished in a number of 
 * Build from code: Sometimes, version-related files (i.e. `_version.py`) are purposely omitted by a developer (check `.gitignore` to verify). In this case, per task instance you can build the repository source code locally and extract the version number from the built codebase.
 
 Examples and technical details for each are included in `/versioning/`. Please refer to them as needed. Specifically, the 
-script `run_get_tasks_pipeline.sh` should be edited and run to assign versions to task instances. 
+script `run_get_versions.sh` should be edited and run to assign versions to task instances. 
 At this point you should have a `<repo name>-task-instances_versions.jsonl` file containing all the candidate task instances with versions.
 
 ### Part B: Installation Configurations

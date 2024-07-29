@@ -433,7 +433,7 @@ def build_instance_image(
     env_image_name = test_spec.env_image_key
     dockerfile = test_spec.instance_dockerfile
 
-    # Check that the env. image the instance image is based on exists
+    # Check that the env image the instance image is based on exists
     try:
         env_image = client.images.get(env_image_name)
     except docker.errors.ImageNotFound as e:

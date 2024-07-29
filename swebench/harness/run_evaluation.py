@@ -184,7 +184,8 @@ def run_instance(
         report = get_eval_report(
             test_spec=test_spec,
             prediction=pred,
-            log_path=test_output_path,
+            log_path=log_file,
+            test_output_path=test_output_path,
             include_tests_status=True,
         )
         logger.info(
