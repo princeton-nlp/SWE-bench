@@ -63,7 +63,7 @@ SWE-bench 是一个用于评估大型语言模型的基准，这些模型是从 
 ## 🍎 教程
 我们还写了关于如何使用SWE-bench不同部分的博客文章。
 如果您想看到关于特定主题的文章，请通过问题告诉我们。
-* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/collect/collection.md.md))
+* [Nov 1. 2023] Collecting Evaluation Tasks for SWE-Bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/assets/collection.md))
 * [Nov 6. 2023] Evaluating on SWE-bench ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/harness/evaluation.md))
 
 ## 💫 贡献
