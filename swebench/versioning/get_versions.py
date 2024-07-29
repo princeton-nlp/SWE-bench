@@ -243,7 +243,9 @@ def merge_results(instances_path: str, repo_prefix: str, output_dir: str = None)
         output_dir = os.path.dirname(instances_path)
     instances_path_new = os.path.join(output_dir, instances_path_new)
     with open(f"{instances_path_new}", "w") as f:
-        json.dump(merged, fp=f)
+        for item in merged:
+            json.dump(item, f)
+            f.write('\n')
     logger.info(f"Saved merged results to {instances_path_new} ({len(merged)} instances)")
     return len(merged)
 

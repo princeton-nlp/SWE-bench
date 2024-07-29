@@ -28,8 +28,9 @@ def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[
     # Load from local .json/.jsonl file
     if name.endswith(".json") or name.endswith(".jsonl"):
         return [
-            cast(SWEbenchInstance, instance)
-            for instance in json.loads(Path(name).read_text().split("\n").strip())
+            cast(SWEbenchInstance, json.loads(instance))
+            for instance in Path(name).read_text().split("\n")
+            if instance
         ]
 
     # Load from Hugging Face Datasets

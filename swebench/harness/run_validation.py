@@ -36,7 +36,7 @@ from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
 from swebench.harness.grading import get_logs_eval   
-from swevench.harness.run_evaluation import get_gold_predictions, EvaluationError
+from swebench.harness.run_evaluation import get_gold_predictions, EvaluationError, get_dataset_from_preds
 
 
 def run_instance(
@@ -59,7 +59,7 @@ def run_instance(
         client (docker.DockerClient): Docker client
         run_id (str): Run ID
         timeout (int): Timeout for running tests
-    """
+    """ 
     # Set up logging directory
     instance_id = test_spec.instance_id
     model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
@@ -83,6 +83,13 @@ def run_instance(
     if report_path.exists():
         return instance_id, json.loads(report_path.read_text())
     logger = setup_logger(instance_id, log_file)
+    
+    if test_spec.version is None:
+        raise EvaluationError(
+            instance_id,
+            "No version found for instance",
+            logger,
+        )
 
     # Run the instance
     container = None
@@ -296,81 +303,6 @@ def run_instances(
     return results
 
 
-def get_dataset_from_preds(
-        dataset_name: str,
-        split: str,
-        instance_ids: list,
-        predictions: dict,
-        run_id: str,
-        exclude_completed: bool = True
-    ):
-    """
-    Return only instances that have predictions and are in the dataset.
-    If instance_ids is provided, only return instances with those IDs.
-    If exclude_completed is True, only return instances that have not been run yet.
-    """
-    # load dataset
-    dataset = load_swebench_dataset(dataset_name, split)
-    dataset_ids = {i[KEY_INSTANCE_ID] for i in dataset}
-
-    if instance_ids:
-        # check that all instance IDs are in the dataset
-        instance_ids = set(instance_ids)
-        if instance_ids - dataset_ids:
-            raise ValueError(
-                (
-                    "Some instance IDs not found in dataset!"
-                    f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
-                )
-            )
-        # check that all instance IDs have predictions
-        missing_preds = instance_ids - set(predictions.keys())
-        if missing_preds:
-            print(f"Warning: Missing predictions for {len(missing_preds)} instance IDs.")
-    
-    # check that all prediction IDs are in the dataset
-    prediction_ids = set(predictions.keys())
-    if prediction_ids - dataset_ids:
-        raise ValueError(
-            (
-                "Some prediction IDs not found in dataset!"
-                f"\nMissing IDs:\n{' '.join(prediction_ids - dataset_ids)}"
-            )
-        )
-
-    if instance_ids:
-        # filter dataset to just the instance IDs
-        dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in instance_ids]
-
-    # check which instance IDs have already been run
-    completed_ids = set()
-    for instance in dataset:
-        if instance[KEY_INSTANCE_ID] not in prediction_ids:
-            # skip instances without predictions
-            continue
-        prediction = predictions[instance[KEY_INSTANCE_ID]]
-        report_file = (
-            RUN_EVALUATION_LOG_DIR
-            / run_id
-            / prediction["model_name_or_path"].replace("/", "__")
-            / prediction[KEY_INSTANCE_ID]
-            / "report.json"
-        )
-        if report_file.exists():
-            completed_ids.add(instance[KEY_INSTANCE_ID])
-
-    if completed_ids and exclude_completed:
-        # filter dataset to only instances that have not been run
-        print(f"{len(completed_ids)} instances already run, skipping...")
-        dataset = [i for i in dataset if i[KEY_INSTANCE_ID] not in completed_ids]
-
-    empty_patch_ids = {k for k, v in predictions.items() if v["model_patch"] == "" or v["model_patch"] is None}
-
-    # filter dataset to only instances with predictions
-    dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in prediction_ids and i[KEY_INSTANCE_ID] not in empty_patch_ids]
-    return dataset
-
-
 def main(
         dataset_name: str,
         split: str,
@@ -400,9 +332,6 @@ def main(
     for instance in dataset:
         instance['FAIL_TO_PASS'] = []
         instance['PASS_TO_PASS'] = []
-    dataset = dataset[:1] # TODO: remove
-    full_dataset = load_swebench_dataset(dataset_name, split)
-    full_dataset = full_dataset[:1] # TODO: remove
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:

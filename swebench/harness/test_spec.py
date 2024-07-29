@@ -3,6 +3,7 @@ import json
 import platform
 import re
 from tqdm.auto import tqdm
+import logging
 
 from dataclasses import dataclass
 from typing import Any, Union, cast
@@ -26,6 +27,8 @@ from swebench.harness.utils import (
     get_environment_yml,
     get_test_directives,
 )
+
+logger = logging.getLogger(__name__)
 
 DIFF_MODIFIED_FILE_REGEX = r"--- a/(.*)"
 
@@ -113,7 +116,11 @@ def get_test_specs_from_dataset(dataset: Union[list[SWEbenchInstance], list[Test
     """
     if isinstance(dataset[0], TestSpec):
         return cast(list[TestSpec], dataset)
-    return list(map(make_test_spec, cast(list[SWEbenchInstance], tqdm(dataset, desc="Converting instances"))))
+    typed_dataset = cast(list[SWEbenchInstance], dataset)
+    progress_bar = tqdm(typed_dataset, desc="Converting instances to test specs")
+    mapped_results = map(make_test_spec, progress_bar)
+    filtered_result = [item for item in mapped_results if item is not None]
+    return filtered_result
 
 
 def make_repo_script_list(specs, repo, repo_directory, base_commit, env_name):
@@ -256,9 +263,12 @@ def make_eval_script_list(instance, specs, env_name, repo_directory, base_commit
     return eval_commands
 
 
-def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
+def make_test_spec(instance: SWEbenchInstance) -> TestSpec | None:
     if isinstance(instance, TestSpec):
         return instance
+    if "version" not in instance:
+        logger.warning(f"Instance {instance['instance_id']} does not have a version field, skipping")
+        return None
     instance_id = instance[KEY_INSTANCE_ID]
     repo = instance["repo"]
     version = instance["version"]
@@ -278,10 +288,17 @@ def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
 
     env_name = "testbed"
     repo_directory = f"/{env_name}"
+    if version not in MAP_REPO_VERSION_TO_SPECS[repo]:
+        logger.warning(f"Version {version} not found for repo {repo}, skipping")
+        return None
     specs = MAP_REPO_VERSION_TO_SPECS[repo][version]
 
     repo_script_list = make_repo_script_list(specs, repo, repo_directory, base_commit, env_name)
-    env_script_list = make_env_script_list(instance, specs, env_name)
+    try:
+        env_script_list = make_env_script_list(instance, specs, env_name)
+    except Exception as e:
+        logger.warning(f"Failed to create make env script for {instance_id}: {e}")
+        return None
     eval_script_list = make_eval_script_list(
         instance, specs, env_name, repo_directory, base_commit, test_patch
     )
