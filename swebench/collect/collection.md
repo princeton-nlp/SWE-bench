@@ -46,7 +46,9 @@ Determining a version for each task instance can be accomplished in a number of 
 * Scrape from web: Repositories with websites (i.e. [xarray.dev](https://xarray.dev/)) have a "Releases" or "What's New" page (i.e. [release page](https://docs.xarray.dev/en/stable/whats-new.html) for xarray). This can be scraped for information.
 * Build from code: Sometimes, version-related files (i.e. `_version.py`) are purposely omitted by a developer (check `.gitignore` to verify). In this case, per task instance you can build the repository source code locally and extract the version number from the built codebase.
 
-Examples and technical details for each are included in `/versioning/`. Please refer to them as needed.
+Examples and technical details for each are included in `/versioning/`. Please refer to them as needed. Specifically, the 
+script `run_get_tasks_pipeline.sh` should be edited and run to assign versions to task instances. 
+At this point you should have a `<repo name>-task-instances_versions.jsonl` file containing all the candidate task instances with versions.
 
 ### Part B: Installation Configurations
 Per repository, you must provide installation instructions per version. In `constants.py`...
@@ -66,22 +68,11 @@ These instructions can typically be inferred from the companion website or `CONT
 Congrats, you got through the trickiest part! It's smooth sailing from here on out.
 
 We now need to check that the task instances install properly + the problem solved by the task instance is non-trivial.
-This is taken care of by the `engine_validation.py` code.
-Run `./harness/run_validation.sh` and supply the following arguments:
-* `instances_path`: Path to versioned candidate task instances
-* `log_dir`: Path to folder to store task instance-specific execution logs
-* `temp_dir`: Path to directory to perform execution
-* `verbose`: Whether to print logging traces to standard output.
+This is taken care of by the `run_validation.py` code.
+Run `./harness/run_validation.sh` script to execute the validation process. Make sure to edit the script with the appropriate arguments.
+
+The output of this script will be a `<repo name>-task-instances_versions_validated.jsonl` file containing all the validated task instances.
 
 > In practice, you may have to iterate between this step and **Installation Configurations** a couple times. If your instructions are incorrect/under-specified, it may result in candidate task instances not being installed properly.
-
-## 🔄 Convert to Task Instances
-At this point, we now have all the information necessary to determine if task instances can be used for evaluation with SWE-bench, and save them if they do.
-
-We provide the `validation.ipynb` Jupyter notebook provided in this folder to make the remaining steps easier.
-At a high level, it enables the following:
-* In **Monitor Validation**, check the results of the `./run_validation.sh` step.
-* In **Get [FP]2[FP] Tests**, determine which task instances are non-trivial (solves at least one test)
-* In **Create Task Instances `.json` file**, perform some final preprocessing and save your task instances to a `.json` file.
 
 Thanks for reading! If you have any questions or comments about the details in the article, please feel free to follow up with an issue.

@@ -355,10 +355,13 @@ def main(
                 instance.update(results[instance_id])
                 
     last_dot_idx = dataset_name.rfind(".")   
-    dataset_name_w_results = dataset_name[:last_dot_idx] + "_results" + dataset_name[last_dot_idx:]
-    with open(dataset_name_w_results, "w") as f:
+    dataset_name_w_results_all = dataset_name[:last_dot_idx] + "_validated.all" + dataset_name[last_dot_idx:]
+    dataset_name_w_results = dataset_name[:last_dot_idx] + "_validated" + dataset_name[last_dot_idx:]
+    with open(dataset_name_w_results, "w") as f, open(dataset_name_w_results_all, "w") as f_all:
         for instance in data:
-            print(json.dumps(instance), file=f)
+            print(json.dumps(instance), file=f_all)
+            if len(instance["FAIL_TO_PASS"]) > 0:
+                print(json.dumps(instance), file=f)
 
 
 if __name__ == "__main__":
