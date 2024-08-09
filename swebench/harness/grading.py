@@ -21,7 +21,7 @@ from swebench.harness.log_parsers import MAP_REPO_TO_PARSER
 
 # MARK: Utility functions
 def test_passed(case: str, sm: dict[str, str]) -> bool:
-    return case in sm and sm[case] == TestStatus.PASSED.value
+    return case in sm and sm[case] in [TestStatus.PASSED.value, TestStatus.XFAIL.value]
 
 
 def test_failed(case: str, sm: dict[str, str]) -> bool:
