@@ -709,6 +709,12 @@ SPECS_SQLFLUFF = {
         "packages": "requirements.txt",
         "install": "python -m pip install -e .",
         "test_cmd": TEST_PYTEST,
+        "pre_install": [
+            # See https://github.com/princeton-nlp/SWE-bench/issues/199
+            # This package was sinced yanked, so we need to force pip
+            # to install it.
+            "pip install types-pkg-resources==0.1.3"
+        ],
     }
     for k in [
         "0.10",
