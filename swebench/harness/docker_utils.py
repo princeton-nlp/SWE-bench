@@ -90,7 +90,6 @@ def remove_image(client, image_id, logger=None):
         log_info(f"Image {image_id} removed.")
     except docker.errors.ImageNotFound:
         log_info(f"Image {image_id} not found, removing has no effect.")
-        log_info(f"Image {image_id} not found, removing has no effect.")
     except Exception as e:
         if raise_error:
             raise e
