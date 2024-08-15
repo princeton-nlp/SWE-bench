@@ -16,28 +16,40 @@ from swebench.harness.constants import (
     MAP_REPO_TO_REQS_PATHS,
     NON_TEST_EXTS,
     SWE_BENCH_URL_RAW,
+    KEY_INSTANCE_ID,
 )
 
 load_dotenv()
 
 
-def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test") -> list[SWEbenchInstance]:
+def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test", instance_ids=None) -> list[SWEbenchInstance]:
     """
     Load SWE-bench dataset from Hugging Face Datasets or local .json/.jsonl file
     """
+    # check that all instance IDs are in the dataset
+    if instance_ids:
+        instance_ids = set(instance_ids)
     # Load from local .json/.jsonl file
     if name.endswith(".json") or name.endswith(".jsonl"):
-        return [
-            cast(SWEbenchInstance, instance)
-            for instance in json.loads(Path(name).read_text())
-        ]
-
-    # Load from Hugging Face Datasets
-    if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
-        name = "princeton-nlp/SWE-bench"
-    elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
-        name = "princeton-nlp/SWE-bench_Lite"
-    dataset = cast(Dataset, load_dataset(name, split=split))
+        dataset = json.loads(Path(name).read_text())
+        dataset_ids = {instance[KEY_INSTANCE_ID] for instance in dataset}
+    else:
+        # Load from Hugging Face Datasets
+        if name.lower() in {"swe-bench", "swebench", "swe_bench"}:
+            name = "princeton-nlp/SWE-bench"
+        elif name.lower() in {"swe-bench-lite", "swebench-lite", "swe_bench_lite", "swe-bench_lite", "lite"}:
+            name = "princeton-nlp/SWE-bench_Lite"
+        dataset = cast(Dataset, load_dataset(name, split=split))
+        dataset_ids = {instance[KEY_INSTANCE_ID] for instance in dataset}
+    if instance_ids:
+        if instance_ids - dataset_ids:
+            raise ValueError(
+                (
+                    "Some instance IDs not found in dataset!"
+                    f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
+                )
+            )
+        dataset = [instance for instance in dataset if instance[KEY_INSTANCE_ID] in instance_ids]
     return [cast(SWEbenchInstance, instance) for instance in dataset]
 
 

@@ -306,17 +306,8 @@ def get_dataset_from_preds(
     dataset_ids = {i[KEY_INSTANCE_ID] for i in dataset}
 
     if instance_ids:
-        # check that all instance IDs are in the dataset
-        instance_ids = set(instance_ids)
-        if instance_ids - dataset_ids:
-            raise ValueError(
-                (
-                    "Some instance IDs not found in dataset!"
-                    f"\nMissing IDs:\n{' '.join(instance_ids - dataset_ids)}"
-                )
-            )
         # check that all instance IDs have predictions
-        missing_preds = instance_ids - set(predictions.keys())
+        missing_preds = set(instance_ids) - set(predictions.keys())
         if missing_preds:
             print(f"Warning: Missing predictions for {len(missing_preds)} instance IDs.")
     
@@ -329,9 +320,7 @@ def get_dataset_from_preds(
                 f"\nMissing IDs:\n{' '.join(prediction_ids - dataset_ids)}"
             )
         )
-
     if instance_ids:
-        # filter dataset to just the instance IDs
         dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in instance_ids]
 
     # check which instance IDs have already been run
@@ -437,8 +426,9 @@ def make_run_report(
             unstopped_containers.add(container.name)
 
     # print final report
+    dataset_ids = {i[KEY_INSTANCE_ID] for i in full_dataset}
     print(f"Total instances: {len(full_dataset)}")
-    print(f"Instances submitted: {len(predictions)}")
+    print(f"Instances submitted: {len(set(predictions.keys()) & dataset_ids)}")
     print(f"Instances completed: {len(completed_ids)}")
     print(f"Instances incomplete: {len(incomplete_ids)}")
     print(f"Instances resolved: {len(resolved_ids)}")
@@ -532,7 +522,7 @@ def main(
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
-    full_dataset = load_swebench_dataset(dataset_name, split)
+    full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
