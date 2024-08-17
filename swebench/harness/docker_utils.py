@@ -84,11 +84,12 @@ def remove_image(client, image_id, logger=None):
         log_error = logger.info
         log_info = logger.info
         raise_error = False
-
     try:
         log_info(f"Attempting to remove image {image_id}...")
         client.images.remove(image_id, force=True)
         log_info(f"Image {image_id} removed.")
+    except docker.errors.ImageNotFound:
+        log_info(f"Image {image_id} not found, removing has no effect.")
     except Exception as e:
         if raise_error:
             raise e
