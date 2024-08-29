@@ -65,8 +65,8 @@ SWE-Bench を使用するには、以下のことができます:
 ## 🍎 チュートリアル 
 SWE-benchの様々な部分の使い方についても、以下のブログ記事を書いています。
 特定のトピックについての投稿を見たい場合は、issueでお知らせください。
-* [2023年11月1日] SWE-Benchの評価タスクの収集について ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/assets/collection.md))
-* [2023年11月6日] SWE-benchでの評価について ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/harness/evaluation.md))
+* [2023年11月1日] SWE-Benchの評価タスクの収集について ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/assets/collection.md))
+* [2023年11月6日] SWE-benchでの評価について ([🔗](https://github.com/princeton-nlp/SWE-bench/tree/main/assets/evaluation.md))
 
 ## 💫 貢献
 NLP、機械学習、ソフトウェア工学の研究コミュニティからのフィードバックを歓迎します。貢献、プルリクエスト、issueを歓迎します!
