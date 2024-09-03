@@ -1,7 +1,7 @@
 # Data Collection
 This folder includes the code for the first two parts of the benchmark construction procedure as described in the paper, specifically 1. Repo selection and data scraping, and 2. Attribute-based filtering.
 
-We include a comprehensive [tutorial](https://github.com/princeton-nlp/SWE-bench/tree/main/swebench/assets/collection.md) that describes the end-to-end procedure for collecting evaluation task instances from PyPI repositories.
+We include a comprehensive [tutorial](https://github.com/princeton-nlp/SWE-bench/tree/main/assets/collection.md) that describes the end-to-end procedure for collecting evaluation task instances from PyPI repositories.
 
 > SWE-bench's collection pipeline is currently designed to target PyPI packages. We hope to expand SWE-bench to more repositories and languages in the future.
 
