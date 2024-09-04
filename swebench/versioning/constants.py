@@ -5,7 +5,11 @@ MAP_REPO_TO_VERSION_PATHS = {
     "huggingface/transformers": ["src/transformers/__init__.py"],
     "marshmallow-code/marshmallow": ["src/marshmallow/__init__.py"],
     "mwaskom/seaborn": ["seaborn/__init__.py"],
-    "pallets/flask": ["src/flask/__init__.py", "flask/__init__.py"],
+    "pallets/flask": [
+        "src/flask/__init__.py",
+        "flask/__init__.py",
+        "pyproject.toml",
+    ],
     "psf/requests": ["requests/__version__.py", "requests/__init__.py"],
     "pyca/cryptography": [
         "src/cryptography/__about__.py",
@@ -23,7 +27,11 @@ MAP_REPO_TO_VERSION_PATHS = {
 
 # Cosntants - Task Instance Version Regex Pattern
 MAP_REPO_TO_VERSION_PATTERNS = {
-    k: [r'__version__ = [\'"](.*)[\'"]', r"VERSION = \((.*)\)"]
+    k: [
+        r'__version__ = [\'"](.*)[\'"]',
+        r"VERSION = \((.*)\)",
+        r"version = [\'\"](.*)[\'\"]",
+    ]
     for k in [
         "dbt-labs/dbt-core",
         "django/django",

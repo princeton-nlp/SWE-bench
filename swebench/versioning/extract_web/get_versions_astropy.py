@@ -6,10 +6,32 @@ import sys
 
 from datetime import datetime
 
-sys.path.append("../../harness")
-from utils import get_instances
+sys.path.append(os.path.abspath("../../harness"))
 
-PATH_TASKS_ASTROPY = "<path to astropy task instances>"
+
+def get_instances(instance_path: str) -> list:
+    """
+    Get task instances from given path
+
+    Args:
+        instance_path (str): Path to task instances
+    Returns:
+        task_instances (list): List of task instances
+    """
+    if any([instance_path.endswith(x) for x in [".jsonl", ".jsonl.all"]]):
+        task_instances = list()
+        with open(instance_path) as f:
+            for line in f.readlines():
+                task_instances.append(json.loads(line))
+        return task_instances
+
+    with open(instance_path) as f:
+        task_instances = json.load(f)
+    return task_instances
+
+
+PATH_TASKS_ASTROPY = "../../collect/Q3/astropy-task-instances.jsonl"
+PATH_TASKS_ASTROPY_VERSIONED = "../../collect/Q3_versioned"
 
 # Get raw astropy dataset
 data_tasks = get_instances(PATH_TASKS_ASTROPY)
@@ -67,7 +89,10 @@ for task in data_tasks:
 
 # Save matplotlib versioned data to repository
 with open(
-    os.path.join(PATH_TASKS_ASTROPY, "astropy-task-instances_versions.json"),
+    os.path.join(
+        PATH_TASKS_ASTROPY_VERSIONED,
+        "astropy-task-instances_versions.json",
+    ),
     "w",
 ) as f:
     json.dump(data_tasks, fp=f)

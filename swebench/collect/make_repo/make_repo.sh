@@ -12,17 +12,18 @@ REPO_TARGET=$1
 gh repo view "$REPO_TARGET" > /dev/null || exit 1
 
 # Set the organization and repository names
-ORG_NAME="swe-bench"
+ORG_NAME="vinhowe"
 NEW_REPO_NAME="${REPO_TARGET//\//__}"
+DEFAULT_BRANCH=$(gh api "repos/$REPO_TARGET" --jq .default_branch)
+echo "Default branch of $REPO_TARGET is $DEFAULT_BRANCH"
 
 # Check if the new repository already exists
-gh repo view "$ORG_NAME/$NEW_REPO_NAME" > /dev/null 2>&1
-if [ $? -eq 0 ]; then
+if gh repo view "$ORG_NAME/$NEW_REPO_NAME" > /dev/null 2>&1; then
     echo "The repository $ORG_NAME/$NEW_REPO_NAME already exists."
-    exit 1
 else
     # Create mirror repository
-    gh repo create "$ORG_NAME/$NEW_REPO_NAME" --private
+    # gh repo create "$ORG_NAME/$NEW_REPO_NAME" --private
+    gh repo create "$ORG_NAME/$NEW_REPO_NAME" --public
 fi
 
 # Check if the repository creation was successful
@@ -57,6 +58,8 @@ git clone git@github.com:$ORG_NAME/$NEW_REPO_NAME.git
 
 # Delete .github/workflows if it exists
 if [ -d "$NEW_REPO_NAME/.github/workflows" ]; then
+    git checkout "$DEFAULT_BRANCH"
+
     # Remove the directory
     rm -rf "$NEW_REPO_NAME/.github/workflows"
 
@@ -64,10 +67,10 @@ if [ -d "$NEW_REPO_NAME/.github/workflows" ]; then
     cd "$NEW_REPO_NAME";
     git add -A;
     git commit -m "Removed .github/workflows";
-    git push origin main;  # Change 'master' to your desired branch
+    git push origin "$DEFAULT_BRANCH";
     cd ..;
 else
-    echo "$REPO_NAME/.github/workflows does not exist. No action required."
+    echo "$NEW_REPO_NAME/.github/workflows does not exist. No action required."
 fi
 
 rm -rf "$NEW_REPO_NAME"

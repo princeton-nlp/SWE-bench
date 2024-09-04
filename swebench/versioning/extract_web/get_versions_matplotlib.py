@@ -7,9 +7,31 @@ import sys
 from datetime import datetime
 
 sys.path.append("../../harness")
-from utils import get_instances
 
-PATH_TASKS_MATPLOTLIB = "<path to matplotlib task instances>"
+
+def get_instances(instance_path: str) -> list:
+    """
+    Get task instances from given path
+
+    Args:
+        instance_path (str): Path to task instances
+    Returns:
+        task_instances (list): List of task instances
+    """
+    if any([instance_path.endswith(x) for x in [".jsonl", ".jsonl.all"]]):
+        task_instances = list()
+        with open(instance_path) as f:
+            for line in f.readlines():
+                task_instances.append(json.loads(line))
+        return task_instances
+
+    with open(instance_path) as f:
+        task_instances = json.load(f)
+    return task_instances
+
+
+PATH_TASKS_MATPLOTLIB = "../../collect/Q3/matplotlib-task-instances.jsonl"
+PATH_TASKS_MATPLOTLIB_VERSIONED = "../../collect/Q3_versioned"
 
 # Get raw matplotlib dataset
 data_tasks = get_instances(PATH_TASKS_MATPLOTLIB)
@@ -31,7 +53,7 @@ for match in matches:
         continue
     version = keep_major_minor(version, ".")
     date_string = s[s.find("(") + 1 : s.find(")")]
-    date_obj = datetime.strptime(date_string, date_format)
+    date_obj = datetime.strptime(date_string.replace("Sept", "Sep"), date_format)
     times.append((date_obj.strftime("%Y-%m-%d"), version))
 times = sorted(times, key=lambda x: x[0])[::-1]
 
@@ -51,7 +73,7 @@ for t in data_tasks:
 
 # Save matplotlib versioned data to repository
 with open(
-    os.path.join(PATH_TASKS_MATPLOTLIB, "matplotlib-task-instances_versions.json"),
+    os.path.join(PATH_TASKS_MATPLOTLIB_VERSIONED, "matplotlib-task-instances_versions.json"),
     "w",
 ) as f:
     json.dump(data_tasks, fp=f)
