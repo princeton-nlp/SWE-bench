@@ -2,6 +2,7 @@ import hashlib
 import json
 import platform
 import re
+import logging
 
 from dataclasses import dataclass
 from typing import Any, Union, cast
@@ -25,6 +26,8 @@ from swebench.harness.utils import (
     get_environment_yml,
     get_test_directives,
 )
+
+logger = logging.getLogger(__name__)
 
 DIFF_MODIFIED_FILE_REGEX = r"--- a/(.*)"
 
@@ -121,6 +124,8 @@ def make_repo_script_list(specs, repo, repo_directory, base_commit, env_name):
     This is the setup script for the instance image.
     """
     setup_commands = [
+        # https://stackoverflow.com/a/49728862
+        "git config --global http.postBuffer 524288000",
         f"git clone -o origin https://github.com/{repo} {repo_directory}",
         f"chmod -R 777 {repo_directory}",  # So nonroot user can run tests
         f"cd {repo_directory}",
@@ -255,9 +260,13 @@ def make_eval_script_list(instance, specs, env_name, repo_directory, base_commit
     return eval_commands
 
 
-def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
+def make_test_spec(instance: SWEbenchInstance) -> TestSpec | None:
     if isinstance(instance, TestSpec):
         return instance
+    if "version" not in instance:
+        logger.warning(f"Instance {instance['instance_id']} does not have a version field, skipping")
+        return None
+
     instance_id = instance[KEY_INSTANCE_ID]
     repo = instance["repo"]
     version = instance["version"]
@@ -277,10 +286,19 @@ def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
 
     env_name = "testbed"
     repo_directory = f"/{env_name}"
+
+    if version not in MAP_REPO_VERSION_TO_SPECS[repo]:
+        logger.warning(f"Version {version} not found for repo {repo}, skipping")
+        return None
+
     specs = MAP_REPO_VERSION_TO_SPECS[repo][version]
 
     repo_script_list = make_repo_script_list(specs, repo, repo_directory, base_commit, env_name)
-    env_script_list = make_env_script_list(instance, specs, env_name)
+    try:
+        env_script_list = make_env_script_list(instance, specs, env_name)
+    except Exception as e:
+        logger.warning(f"Failed to create make env script for {instance_id}: {e}")
+        return None
     eval_script_list = make_eval_script_list(
         instance, specs, env_name, repo_directory, base_commit, test_patch
     )

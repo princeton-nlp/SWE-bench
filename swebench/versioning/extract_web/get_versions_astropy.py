@@ -87,12 +87,14 @@ for task in data_tasks:
         map_v_to_t[task["version"]] = []
     map_v_to_t[task["version"]].append(t)
 
-# Save matplotlib versioned data to repository
+# Save astropy versioned data to repository
 with open(
     os.path.join(
         PATH_TASKS_ASTROPY_VERSIONED,
-        "astropy-task-instances_versions.json",
+        "astropy-task-instances_versions.jsonl",
     ),
     "w",
 ) as f:
-    json.dump(data_tasks, fp=f)
+    for task in data_tasks:
+        json.dump(task, f)
+        f.write("\n")

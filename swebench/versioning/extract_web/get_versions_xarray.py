@@ -78,7 +78,9 @@ for task in data_tasks:
 
 # Save xarray versioned data to repository
 with open(
-    os.path.join(PATH_TASKS_XARRAY_VERSIONED, "xarray-task-instances_versions.json"),
+    os.path.join(PATH_TASKS_XARRAY_VERSIONED, "xarray-task-instances_versions.jsonl"),
     "w",
 ) as f:
-    json.dump(data_tasks, fp=f)
+    for task in data_tasks:
+        json.dump(task, f)
+        f.write('\n')

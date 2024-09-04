@@ -73,7 +73,9 @@ for t in data_tasks:
 
 # Save matplotlib versioned data to repository
 with open(
-    os.path.join(PATH_TASKS_MATPLOTLIB_VERSIONED, "matplotlib-task-instances_versions.json"),
+    os.path.join(PATH_TASKS_MATPLOTLIB_VERSIONED, "matplotlib-task-instances_versions.jsonl"),
     "w",
 ) as f:
-    json.dump(data_tasks, fp=f)
+    for t in data_tasks:
+        json.dump(t, f)
+        f.write("\n")

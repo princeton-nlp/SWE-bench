@@ -441,7 +441,7 @@ SPECS_MATPLOTLIB = {
         ],
         "test_cmd": TEST_PYTEST,
     }
-    for k in ["3.5", "3.6", "3.7"]
+    for k in ["3.5", "3.6", "3.7", "3.8", "3.9"]
 }
 SPECS_MATPLOTLIB.update(
     {

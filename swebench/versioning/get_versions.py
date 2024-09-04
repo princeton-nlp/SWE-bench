@@ -233,12 +233,17 @@ def merge_results(instances_path: str, repo_prefix: str, output_dir: str = None)
 
     # Save merged results to original task instances file's path with `_versions` suffix
     old_path_file = instances_path.split("/")[-1]
-    instances_path_new = f"{old_path_file.split('.')[0]}_versions.json"
-    if output_dir is not None:
-        instances_path_new = os.path.join(output_dir, instances_path_new)
+    instances_path_new = old_path_file[:old_path_file.rfind(".")] + "_versions" + old_path_file[old_path_file.rfind("."):]
+    if output_dir is None:
+        output_dir = os.path.dirname(instances_path)
+    instances_path_new = os.path.join(output_dir, instances_path_new)
     with open(f"{instances_path_new}", "w") as f:
-        json.dump(merged, fp=f)
-    logger.info(f"Saved merged results to {instances_path_new} ({len(merged)} instances)")
+       for item in merged:
+            json.dump(item, f)
+            f.write('\n')
+    logger.info(
+        f"Saved merged results to {instances_path_new} ({len(merged)} instances)"
+    )
     return len(merged)
 
 

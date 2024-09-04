@@ -185,6 +185,7 @@ def run_instance(
             test_spec=test_spec,
             prediction=pred,
             log_path=test_output_path,
+            test_output_path=test_output_path,
             include_tests_status=True,
         )
         logger.info(

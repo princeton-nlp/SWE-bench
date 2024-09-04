@@ -31,7 +31,7 @@ def test_failed(case: str, sm: dict[str, str]) -> bool:
 
 
 # MARK: Evaluation report functions
-def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
+def get_logs_eval(log_fp: str, test_output_path: str) -> tuple[dict[str, str], bool]:
     """
     Retrieve evaluation results for a task instance from its corresponding log file
 
@@ -48,7 +48,7 @@ def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
     repo = "-".join(sample_id.replace("__", "/").split("-")[:-1])  # e.g. scikit-learn/scikit-learn
     log_parser = MAP_REPO_TO_PARSER[repo]
 
-    with open(log_fp) as f:
+    with open(log_fp) as f, open(test_output_path) as f2:
         content = f.read()
         # TODO fix constant here
         if (
@@ -64,14 +64,15 @@ def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
                     ]
                 ]
             )
-            or "applied patch" not in content.lower()
+            or APPLY_PATCH_PASS not in content
         ):
             # Eval patch was not applied successfully
             return {}, False
 
         # Get status map of evaluation results
-        content = content.split(f"{APPLY_PATCH_PASS} (pred)")[-1]
-        return log_parser(content), True
+        test_content = f2.read()
+
+        return log_parser(test_content), True
 
 
 def get_eval_tests_report(
@@ -210,6 +211,7 @@ def get_eval_report(
     test_spec: TestSpec,
     prediction: dict[str, str],
     log_path: str,
+    test_output_path: str,
     include_tests_status: bool,
 ) -> dict[str, Any]:
     """
@@ -242,7 +244,7 @@ def get_eval_report(
     report_map[instance_id]["patch_exists"] = True
 
     # Get evaluation logs
-    eval_sm, found = get_logs_eval(log_path)
+    eval_sm, found = get_logs_eval(log_path, test_output_path)
 
     if not found:
         return report_map
