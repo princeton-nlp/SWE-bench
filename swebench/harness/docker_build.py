@@ -236,14 +236,6 @@ def get_env_configs_to_build(
         try:
             env_image = client.images.get(test_spec.env_image_key)
             image_exists = True
-
-            if env_image.attrs["Created"] < base_image.attrs["Created"]:
-                # Remove the environment image if it was built after the base_image
-                for dep in find_dependent_images(client, test_spec.env_image_key):
-                    # Remove instance images that depend on this environment image
-                    remove_image(client, dep.image_id, "quiet")
-                remove_image(client, test_spec.env_image_key, "quiet")
-                image_exists = False
         except docker.errors.ImageNotFound:
             pass
         if not image_exists:
@@ -451,12 +443,7 @@ def build_instance_image(
     image_exists = False
     try:
         instance_image = client.images.get(image_name)
-        if instance_image.attrs["Created"] < env_image.attrs["Created"]:
-            # the environment image is newer than the instance image, meaning the instance image may be outdated
-            remove_image(client, image_name, "quiet")
-            image_exists = False
-        else:
-            image_exists = True
+        image_exists = True
     except docker.errors.ImageNotFound:
         pass
 
