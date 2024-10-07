@@ -128,11 +128,11 @@ def make_repo_script_list(specs, repo, repo_directory, base_commit, env_name):
         f"cd {repo_directory}",
         f"git reset --hard {base_commit}",
         # Remove the remote so the agent won't see newer commits.
-        f"git remote remove origin",
+        "git remote remove origin",
         # Make sure conda is available for later use
         "source /opt/miniconda3/bin/activate",
         f"conda activate {env_name}",
-        f'echo "Current environment: $CONDA_DEFAULT_ENV"',
+        'echo "Current environment: $CONDA_DEFAULT_ENV"',
     ]
     if repo in MAP_REPO_TO_INSTALL:
         setup_commands.append(MAP_REPO_TO_INSTALL[repo])
@@ -254,7 +254,7 @@ def make_eval_script_list(instance, specs, env_name, repo_directory, base_commit
         ]
     )
     eval_commands = [
-        f"source /opt/miniconda3/bin/activate",
+        "source /opt/miniconda3/bin/activate",
         f"conda activate {env_name}",
         f"cd {repo_directory}",
     ]
@@ -264,8 +264,8 @@ def make_eval_script_list(instance, specs, env_name, repo_directory, base_commit
         f"git config --global --add safe.directory {repo_directory}",  # for nonroot user
         f"cd {repo_directory}",
         # This is just informational, so we have a record
-        f"git status",
-        f"git show",
+        "git status",
+        "git show",
         f"git diff {base_commit}",
         "source /opt/miniconda3/bin/activate",
         f"conda activate {env_name}",
