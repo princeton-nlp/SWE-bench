@@ -40,6 +40,7 @@ class TestStatus(Enum):
     PASSED = "PASSED"
     SKIPPED = "SKIPPED"
     ERROR = "ERROR"
+    XFAIL = "XFAIL"
 
 TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
 TEST_PYTEST_VERBOSE = "pytest -rA --tb=long -p no:cacheprovider"
