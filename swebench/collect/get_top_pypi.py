@@ -13,7 +13,7 @@ gh_token = os.environ.get("GITHUB_TOKEN")
 if not gh_token:
     msg = "Please set the GITHUB_TOKEN environment variable."
     raise ValueError(msg)
-api = GhApi(token="gh_token")
+api = GhApi(token=gh_token)
 
 
 def get_package_stats(data_tasks, f):
