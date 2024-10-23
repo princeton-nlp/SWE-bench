@@ -44,10 +44,13 @@ class BuildImageError(Exception):
         )
 
 
-def setup_logger(instance_id: str, log_file: Path, mode="w"):
+def setup_logger(instance_id: str, log_file: Path, mode="w", add_stdout: bool = False):
     """
     This logger is used for logging the build process of images and containers.
     It writes logs to the log file.
+
+    If `add_stdout` is True, logs will also be sent to stdout, which can be used for
+    streaming ephemeral output from Modal containers.
     """
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(f"{instance_id}.{log_file.name}")
@@ -58,6 +61,12 @@ def setup_logger(instance_id: str, log_file: Path, mode="w"):
     logger.setLevel(logging.INFO)
     logger.propagate = False
     setattr(logger, "log_file", log_file)
+    if add_stdout:
+        import sys
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(f"%(asctime)s - {instance_id} - %(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
     return logger
 
 
