@@ -108,6 +108,7 @@ def main(
         if output_file.exists():
             logger.info(f"{output_file.absolute().as_posix()} already exists. Aborting")
             return
+        output_file = str(output_file)
     if Path(dataset_name_or_path).exists():
         dataset = load_from_disk(dataset_name_or_path)
     else:
