@@ -493,7 +493,7 @@ SPECS_MATPLOTLIB.update(
 SPECS_SPHINX = {
     k: {
         "python": "3.9",
-        "pip_packages": ["tox==4.16.0", "tox-current-env==0.0.11"],
+        "pip_packages": ["tox==4.16.0", "tox-current-env==0.0.11", "Jinja2<3.1"],
         "install": "python -m pip install -e .[test]",
         "pre_install": ["sed -i 's/pytest/pytest -rA/' tox.ini"],
         "test_cmd": TEST_SPHINX,
