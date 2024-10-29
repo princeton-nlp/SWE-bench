@@ -1,6 +1,6 @@
 # !bin/bash
 
-python3 -m build
+python -m build
 
-python3 -m twine upload --skip-existing --repository pypi dist/*
-# python3 -m twine upload --skip-existing --repository testpypi dist/*
+python -m twine upload --skip-existing --repository pypi dist/*
+# python -m twine upload --skip-existing --repository testpypi dist/*
