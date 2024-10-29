@@ -35,22 +35,9 @@ from swebench.harness.docker_build import (
 )
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
-from swebench.harness.utils import load_swebench_dataset, str2bool
+from swebench.harness.utils import load_swebench_dataset, str2bool, EvaluationError
+from swebench.harness.run_evaluation_modal import run_instances_modal
 
-
-class EvaluationError(Exception):
-    def __init__(self, instance_id, message, logger):
-        super().__init__(message)
-        self.super_str = super().__str__()
-        self.instance_id = instance_id
-        self.log_file = logger.log_file
-        self.logger = logger
-
-    def __str__(self):
-        return (
-            f"Evaluation error for {self.instance_id}: {self.super_str}\n"
-            f"Check ({self.log_file}) for more information."
-        )
 
 
 def run_instance(
@@ -217,7 +204,6 @@ def run_instance(
         close_logger(logger)
     return
 
-
 def run_instances(
         predictions: dict,
         instances: list,
@@ -286,7 +272,6 @@ def run_instances(
                     traceback.print_exc()
                     continue
     print("All instances run.")
-
 
 def get_dataset_from_preds(
         dataset_name: str,
@@ -483,6 +468,18 @@ def get_gold_predictions(dataset_name: str, split: str):
         } for datum in dataset
     ]
 
+def get_predictions_from_file(predictions_path: str, dataset_name: str, split: str):
+    if predictions_path == "gold":
+        print("Using gold predictions - ignoring predictions_path")
+        return get_gold_predictions(dataset_name, split)
+    if predictions_path.endswith(".json"):
+        with open(predictions_path, "r") as f:
+            return json.load(f)
+    elif predictions_path.endswith(".jsonl"):
+        with open(predictions_path, "r") as f:
+            return [json.loads(line) for line in f]
+    else:
+        raise ValueError("Predictions path must be .json or .jsonl")
 
 def main(
         dataset_name: str,
@@ -496,33 +493,34 @@ def main(
         open_file_limit: int,
         run_id: str,
         timeout: int,
+        modal: bool,
     ):
     """
     Run evaluation harness for the given dataset and predictions.
     """
     # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
-    resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-    client = docker.from_env()
 
     # load predictions as map of instance_id to prediction
-    if predictions_path == 'gold':
-        print("Using gold predictions - ignoring predictions_path")
-        predictions = get_gold_predictions(dataset_name, split)
-    else:
-        if predictions_path.endswith(".json"):
-            with open(predictions_path, "r") as f:
-                predictions = json.load(f)
-        elif predictions_path.endswith(".jsonl"):
-            with open(predictions_path, "r") as f:
-                predictions = [json.loads(line) for line in f]
-        else:
-            raise ValueError("Predictions path must be \"gold\", .json, or .jsonl")
+    predictions = get_predictions_from_file(predictions_path, dataset_name, split)
     predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
     full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
+
+    if modal:
+        # run instances on Modal
+        if not dataset:
+            print("No instances to run.")
+        else:
+            run_instances_modal(predictions, dataset, full_dataset, run_id, timeout)
+        return
+
+    # run instances locally
+    resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
+    client = docker.from_env()
+
     existing_images = list_images(client)
     print(f"Running {len(dataset)} unevaluated instances...")
     if not dataset:
@@ -536,18 +534,21 @@ def main(
     clean_images(client, existing_images, cache_level, clean)
     make_run_report(predictions, full_dataset, client, run_id)
 
-
 if __name__ == "__main__":
     parser = ArgumentParser()
+
+    # Common args
     parser.add_argument("--dataset_name", default="princeton-nlp/SWE-bench_Lite", type=str, help="Name of dataset or path to JSON file.")
     parser.add_argument("--split", type=str, default="test", help="Split of the dataset")
     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
     parser.add_argument("--predictions_path", type=str, help="Path to predictions file - if 'gold', uses gold predictions", required=True)
+
+    # Local execution args
     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers (should be <= 75%% of CPU cores)")
     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
     parser.add_argument(
         "--timeout", type=int, default=1_800, help="Timeout (in seconds) for running tests for each instance"
-        )
+    )
     parser.add_argument(
         "--force_rebuild", type=str2bool, default=False, help="Force rebuild of all images"
     )
@@ -564,6 +565,9 @@ if __name__ == "__main__":
         "--clean", type=str2bool, default=False, help="Clean images above cache level"
     )
     parser.add_argument("--run_id", type=str, required=True, help="Run ID - identifies the run")
-    args = parser.parse_args()
 
+    # Modal execution args
+    parser.add_argument("--modal", action="store_true", default=False, help="Run on Modal")
+
+    args = parser.parse_args()
     main(**vars(args))
