@@ -21,6 +21,8 @@ from swebench.harness.constants import (
 
 load_dotenv()
 
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+
 
 def load_swebench_dataset(name="princeton-nlp/SWE-bench", split="test", instance_ids=None) -> list[SWEbenchInstance]:
     """
@@ -175,7 +177,7 @@ def has_attribute_or_import_error(log_before):
 def get_environment_yml_by_commit(repo: str, commit: str, env_name: str) -> str:
     for req_path in MAP_REPO_TO_ENV_YML_PATHS[repo]:
         reqs_url = os.path.join(SWE_BENCH_URL_RAW, repo, commit, req_path)
-        reqs = requests.get(reqs_url)
+        reqs = requests.get(reqs_url, headers=HEADERS)
         if reqs.status_code == 200:
             break
     else:
@@ -220,7 +222,7 @@ def get_environment_yml(instance: SWEbenchInstance, env_name: str) -> str:
 def get_requirements_by_commit(repo: str, commit: str) -> str:
     for req_path in MAP_REPO_TO_REQS_PATHS[repo]:
         reqs_url = os.path.join(SWE_BENCH_URL_RAW, repo, commit, req_path)
-        reqs = requests.get(reqs_url)
+        reqs = requests.get(reqs_url, headers=HEADERS)
         if reqs.status_code == 200:
             break
     else:
@@ -247,7 +249,7 @@ def get_requirements_by_commit(repo: str, commit: str) -> str:
                 req_dir,
                 file_name,
             )
-            reqs = requests.get(reqs_url)
+            reqs = requests.get(reqs_url, headers=HEADERS)
             if reqs.status_code == 200:
                 for line_extra in reqs.text.split("\n"):
                     if not exclude_line(line_extra):
