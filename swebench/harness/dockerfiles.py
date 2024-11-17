@@ -22,7 +22,7 @@ tzdata \
 && rm -rf /var/lib/apt/lists/*
 
 # Download and install conda
-RUN wget 'https://repo.anaconda.com/miniconda/Miniconda3-py311_23.11.0-2-Linux-{conda_arch}.sh' -O miniconda.sh \
+RUN wget 'https://repo.anaconda.com/miniconda/Miniconda3-{conda_version}-Linux-{conda_arch}.sh' -O miniconda.sh \
     && bash miniconda.sh -b -p /opt/miniconda3
 # Add conda to PATH
 ENV PATH=/opt/miniconda3/bin:$PATH
@@ -54,12 +54,15 @@ WORKDIR /testbed/
 """
 
 
-def get_dockerfile_base(platform, arch):
+def get_dockerfile_base(platform, arch, conda_version=None):
     if arch == "arm64":
         conda_arch = "aarch64"
     else:
         conda_arch = arch
-    return _DOCKERFILE_BASE.format(platform=platform, conda_arch=conda_arch)
+    if conda_version == None:
+        # Default conda version (from initial SWE-bench release)
+        conda_version = "py311_23.11.0-2"
+    return _DOCKERFILE_BASE.format(platform=platform, conda_arch=conda_arch, conda_version=conda_version)
 
 
 def get_dockerfile_env(platform, arch):
