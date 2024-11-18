@@ -1,0 +1,14 @@
+swebench==1.1.5
+jedi
+jedi-language-server
+pyright
+aiohttp-sse-client
+gitdb==4.0.11
+    # via gitpython
+gitpython==3.1.43
+networkx==3.2.1
+diskcache==5.6.3
+grep-ast==0.3.2
+tree-sitter-languages==1.10.2
+tree-sitter==0.21.3
+scipy

@@ -67,3 +67,5 @@ from swebench.versioning.get_versions import (
 from swebench.versioning.utils import (
     split_instances,
 )
+
+import swebench.editor
