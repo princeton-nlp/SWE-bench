@@ -227,13 +227,12 @@ def get_eval_report(
     report_map = {}
 
     instance_id = prediction[KEY_INSTANCE_ID]
-    if instance_id not in report_map:
-        report_map[instance_id] = {
-            "patch_is_None": False,
-            "patch_exists": False,
-            "patch_successfully_applied": False,
-            "resolved": False,
-        }
+    report_map[instance_id] = {
+        "patch_is_None": False,
+        "patch_exists": False,
+        "patch_successfully_applied": False,
+        "resolved": False,
+    }
 
     # Check if the model patch exists
     if prediction["model_patch"] is None:
