@@ -236,7 +236,7 @@ def get_eval_report(
 
     # Check if the model patch exists
     if prediction["model_patch"] is None:
-        report_map[instance_id]["none"] = True
+        report_map[instance_id]["patch_is_None"] = True
         return report_map
     report_map[instance_id]["patch_exists"] = True
 
