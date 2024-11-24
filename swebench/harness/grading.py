@@ -7,6 +7,7 @@ from swebench.harness.constants import (
     FAIL_TO_FAIL,
     FAIL_TO_PASS,
     KEY_INSTANCE_ID,
+    KEY_PREDICTION,
     PASS_TO_FAIL,
     PASS_TO_PASS,
     RESET_FAILED,
@@ -235,7 +236,7 @@ def get_eval_report(
     }
 
     # Check if the model patch exists
-    if prediction["model_patch"] is None:
+    if prediction[KEY_PREDICTION] is None:
         report_map[instance_id]["patch_is_None"] = True
         return report_map
     report_map[instance_id]["patch_exists"] = True

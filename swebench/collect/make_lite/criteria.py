@@ -1,6 +1,7 @@
 import re
 import requests
 
+from swebench.collect.utils import PR_KEYWORDS
 from unidiff import PatchSet
 
 
@@ -55,15 +56,10 @@ def contains_issue_reference(text: str, repo: str) -> bool:
     """
     # Look for GitHub style issue references
     pattern_issue_ref = re.compile(r"(\w+)\s+\#(\d+)")
-    keywords = {
-        "close", "closes", "closed",
-        "fix", "fixes", "fixed",
-        "resolve", "resolves", "resolved",
-    }
     references = dict(pattern_issue_ref.findall(text))
     if references:
         for word, _ in references.items():
-            if word.lower() in keywords:
+            if word.lower() in PR_KEYWORDS:
                 return True
     
     # Look for GitLab style issue references

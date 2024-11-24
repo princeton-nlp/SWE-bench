@@ -17,6 +17,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/using-keywords-in-issues-and-pull-requests
+PR_KEYWORDS = {
+    "close", "closes", "closed",
+    "fix", "fixes", "fixed",
+    "resolve", "resolves", "resolved",
+}
 
 class Repo:
     def __init__(self, owner: str, name: str, token: Optional[str] = None):
@@ -74,17 +80,6 @@ class Repo:
         # Define 1. issue number regex pattern 2. comment regex pattern 3. keywords
         issues_pat = re.compile(r"(\w+)\s+\#(\d+)")
         comments_pat = re.compile(r"(?s)<!--.*?-->")
-        keywords = {
-            "close",
-            "closes",
-            "closed",
-            "fix",
-            "fixes",
-            "fixed",
-            "resolve",
-            "resolves",
-            "resolved",
-        }
 
         # Construct text to search over for issue numbers from PR body and commit messages
         text = pull.title if pull.title else ""
@@ -102,7 +97,7 @@ class Repo:
         resolved_issues = list()
         if references:
             for word, issue_num in references.items():
-                if word.lower() in keywords:
+                if word.lower() in PR_KEYWORDS:
                     resolved_issues.append(issue_num)
         return resolved_issues
 

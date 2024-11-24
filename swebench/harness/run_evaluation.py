@@ -15,6 +15,8 @@ from swebench.harness.constants import (
     APPLY_PATCH_PASS,
     INSTANCE_IMAGE_BUILD_DIR,
     KEY_INSTANCE_ID,
+    KEY_MODEL,
+    KEY_PREDICTION,
     RUN_EVALUATION_LOG_DIR,
 )
 from swebench.harness.docker_utils import (
@@ -36,6 +38,14 @@ from swebench.harness.docker_build import (
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
+
+DOCKER_PATCH = "/tmp/patch.diff"
+DOCKER_USER = "root"
+DOCKER_WORKDIR = "/testbed"
+LOG_REPORT = "report.json"
+LOG_INSTANCE = "run_instance.log"
+LOG_TEST_OUTPUT = "test_output.txt"
+UTF8 = "utf-8"
 
 
 class EvaluationError(Exception):
@@ -76,7 +86,7 @@ def run_instance(
     """
     # Set up logging directory
     instance_id = test_spec.instance_id
-    model_name_or_path = pred.get("model_name_or_path", "None").replace("/", "__")
+    model_name_or_path = pred.get(KEY_MODEL, "None").replace("/", "__")
     log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id
     log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -90,10 +100,10 @@ def run_instance(
         except:
             # some error, idk why
             pass
-    log_file = log_dir / "run_instance.log"
+    log_file = log_dir / LOG_INSTANCE
 
     # Set up report file + logger
-    report_path = log_dir / "report.json"
+    report_path = log_dir / LOG_REPORT
     if report_path.exists():
         return instance_id, json.loads(report_path.read_text())
     logger = setup_logger(instance_id, log_file)
@@ -108,42 +118,42 @@ def run_instance(
 
         # Copy model prediction as patch file to container
         patch_file = Path(log_dir / "patch.diff")
-        patch_file.write_text(pred["model_patch"] or "")
+        patch_file.write_text(pred[KEY_PREDICTION] or "")
         logger.info(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
-        copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
+        copy_to_container(container, patch_file, Path(DOCKER_PATCH))
 
         # Attempt to apply patch to container
         val = container.exec_run(
-            "git apply --allow-empty -v /tmp/patch.diff",
-            workdir="/testbed",
-            user="root",
+            f"git apply --allow-empty -v {DOCKER_PATCH}",
+            workdir=DOCKER_WORKDIR,
+            user=DOCKER_USER,
         )
         if val.exit_code != 0:
             logger.info(f"Failed to apply patch to container, trying again...")
             
             # try "patch --batch --fuzz=5 -p1 -i {patch_path}" to try again
             val = container.exec_run(
-                "patch --batch --fuzz=5 -p1 -i /tmp/patch.diff",
-                workdir="/testbed",
-                user="root",
+                f"patch --batch --fuzz=5 -p1 -i {DOCKER_PATCH}",
+                workdir=DOCKER_WORKDIR,
+                user=DOCKER_USER,
             )
             if val.exit_code != 0:
-                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode(UTF8)}")
                 raise EvaluationError(
                     instance_id,
-                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
+                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode(UTF8)}",
                     logger,
                 )
             else:
-                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode(UTF8)}")
         else:
-            logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+            logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode(UTF8)}")
 
         # Get git diff before running eval script
         git_diff_output_before = (
-            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
+            container.exec_run("git diff", workdir=DOCKER_WORKDIR).output.decode(UTF8).strip()
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
 
@@ -156,7 +166,7 @@ def run_instance(
 
         # Run eval script, write output to logs
         test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
-        test_output_path = log_dir / "test_output.txt"
+        test_output_path = log_dir / LOG_TEST_OUTPUT
         logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
         with open(test_output_path, "w") as f:
             f.write(test_output)
@@ -171,7 +181,7 @@ def run_instance(
 
         # Get git diff after running eval script
         git_diff_output_after = (
-            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
+            container.exec_run("git diff", workdir=DOCKER_WORKDIR).output.decode(UTF8).strip()
         )
 
         # Check if git diff changed after running eval script
@@ -333,9 +343,9 @@ def get_dataset_from_preds(
         report_file = (
             RUN_EVALUATION_LOG_DIR
             / run_id
-            / prediction["model_name_or_path"].replace("/", "__")
+            / prediction[KEY_MODEL].replace("/", "__")
             / prediction[KEY_INSTANCE_ID]
-            / "report.json"
+            / LOG_REPORT
         )
         if report_file.exists():
             completed_ids.add(instance[KEY_INSTANCE_ID])
@@ -345,7 +355,7 @@ def get_dataset_from_preds(
         print(f"{len(completed_ids)} instances already run, skipping...")
         dataset = [i for i in dataset if i[KEY_INSTANCE_ID] not in completed_ids]
 
-    empty_patch_ids = {k for k, v in predictions.items() if v["model_patch"] == "" or v["model_patch"] is None}
+    empty_patch_ids = {k for k, v in predictions.items() if v[KEY_PREDICTION] == "" or v[KEY_PREDICTION] is None}
 
     # filter dataset to only instances with predictions
     dataset = [i for i in dataset if i[KEY_INSTANCE_ID] in prediction_ids and i[KEY_INSTANCE_ID] not in empty_patch_ids]
@@ -390,15 +400,15 @@ def make_run_report(
             incomplete_ids.add(instance_id)
             continue
         prediction = predictions[instance_id]
-        if prediction.get("model_patch", None) in ["", None]:
+        if prediction.get(KEY_PREDICTION, None) in ["", None]:
             empty_patch_ids.add(instance_id)
             continue
         report_file = (
             RUN_EVALUATION_LOG_DIR
             / run_id
-            / prediction["model_name_or_path"].replace("/", "__")
+            / prediction[KEY_MODEL].replace("/", "__")
             / prediction[KEY_INSTANCE_ID]
-            / "report.json"
+            / LOG_REPORT
         )
         if report_file.exists():
             # If report file exists, then the instance has been run
@@ -460,7 +470,7 @@ def make_run_report(
         "schema_version": 2,
     }
     report_file = Path(
-        list(predictions.values())[0]["model_name_or_path"].replace("/", "__")
+        list(predictions.values())[0][KEY_MODEL].replace("/", "__")
         + f".{run_id}"
         + ".json"
     )
@@ -478,8 +488,8 @@ def get_gold_predictions(dataset_name: str, split: str):
     return [
         {
             KEY_INSTANCE_ID: datum[KEY_INSTANCE_ID],
-            "model_patch": datum["patch"],
-            "model_name_or_path": "gold",
+            KEY_PREDICTION: datum["patch"],
+            KEY_MODEL: "gold",
         } for datum in dataset
     ]
 
