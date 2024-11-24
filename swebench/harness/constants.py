@@ -958,10 +958,21 @@ MAP_REPO_TO_ENV_YML_PATHS = {
     "pydata/xarray": ["ci/requirements/environment.yml", "environment.yml"],
 }
 
+
 # Constants - Evaluation Keys
 KEY_INSTANCE_ID = "instance_id"
 KEY_MODEL = "model_name_or_path"
 KEY_PREDICTION = "model_patch"
+
+
+# Constants - Harness
+DOCKER_PATCH = "/tmp/patch.diff"
+DOCKER_USER = "root"
+DOCKER_WORKDIR = "/testbed"
+LOG_REPORT = "report.json"
+LOG_INSTANCE = "run_instance.log"
+LOG_TEST_OUTPUT = "test_output.txt"
+UTF8 = "utf-8"
 
 
 # Constants - Logging

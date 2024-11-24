@@ -16,6 +16,7 @@ from swebench.harness.constants import (
     MAP_REPO_TO_INSTALL,
     MAP_REPO_VERSION_TO_SPECS,
     USE_X86,
+    UTF8,
 )
 from swebench.harness.dockerfiles import (
     get_dockerfile_base,
@@ -72,7 +73,7 @@ class TestSpec:
         Note that old images are not automatically deleted, so consider cleaning up old images periodically.
         """
         hash_object = hashlib.sha256()
-        hash_object.update(str(self.env_script_list).encode("utf-8"))
+        hash_object.update(str(self.env_script_list).encode(UTF8))
         hash_value = hash_object.hexdigest()
         val = hash_value[:22]  # 22 characters is still very likely to be unique
         return f"sweb.env.{self.arch}.{val}:latest"

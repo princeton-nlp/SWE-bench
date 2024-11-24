@@ -13,11 +13,18 @@ from tqdm import tqdm
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
+    DOCKER_PATCH,
+    DOCKER_USER,
+    DOCKER_WORKDIR,
     INSTANCE_IMAGE_BUILD_DIR,
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
+    LOG_REPORT,
+    LOG_INSTANCE,
+    LOG_TEST_OUTPUT,
     RUN_EVALUATION_LOG_DIR,
+    UTF8,
 )
 from swebench.harness.docker_utils import (
     remove_image,
@@ -38,14 +45,6 @@ from swebench.harness.docker_build import (
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
-
-DOCKER_PATCH = "/tmp/patch.diff"
-DOCKER_USER = "root"
-DOCKER_WORKDIR = "/testbed"
-LOG_REPORT = "report.json"
-LOG_INSTANCE = "run_instance.log"
-LOG_TEST_OUTPUT = "test_output.txt"
-UTF8 = "utf-8"
 
 
 class EvaluationError(Exception):
