@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import docker
 import json
-import resource
+import platform
+if platform.system() == 'Linux': import resource
 import traceback
 
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
+from pathlib import Path,PurePosixPath
 from tqdm import tqdm
 
 from swebench.harness.constants import (
@@ -121,7 +122,7 @@ def run_instance(
         logger.info(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
-        copy_to_container(container, patch_file, Path(DOCKER_PATCH))
+        copy_to_container(container, patch_file, PurePosixPath(DOCKER_PATCH))
 
         # Attempt to apply patch to container
         val = container.exec_run(
@@ -511,7 +512,8 @@ def main(
     """
     # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
-    resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
+    if platform.system() == 'Linux':
+        resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env()
 
     # load predictions as map of instance_id to prediction

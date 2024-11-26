@@ -52,7 +52,7 @@ def setup_logger(instance_id: str, log_file: Path, mode="w"):
     """
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(f"{instance_id}.{log_file.name}")
-    handler = logging.FileHandler(log_file, mode=mode)
+    handler = logging.FileHandler(log_file, mode=mode, encoding='utf-8')
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
