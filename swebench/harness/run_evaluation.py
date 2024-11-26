@@ -305,6 +305,11 @@ def get_dataset_from_preds(
     dataset = load_swebench_dataset(dataset_name, split)
     dataset_ids = {i[KEY_INSTANCE_ID] for i in dataset}
 
+    # Remove predictions for instances not in the dataset
+    for id in list(predictions.keys()):
+        if id not in dataset_ids:
+            del predictions[id]
+
     if instance_ids:
         # check that all instance IDs have predictions
         missing_preds = set(instance_ids) - set(predictions.keys())
