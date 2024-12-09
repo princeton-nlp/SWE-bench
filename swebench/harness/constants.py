@@ -105,6 +105,7 @@ SPECS_FLASK = {
         "packages": "requirements.txt",
         "install": "python -m pip install -e .",
         "pip_packages": [
+            "setuptools==70.0.0",
             "click==8.1.3",
             "itsdangerous==2.1.2",
             "Jinja2==3.1.2",
@@ -121,6 +122,7 @@ SPECS_FLASK.update(
             "packages": "requirements.txt",
             "install": "python -m pip install -e .",
             "pip_packages": [
+                "setuptools==70.0.0",
                 "click==8.1.3",
                 "itsdangerous==2.1.2",
                 "Jinja2==3.1.2",
