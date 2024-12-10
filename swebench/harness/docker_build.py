@@ -15,6 +15,7 @@ from swebench.harness.constants import (
     ENV_IMAGE_BUILD_DIR,
     INSTANCE_IMAGE_BUILD_DIR,
     MAP_REPO_VERSION_TO_SPECS,
+    UTF8,
 )
 from swebench.harness.test_spec import (
     get_test_specs_from_dataset,
@@ -52,7 +53,7 @@ def setup_logger(instance_id: str, log_file: Path, mode="w"):
     """
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(f"{instance_id}.{log_file.name}")
-    handler = logging.FileHandler(log_file, mode=mode, encoding='utf-8')
+    handler = logging.FileHandler(log_file, mode=mode, encoding=UTF8)
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)

@@ -3,12 +3,14 @@ from __future__ import annotations
 import docker
 import json
 import platform
-if platform.system() == 'Linux': import resource
 import traceback
+
+if platform.system() == 'Linux':
+    import resource
 
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path,PurePosixPath
+from pathlib import Path, PurePosixPath
 from tqdm import tqdm
 
 from swebench.harness.constants import (
