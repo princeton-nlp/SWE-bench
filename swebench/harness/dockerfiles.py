@@ -36,6 +36,7 @@ RUN adduser --disabled-password --gecos 'dog' nonroot
 _DOCKERFILE_ENV = r"""FROM --platform={platform} sweb.base.{arch}:latest
 
 COPY ./setup_env.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_env.sh
 RUN chmod +x /root/setup_env.sh
 RUN /bin/bash -c "source ~/.bashrc && /root/setup_env.sh"
 
@@ -48,6 +49,7 @@ RUN echo "source /opt/miniconda3/etc/profile.d/conda.sh && conda activate testbe
 _DOCKERFILE_INSTANCE = r"""FROM --platform={platform} {env_image_name}
 
 COPY ./setup_repo.sh /root/
+RUN sed -i -e 's/\r$//' /root/setup_repo.sh
 RUN /bin/bash /root/setup_repo.sh
 
 WORKDIR /testbed/
