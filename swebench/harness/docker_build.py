@@ -453,6 +453,9 @@ def build_instance_image(
 
     # Build the instance image
     if not image_exists:
+        # Check for specific instance ID and install specific version of antlr4-python3-runtime
+        if test_spec.instance_id == "sympy__sympy-21612":
+            test_spec.repo_script_list.append("python -m pip install antlr4-python3-runtime==4.7.2")
         build_image(
             image_name=image_name,
             setup_scripts={
