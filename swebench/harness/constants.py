@@ -787,6 +787,7 @@ SPECS_PYVISTA.update(
             "install": "python -m pip install -e .",
             "pip_packages": ["pytest"],
             "test_cmd": TEST_PYTEST,
+            "pre_install": ["apt-get update && apt-get install -y ffmpeg libsm6 libxext6 libxrender1"],
         }
         for k in [
             "0.24",
