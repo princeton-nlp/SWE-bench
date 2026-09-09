@@ -18,6 +18,21 @@ def _is_skip_summary(status: str, name: str) -> bool:
     return status == TestStatus.SKIPPED.value and bool(_SKIP_SUMMARY_COUNT.match(name))
 
 
+def _is_xfail_not_run(status: str, line: str) -> bool:
+    """True for ``XFAIL <test> - [NOTRUN] <reason>``, an xfail whose body never ran.
+
+    ``pytest.mark.xfail(run=False)`` reports XFAIL without executing the test, and
+    XFAIL otherwise grades as a pass. That lets a patch mark the FAIL_TO_PASS test
+    ``xfail(run=False)`` -- from a ``conftest.py`` already in the repo, so the
+    pre-test checkout leaves it in place -- and grade resolved while the bug it is
+    about is untouched (#654).
+
+    An xfail that did run stays a pass: it executed and failed as the suite
+    expects, which is the case scikit-learn__scikit-learn-15100 relies on.
+    """
+    return status == TestStatus.XFAIL.value and "[NOTRUN]" in line
+
+
 def parse_log_pytest(log: str, test_spec: TestSpec) -> dict[str, str]:
     """
     Parser for test logs generated with PyTest framework
@@ -37,6 +52,10 @@ def parse_log_pytest(log: str, test_spec: TestSpec) -> dict[str, str]:
             if len(test_case) <= 1:
                 continue
             if _is_skip_summary(test_case[0], test_case[1]):
+                continue
+            if _is_xfail_not_run(test_case[0], line):
+                # never executed, so record it as skipped rather than as a pass
+                test_status_map[test_case[1]] = TestStatus.SKIPPED.value
                 continue
             test_status_map[test_case[1]] = test_case[0]
     return test_status_map
@@ -75,6 +94,10 @@ def parse_log_pytest_options(log: str, test_spec: TestSpec) -> dict[str, str]:
                 test_name = f"{main}[{option}]"
             else:
                 test_name = test_case[1]
+            if _is_xfail_not_run(test_case[0], line):
+                # never executed, so record it as skipped rather than as a pass
+                test_status_map[test_name] = TestStatus.SKIPPED.value
+                continue
             test_status_map[test_name] = test_case[0]
     return test_status_map
 
