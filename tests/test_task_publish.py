@@ -127,6 +127,47 @@ def test_a_wrong_image_name_is_reported_and_fixable(tmp_path):
     assert meta["image"] == expected_image("a__a-1")
 
 
+BASHRC_LINE = (
+    'RUN echo "source /opt/miniconda3/etc/profile.d/conda.sh && '
+    'conda activate testbed" > /root/.bashrc'
+)
+
+
+def test_a_bashrc_sourcing_conda_the_image_lacks_is_reported(tmp_path):
+    """Every shell in that image prints an error before its own output (#638)."""
+    repo = _repo(tmp_path)
+    d = _task(repo, "a__a-1")
+    (d / "Dockerfile").write_text(f"FROM rust:1.81\n{BASHRC_LINE}\n")
+
+    problems = check_task_repo(tmp_path)
+    assert [p.severity for p in problems] == ["warning"]
+    assert "never installs" in problems[0].message
+    # a warning reports without stopping a publish
+    assert errors(problems) == []
+
+
+def test_the_same_bashrc_is_fine_when_the_image_installs_conda(tmp_path):
+    """The Python task repo writes this line, and conda is there to be sourced."""
+    repo = _repo(tmp_path)
+    d = _task(repo, "a__a-1")
+    (d / "Dockerfile").write_text(
+        f"FROM ubuntu:jammy\n"
+        f"RUN bash miniconda.sh -b -p /opt/miniconda3\n{BASHRC_LINE}\n"
+    )
+    assert check_task_repo(tmp_path) == []
+
+
+def test_a_guarded_source_is_not_reported(tmp_path):
+    repo = _repo(tmp_path)
+    d = _task(repo, "a__a-1")
+    (d / "Dockerfile").write_text(
+        "FROM rust:1.81\n"
+        'RUN echo "[ -f /opt/miniconda3/etc/profile.d/conda.sh ] && '
+        'source /opt/miniconda3/etc/profile.d/conda.sh" > /root/.bashrc\n'
+    )
+    assert check_task_repo(tmp_path) == []
+
+
 def test_image_names_follow_the_registry_convention():
     # docker hub disallows dunders, so instance ids are mapped
     assert expected_image("google__gson-2479") == (

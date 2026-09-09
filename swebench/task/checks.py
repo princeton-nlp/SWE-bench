@@ -11,6 +11,7 @@ tree itself, and never guesses at data it cannot see.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,6 +47,13 @@ REQUIRED_KEYS = (
 # the eval script has to bracket its test output or grading cannot read the run
 EVAL_MARKERS = (">>>>> Start Test Output", ">>>>> End Test Output")
 
+CONDA_PROFILE = "/opt/miniconda3/etc/profile.d/conda.sh"
+# the image has conda if it installs it, or inherits it from its base image
+_INSTALLS_CONDA = re.compile(
+    r"-p\s+/opt/miniconda3|conda\s+init|FROM\s+\S*conda", re.IGNORECASE
+)
+_GUARDED = re.compile(r"\[\s+-[fs]\s|test\s+-[fs]\s")
+
 
 @dataclass
 class Problem:
@@ -67,6 +75,24 @@ def expected_image(instance_id: str, namespace: str = "swebench") -> str:
     """The image name the harness derives for an instance."""
     key = f"sweb.eval.x86_64.{instance_id}:latest".lower()
     return f"{namespace}/{key}".replace("__", "_1776_")
+
+
+def _bashrc_problem(dockerfile: str) -> str | None:
+    """A .bashrc this image cannot read without printing an error.
+
+    Sourcing a conda profile the image never installs puts that error on line 0
+    of every shell, and the activation the line exists to perform never happens.
+    """
+    if _INSTALLS_CONDA.search(dockerfile):
+        return None
+    for line in dockerfile.splitlines():
+        if CONDA_PROFILE in line and ".bashrc" in line and not _GUARDED.search(line):
+            return (
+                f"Dockerfile writes a .bashrc sourcing {CONDA_PROFILE}, which this "
+                f"image never installs: every shell prints an error before its own "
+                f"output. Guard it with [ -f {CONDA_PROFILE} ] && ..."
+            )
+    return None
 
 
 def _check_task(
@@ -146,6 +172,11 @@ def _check_task(
         for marker in EVAL_MARKERS:
             if marker not in script:
                 problems.append(Problem(where, f"eval.sh has no {marker!r} marker"))
+    dockerfile = task_dir / "Dockerfile"
+    if dockerfile.is_file():
+        message = _bashrc_problem(dockerfile.read_text(errors="replace"))
+        if message:
+            problems.append(Problem(where, message, severity="warning"))
     for name in ("gold.patch", "test.patch"):
         path = task_dir / name
         if (
