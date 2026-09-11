@@ -5,6 +5,9 @@ import json
 from datetime import datetime, timezone
 import os
 import platform
+import re
+import shlex
+import urllib.parse
 import urllib.request
 import traceback
 
@@ -151,20 +154,39 @@ def create_container(
         raise EvaluationError(test_spec.instance_id, str(e), logger) from e
 
 
+_SAFE_ASSET_PATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_./ -]*$")
+
+
+def _validate_asset_path(path: str) -> None:
+    """Reject asset paths that could escape the working tree or inject shell commands."""
+    if ".." in path.split("/"):
+        raise ValueError(f"asset path contains '..': {path!r}")
+    if path.startswith("/"):
+        raise ValueError(f"asset path is absolute: {path!r}")
+    if not _SAFE_ASSET_PATH.match(path):
+        raise ValueError(f"asset path contains disallowed characters: {path!r}")
+
+
 def _resolve_asset_bytes(asset: dict, task_repo: str | None, logger) -> bytes | None:
     """Read an asset from the task repo if there is one, else fetch its url."""
+    _validate_asset_path(asset["path"])
     if task_repo is not None:
         local = asset_path(task_repo, asset["instance_id"], asset["path"])
         if local.is_file():
             return local.read_bytes()
-    if not asset.get("url"):
+    url = asset.get("url")
+    if not url:
         logger.warning(f"No asset for {asset['instance_id']} at {asset['path']}")
         return None
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        logger.warning(f"Refusing non-HTTP asset URL: {url}")
+        return None
     try:
-        with urllib.request.urlopen(asset["url"], timeout=60) as resp:
+        with urllib.request.urlopen(url, timeout=60) as resp:
             return resp.read()
     except Exception as e:
-        logger.warning(f"Could not fetch image asset {asset['url']}: {e}")
+        logger.warning(f"Could not fetch image asset {url}: {e}")
         return None
 
 
@@ -204,8 +226,10 @@ def _stage_image_assets(
         local = staging / flat
         local.write_bytes(data)
         copy_to_container(container, local, PurePosixPath("/image_assets") / flat)
+        safe_path = shlex.quote(asset["path"])
+        safe_flat = shlex.quote(flat)
         restore.append(
-            f"mkdir -p $(dirname {asset['path']}) && cp /image_assets/{flat} {asset['path']}"
+            f"mkdir -p $(dirname {safe_path}) && cp /image_assets/{safe_flat} {safe_path}"
         )
     if restore:
         logger.info(
