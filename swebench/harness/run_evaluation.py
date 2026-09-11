@@ -15,6 +15,14 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pathlib import Path, PurePosixPath
 
 from swebench.image_builder.constants import CONTAINER_USER, CONTAINER_WORKDIR
+from swebench.image_builder.image_spec import (
+    ARCH_ALIASES,
+    DOCKER_PLATFORMS,
+    host_arch,
+    image_arch,
+    normalize_arch,
+    retarget_image,
+)
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
@@ -69,6 +77,17 @@ def _docker_client() -> docker.DockerClient:
     )
 
 
+def image_platform(image: str) -> str | None:
+    """The Docker platform an image name asks for, or None if it names no architecture.
+
+    Passing this to pull and create is what turns a wrong-architecture image into a
+    refusal instead of a silent emulated run -- measured at 27x on the reward path,
+    which every per-instance timeout then reports as an ordinary test failure.
+    """
+    arch = image_arch(image)
+    return DOCKER_PLATFORMS[arch] if arch else None
+
+
 def create_container(
     test_spec: TestSpec,
     client: docker.DockerClient,
@@ -85,6 +104,10 @@ def create_container(
         logger (logging.Logger): Logger to use for logging the creation process
     """
     container = None
+    # An image name that carries no architecture (a custom name) gets no platform, so
+    # behaviour there is unchanged.
+    plat = image_platform(test_spec.image)
+    platform_kwargs = {"platform": plat} if plat else {}
     try:
         # Check if the image exists
         try:
@@ -92,7 +115,7 @@ def create_container(
         except docker.errors.ImageNotFound:
             try:
                 logger.info("Image not found locally, attempting to pull...")
-                client.images.pull(test_spec.image)
+                client.images.pull(test_spec.image, **platform_kwargs)
             except docker.errors.ImageNotFound:
                 raise EvaluationError(
                     test_spec.instance_id,
@@ -122,6 +145,7 @@ def create_container(
                 # Docker's default seccomp profile only permits CLONE_NEWUSER with
                 # CAP_SYS_ADMIN, which browser sandboxes need (e.g. openlayers karma)
                 cap_add=["SYS_ADMIN"],
+                **platform_kwargs,
             )
         except docker.errors.APIError as e:
             if "409" in str(e) or "Conflict" in str(e):
@@ -139,6 +163,7 @@ def create_container(
                     # Docker's default seccomp profile only permits CLONE_NEWUSER with
                     # CAP_SYS_ADMIN, which browser sandboxes need (e.g. openlayers karma)
                     cap_add=["SYS_ADMIN"],
+                    **platform_kwargs,
                 )
             else:
                 raise
@@ -477,26 +502,37 @@ def run_instances(
 
 
 def write_run_metadata(
-    run_id: str, dataset_name: str, split: str, task_repo: str | None
+    run_id: str,
+    dataset_name: str,
+    split: str,
+    task_repo: str | None,
+    arch: str | None = None,
 ) -> Path:
     """Record what this run graded against.
 
     Re-grading needs the expected tests and the log parser, which live in the
     dataset, not in the run's logs. Without this a later `swebench report` has to
     be told the dataset again, and gets it wrong silently if told the wrong one.
+
+    The architecture is recorded for the same reason: two runs of the same dataset on
+    two architectures are not the same run, and nothing else in the logs says which
+    one produced them.
     """
     path = RUN_EVALUATION_LOG_DIR / run_id / LOG_RUN_METADATA
     path.parent.mkdir(parents=True, exist_ok=True)
     # a re-grade passes no task repo, and overwriting the recorded one with null
     # loses the only record of which tests the run was graded against
-    if task_repo is None and path.is_file():
-        task_repo = json.loads(path.read_text()).get("task_repo")
+    if path.is_file() and (task_repo is None or arch is None):
+        recorded = json.loads(path.read_text())
+        task_repo = task_repo if task_repo is not None else recorded.get("task_repo")
+        arch = arch if arch is not None else recorded.get("arch")
     path.write_text(
         json.dumps(
             {
                 "dataset": dataset_name,
                 "split": split,
                 "task_repo": task_repo,
+                "arch": arch,
                 "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             },
             indent=2,
@@ -640,6 +676,78 @@ def get_dataset_from_preds(
     return dataset
 
 
+def _retarget_dataset(dataset: list, arch: str) -> tuple[list, int]:
+    """Point every instance at its own architecture's image.
+
+    A dataset ships one architecture's image names and `TestSpec.image` is read from
+    that column verbatim, so without this an arm64 host pulls the amd64 image: refused
+    where the tag is a multi-platform index, and silently emulated where it is not.
+    Instances whose image names no architecture are left alone.
+
+    Returns the dataset and how many rows changed, which is how the caller knows
+    whether the requested architecture is the one the dataset was published for.
+    """
+    retargeted, changed = [], 0
+    for instance in dataset:
+        image = instance.get("image")
+        if image and image_arch(image) not in (None, arch):
+            instance = {**instance, "image": retarget_image(image, arch)}
+            changed += 1
+        retargeted.append(instance)
+    return retargeted, changed
+
+
+def _image_exists(client: docker.DockerClient, image: str) -> bool:
+    """Whether an image can be obtained at all, locally or from the registry."""
+    try:
+        client.images.get(image)
+        return True
+    except docker.errors.ImageNotFound:
+        pass
+    except docker.errors.APIError:
+        return False
+    try:
+        client.images.get_registry_data(image)
+        return True
+    except Exception:
+        return False
+
+
+def _partition_unavailable_images(
+    dataset: list, client: docker.DockerClient, arch: str, max_workers: int
+) -> tuple[list, dict]:
+    """Split off the instances whose architecture's image was never published.
+
+    219 of SWE-bench Verified's 500 instances have no arm64 image at all. Attempting
+    them produces a per-instance error that lands in `unresolved`, which drops the
+    headline score by 44% on an arm64 host with nothing in the report saying why. They
+    are reported as their own class instead, so an unpublished image cannot be mistaken
+    for a model failure.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    images = sorted({i["image"] for i in dataset if i.get("image")})
+    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, 16))) as pool:
+        present = dict(
+            zip(images, pool.map(lambda img: _image_exists(client, img), images))
+        )
+    runnable, unavailable = [], {}
+    for instance in dataset:
+        image = instance.get("image")
+        if image and not present.get(image, True):
+            unavailable[instance["instance_id"]] = image
+        else:
+            runnable.append(instance)
+    if unavailable:
+        print(
+            f"{len(unavailable)} instance(s) have no {arch} image published; "
+            f"they are reported separately and not evaluated:"
+        )
+        for instance_id, image in sorted(unavailable.items()):
+            print(f"  {arch} image not published for {instance_id} ({image})")
+    return runnable, unavailable
+
+
 def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, client):
     """Build this run's images from a task repo instead of trusting the registry.
 
@@ -653,17 +761,22 @@ def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, cli
     from swebench.task.repo import load_dockerfiles, task_paths
 
     wanted = {d["instance_id"]: make_test_spec(d).image for d in dataset}
-    # namespace and tag come from the image the dataset names, so built tags match
+    # namespace, tag and architecture all come from the image the dataset names, so the
+    # built name matches the one the evaluation will look for. Deriving the architecture
+    # from the host instead would build arm64 images and then evaluate the amd64 names:
+    # every instance lands in `missing`, prints BUILD FAILED, and falls back to pulling
+    # the published amd64 image -- a run that never uses what it just built.
     sample = next(iter(wanted.values()))
     namespace = sample.split("/")[0] if "/" in sample else None
     tag = sample.rsplit(":", 1)[1] if ":" in sample.rsplit("/", 1)[-1] else "latest"
+    arch = image_arch(sample)
 
     print(f"Building {len(wanted)} image(s) from {task_repo} before evaluating...")
     with resolve_task_repo(task_repo) as repo_path:
         dockerfiles = load_dockerfiles(repo_path, list(wanted))
         contexts = task_paths(repo_path, list(wanted))
         image_specs = get_image_specs_from_dataset(
-            dataset, dockerfiles, namespace, tag, contexts
+            dataset, dockerfiles, namespace, tag, contexts, arch=arch
         )
         if not image_specs:
             print("No Dockerfiles matched these instances; nothing was built.")
@@ -690,7 +803,8 @@ def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, cli
     )
     for iid, image in missing:
         try:
-            client.images.pull(image)
+            plat = image_platform(image)
+            client.images.pull(image, **({"platform": plat} if plat else {}))
             print(f"  {iid}: build failed; FELL BACK to the published image {image}")
         except docker.errors.ImageNotFound:
             print(f"  {iid}: build failed and no published image exists; it will error")
@@ -708,9 +822,12 @@ def main(
     rewrite_reports: bool,
     modal: bool,
     task_repo: str | None = None,
+    arch: str | None = None,
 ):
     """
     Run evaluation harness for the given dataset and predictions.
+
+    arch selects which architecture's images to evaluate, defaulting to the host's.
     """
     if dataset_name == "SWE-bench/SWE-bench_Multimodal" and split == "test":
         print(
@@ -728,6 +845,18 @@ def main(
             "--task-repo to run on Modal, or drop --modal to build the repo."
         )
 
+    # The Modal path never looks at test_spec.image -- it builds its own sandbox and
+    # installs an x86_64 Miniconda (run_evaluation_modal.py) -- so it can only ever
+    # produce an amd64 result. Refused rather than reporting an arm64 run that was not one.
+    wanted_arch = normalize_arch(arch) if arch else host_arch()
+    if modal:
+        if arch is not None and wanted_arch != "amd64":
+            raise ValueError(
+                f"--modal only runs amd64 images, so --arch {arch} cannot be honoured. "
+                "Drop --arch to run on Modal, or drop --modal to run locally."
+            )
+        wanted_arch = "amd64"
+
     # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
     # load predictions as map of instance_id to prediction
@@ -735,7 +864,7 @@ def main(
         predictions_path, dataset_name, split, task_repo, instance_ids
     )
     predictions = {pred["instance_id"]: pred for pred in predictions}
-    write_run_metadata(run_id, dataset_name, split, task_repo)
+    write_run_metadata(run_id, dataset_name, split, task_repo, wanted_arch)
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(
@@ -748,6 +877,10 @@ def main(
         task_repo=task_repo,
     )
     full_dataset = load_instances(dataset_name, split, instance_ids, task_repo)
+    dataset, retargeted = _retarget_dataset(dataset, wanted_arch)
+    full_dataset, _ = _retarget_dataset(full_dataset, wanted_arch)
+    if retargeted:
+        print(f"Evaluating the {wanted_arch} images: {retargeted} instance(s) retargeted.")
 
     if modal:
         # run instances on Modal
@@ -763,9 +896,22 @@ def main(
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = _docker_client()
 
+    # Only off amd64, the one architecture published for every instance: elsewhere the
+    # images the dataset names may not exist, and that is not a model failure. Keyed on
+    # the architecture, not on whether --arch rewrote any rows, so a dataset already
+    # carrying arm64 names gets the same treatment. An amd64 run makes no extra registry
+    # calls -- a manifest query per instance would exhaust the hourly pull quota alone.
+    unavailable_images: dict = {}
+    if wanted_arch != "amd64" and not rewrite_reports and not task_repo:
+        dataset, unavailable_images = _partition_unavailable_images(
+            dataset, client, wanted_arch, max_workers
+        )
+
     if not dataset:
         print("No instances to run.")
-        return make_run_report(predictions, full_dataset, run_id, client)
+        return make_run_report(
+            predictions, full_dataset, run_id, client, unavailable_images
+        )
     else:
         # a re-grade reads existing logs and starts no container, so building the
         # images it names would cost hours and change nothing
@@ -785,7 +931,9 @@ def main(
         )
 
     # make final report
-    return make_run_report(predictions, full_dataset, run_id, client)
+    return make_run_report(
+        predictions, full_dataset, run_id, client, unavailable_images
+    )
 
 
 if __name__ == "__main__":
@@ -829,6 +977,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--open_file_limit", type=int, default=4096, help="Open file limit"
+    )
+    parser.add_argument(
+        "--arch",
+        type=str,
+        choices=sorted(ARCH_ALIASES),
+        default=None,
+        help="Architecture of the images to evaluate (default: this machine's)",
     )
     parser.add_argument(
         "-t",

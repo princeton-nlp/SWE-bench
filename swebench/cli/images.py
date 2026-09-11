@@ -31,6 +31,9 @@ def build(
     tag: str = typer.Option("latest", "--tag"),
     dry_run: bool = typer.Option(False, "--dry-run", help="List what would be built"),
     open_file_limit: int = typer.Option(4096, "--open-file-limit"),
+    arch: Optional[str] = typer.Option(
+        None, "--arch", help="Architecture to build for (default: this machine's)"
+    ),
 ):
     """Build images ahead of an evaluation, from a task repo.
 
@@ -44,6 +47,8 @@ def build(
         swebench images build ~/swe-bench-multimodal-tasks -i carbon-design-system__carbon-10188
 
         swebench images build ~/swe-bench-tasks --dry-run
+
+        swebench images build ~/swe-bench-tasks --arch arm64
     """
     from swebench.image_builder.prepare_images import main as prepare_images
     from swebench.task.publish import CheckFailed
@@ -60,6 +65,7 @@ def build(
             namespace=namespace,
             tag=tag,
             dry_run=dry_run,
+            arch=arch,
         )
     except (CheckFailed, UnknownDataset) as e:
         typer.echo(str(e), err=True)
@@ -78,6 +84,9 @@ def check(
         None, "-i", "--instance", help="Only these instances (repeatable)"
     ),
     workers: int = typer.Option(16, "-j", "--workers"),
+    arch: Optional[str] = typer.Option(
+        None, "--arch", help="Check this architecture's images (default: this machine's)"
+    ),
 ):
     """Report which of a task repo's images are missing from the registry.
 
@@ -89,11 +98,14 @@ def check(
         swebench images check ~/swe-bench-tasks
 
         swebench images check ~/swe-bench-multilingual-tasks -j 32
+
+        swebench images check ~/swe-bench-tasks --arch arm64
     """
     from concurrent.futures import ThreadPoolExecutor
 
     import docker
 
+    from swebench.image_builder.image_spec import host_arch, image_arch, retarget_image
     from swebench.task.repo import UnknownDataset, select_tasks
 
     client = docker.from_env()
@@ -106,10 +118,20 @@ def check(
     except UnknownDataset as e:
         typer.echo(str(e), err=True)
         raise typer.Exit(1) from e
+    wanted_arch = arch or host_arch()
     names = sorted({i["image"] for i in instances if i.get("image")})
     if not names:
         typer.echo("dataset rows carry no image field")
         raise typer.Exit(1)
+    # The dataset names one architecture's images; an evaluation on another architecture
+    # pulls a different family, so report on the family that will actually be used.
+    names = sorted(
+        {
+            retarget_image(n, wanted_arch) if image_arch(n) else n
+            for n in names
+        }
+    )
+    typer.echo(f"checking {wanted_arch} images")
 
     def present(name: str) -> tuple[str, bool]:
         try:

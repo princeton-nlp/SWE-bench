@@ -16,6 +16,7 @@ from pathlib import Path
 
 import yaml
 
+from swebench.image_builder.image_spec import ARCH_IN_IMAGE_NAME, image_name
 from swebench.task.repo import (
     AS_FILE,
     CONFIG_FILE,
@@ -63,10 +64,23 @@ def errors(problems: list[Problem]) -> list[Problem]:
     return [p for p in problems if p.severity == "error"]
 
 
-def expected_image(instance_id: str, namespace: str = "swebench") -> str:
+def expected_image(
+    instance_id: str, namespace: str = "swebench", arch: str = "amd64"
+) -> str:
     """The image name the harness derives for an instance."""
-    key = f"sweb.eval.x86_64.{instance_id}:latest".lower()
-    return f"{namespace}/{key}".replace("__", "_1776_")
+    return image_name(instance_id, "latest", arch, namespace)
+
+
+def acceptable_images(instance_id: str, namespace: str = "swebench") -> set[str]:
+    """Every architecture's derived name for an instance.
+
+    task.yaml holds a single `image`, but the same task builds on more than one
+    architecture and each has its own name. Accepting only the amd64 one made
+    `check --fix` overwrite an arm64 image field and write the file back to disk.
+    """
+    return {
+        expected_image(instance_id, namespace, arch) for arch in ARCH_IN_IMAGE_NAME
+    }
 
 
 def _check_task(
@@ -134,10 +148,10 @@ def _check_task(
         problems.append(
             Problem(where, f"split {split!r} is not in {CONFIG_FILE}", fixable=True)
         )
-    if "image" in meta and meta["image"] != expected_image(task_dir.name):
+    if "image" in meta and meta["image"] not in acceptable_images(task_dir.name):
         problems.append(
             Problem(
-                where, f"image {meta['image']!r} is not the derived name", fixable=True
+                where, f"image {meta['image']!r} is not a derived name", fixable=True
             )
         )
 
@@ -198,9 +212,10 @@ def check_task_repo(repo_path: str | Path, fix: bool = False) -> list[Problem]:
             if not meta_path.is_file():
                 continue
             meta = load_yaml(meta_path)
-            derived = expected_image(task_dir.name)
-            if meta.get("image") != derived:
-                meta["image"] = derived
+            # an image field naming another architecture is already correct, so only
+            # a name that matches none of them is rewritten
+            if meta.get("image") not in acceptable_images(task_dir.name):
+                meta["image"] = expected_image(task_dir.name)
                 meta_path.write_text(dump_yaml(meta))
                 problems = [
                     p

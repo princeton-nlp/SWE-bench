@@ -41,6 +41,15 @@ def eval_command(
     modal: bool = typer.Option(
         False, "--modal", help="Run on Modal instead of local Docker"
     ),
+    arch: Optional[str] = typer.Option(
+        None,
+        "--arch",
+        help=(
+            "Architecture of the images to evaluate (default: this machine's). "
+            "Instances with no image published for it are reported as their own "
+            "class, not as unresolved."
+        ),
+    ),
     open_file_limit: int = typer.Option(4096, "--open-file-limit"),
 ):
     """Evaluate gold or model predictions against a dataset.
@@ -54,6 +63,8 @@ def eval_command(
         swebench eval multimodal --gold -i carbon-design-system__carbon-10188
 
         swebench eval full --gold --modal
+
+        swebench eval verified --gold --arch arm64
     """
     if gold and predictions:
         raise typer.BadParameter("pass either --gold or --predictions, not both")
@@ -74,6 +85,7 @@ def eval_command(
         rewrite_reports=False,
         modal=modal,
         task_repo=task_repo,
+        arch=arch,
     )
 
 
@@ -129,4 +141,7 @@ def report_command(
         # a run made against a task repo has to be re-graded against the same tests,
         # or the dataset's copy silently overrides them and the verdict changes
         task_repo=recorded.get("task_repo"),
+        # likewise the architecture: re-grading an arm64 run on an x86 machine must
+        # still report the images the run actually used
+        arch=recorded.get("arch"),
     )
