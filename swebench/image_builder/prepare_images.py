@@ -8,7 +8,10 @@ from argparse import ArgumentParser
 from contextlib import contextmanager
 from pathlib import Path
 
-from swebench.image_builder.image_spec import get_image_specs_from_dataset
+from swebench.image_builder.image_spec import (
+    ARCH_ALIASES,
+    get_image_specs_from_dataset,
+)
 from swebench.image_builder.docker_build import build_instance_images
 from swebench.image_builder.docker_utils import list_images
 from swebench.harness.utils import optional_str, str2bool
@@ -112,6 +115,7 @@ def main(
     namespace,
     tag,
     dry_run,
+    arch=None,
 ):
     """
     Build Docker images for the tasks in a task repo.
@@ -126,6 +130,7 @@ def main(
         namespace (str): Docker registry namespace.
         tag (str): Docker image tag.
         dry_run (bool): If True, create docker files and build contexts but don't build images.
+        arch (str): Architecture to build for. Defaults to the host's.
     """
     # Set open file limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
@@ -137,7 +142,7 @@ def main(
         ids = [i["instance_id"] for i in dataset]
         dockerfiles = load_dockerfiles(repo_path, ids)
         image_specs = get_image_specs_from_dataset(
-            dataset, dockerfiles, namespace, tag, task_paths(repo_path, ids)
+            dataset, dockerfiles, namespace, tag, task_paths(repo_path, ids), arch=arch
         )
         image_specs = filter_image_specs(image_specs, client, force_rebuild)
 
@@ -199,6 +204,13 @@ if __name__ == "__main__":
         type=str2bool,
         default=False,
         help="Create docker files and build contexts but don't build images",
+    )
+    parser.add_argument(
+        "--arch",
+        type=str,
+        default=None,
+        choices=sorted(ARCH_ALIASES),
+        help="Architecture to build for (default: this machine's)",
     )
     parser.add_argument(
         "--task_repo",

@@ -118,9 +118,7 @@ def test_an_unregistered_split_is_reported_and_fixable(tmp_path):
 def test_a_wrong_image_name_is_reported_and_fixable(tmp_path):
     repo = _repo(tmp_path)
     _task(repo, "a__a-1", image="somewhere/else:latest")
-    assert any(
-        "is not the derived name" in p.message for p in check_task_repo(tmp_path)
-    )
+    assert any("is not a derived name" in p.message for p in check_task_repo(tmp_path))
 
     check_task_repo(tmp_path, fix=True)
     meta = yaml.safe_load((repo / "tasks" / "a__a-1" / "task.yaml").read_text())
@@ -132,6 +130,21 @@ def test_image_names_follow_the_registry_convention():
     assert expected_image("google__gson-2479") == (
         "swebench/sweb.eval.x86_64.google_1776_gson-2479:latest"
     )
+    assert expected_image("google__gson-2479", arch="arm64") == (
+        "swebench/sweb.eval.arm64.google_1776_gson-2479:latest"
+    )
+
+
+def test_another_architectures_image_name_is_accepted_not_overwritten(tmp_path):
+    # --fix writes task.yaml back to disk, so treating the arm64 name as wrong destroyed it
+    repo = _repo(tmp_path)
+    arm64 = expected_image("a__a-1", arch="arm64")
+    _task(repo, "a__a-1", image=arm64)
+    assert errors(check_task_repo(tmp_path)) == []
+
+    check_task_repo(tmp_path, fix=True)
+    meta = yaml.safe_load((repo / "tasks" / "a__a-1" / "task.yaml").read_text())
+    assert meta["image"] == arm64
 
 
 def test_a_directory_without_task_json_is_reported(tmp_path):

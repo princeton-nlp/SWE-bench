@@ -18,6 +18,7 @@ def make_run_report(
     full_dataset: list,
     run_id: str,
     client: Optional[docker.DockerClient] = None,
+    unavailable_images: Optional[dict] = None,
 ) -> Path:
     """
     Make a final evaluation and run report of the instances that have been run.
@@ -28,10 +29,16 @@ def make_run_report(
         full_dataset (list): List of all instances
         run_id (str): Run ID
         client (docker.DockerClient): Docker client (optional)
+        unavailable_images (dict): instance_id -> image name for instances whose
+            architecture's image was never published. These are counted as their own
+            outcome, not as unresolved: an image that does not exist says nothing about
+            the prediction, and on arm64 it accounts for 219 of Verified's 500 instances.
 
     Returns:
         Path to report file
     """
+    unavailable_images = unavailable_images or {}
+    unavailable_image_ids = set()
     # instantiate sets to store IDs of different outcomes
     completed_ids = set()
     resolved_ids = set()
@@ -55,6 +62,12 @@ def make_run_report(
         prediction = predictions[instance_id]
         if prediction.get("model_patch", None) in ["", None]:
             empty_patch_ids.add(instance_id)
+            continue
+        if instance_id in unavailable_images:
+            # No image was ever published for this architecture, so the instance was
+            # never evaluated. Kept out of every other set so it cannot be read as a
+            # failed prediction.
+            unavailable_image_ids.add(instance_id)
             continue
         report_file = (
             RUN_EVALUATION_LOG_DIR
@@ -130,6 +143,7 @@ def make_run_report(
     print(f"Instances with likely infrastructure failures: {len(infra_failure_ids)}")
     print(f"Instances with ambiguous failures: {len(ambiguous_failure_ids)}")
     print(f"Instances with empty patches: {len(empty_patch_ids)}")
+    print(f"Instances with no image for this architecture: {len(unavailable_image_ids)}")
     print(f"Instances with errors: {len(error_ids)}")
     if client:
         print(f"Unstopped containers: {len(unstopped_containers)}")
@@ -145,6 +159,7 @@ def make_run_report(
         "infra_failure_instances": len(infra_failure_ids),
         "ambiguous_failure_instances": len(ambiguous_failure_ids),
         "empty_patch_instances": len(empty_patch_ids),
+        "unavailable_image_instances": len(unavailable_image_ids),
         "error_instances": len(error_ids),
         "completed_ids": list(sorted(completed_ids)),
         "incomplete_ids": list(sorted(incomplete_ids)),
@@ -155,6 +170,10 @@ def make_run_report(
         "infra_failure_ids": list(sorted(infra_failure_ids)),
         "ambiguous_failure_ids": list(sorted(ambiguous_failure_ids)),
         "failure_reasons": dict(sorted(infra_failure_reasons.items())),
+        "unavailable_image_ids": list(sorted(unavailable_image_ids)),
+        "unavailable_images": {
+            iid: unavailable_images[iid] for iid in sorted(unavailable_image_ids)
+        },
         "error_ids": list(sorted(error_ids)),
         "schema_version": 2,
     }
