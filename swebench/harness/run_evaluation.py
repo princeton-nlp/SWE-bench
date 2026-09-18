@@ -288,7 +288,10 @@ def run_instance(
         if not skip_patch:
             # Copy model prediction as patch file to container
             patch_file = Path(log_dir / "patch.diff")
-            patch_file.write_text(pred["model_patch"] or "")
+            patch_file.write_text(
+                pred["model_patch"] or "",
+                newline="\n",
+            )
             logger.info(
                 f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
             )
@@ -357,7 +360,10 @@ def run_instance(
         )
 
         eval_file = Path(log_dir / "eval.sh")
-        eval_file.write_text(_inject_asset_restore(test_spec.eval_script, restore_cmds))
+        eval_file.write_text(
+            _inject_asset_restore(test_spec.eval_script, restore_cmds),
+            newline="\n",
+        )
         logger.info(
             f"Eval script for {instance_id} written to {eval_file}; copying to container..."
         )
