@@ -7,10 +7,12 @@ matching while preserving exact-match semantics for well-formed ids.
 
 from swebench.harness.constants import TestStatus
 from swebench.harness.grading import test_failed as grade_failed
+from swebench.harness.grading import test_maintained as grade_maintained
 from swebench.harness.grading import test_passed as grade_passed
 
 PASSED = TestStatus.PASSED.value
 FAILED = TestStatus.FAILED.value
+SKIPPED = TestStatus.SKIPPED.value
 XFAIL = TestStatus.XFAIL.value
 
 
@@ -100,3 +102,55 @@ def test_surplus_closing_bracket_is_not_a_truncation():
     sm = {"handles foo] gracefully and more": PASSED}
     assert not grade_passed(case, sm)
     assert grade_failed(case, sm)
+
+
+def test_truncated_p2p_matching_a_skip_and_a_failure_is_a_regression():
+    """A skipped candidate must not stand in for a failed one.
+
+    SKIPPED and FAILED are both non-passing, but they do not grade alike for a
+    PASS_TO_PASS case: a skip is not a regression, a failure is. Resolving the
+    pair to whichever the log listed first hides the failure.
+    """
+    truncated = "tests/test_a.py::test_x[a"
+    sm = {
+        "tests/test_a.py::test_x[a b]": SKIPPED,
+        "tests/test_a.py::test_x[a c]": FAILED,
+    }
+    assert not grade_maintained(truncated, sm)
+    assert grade_failed(truncated, sm)
+
+
+def test_truncated_p2p_verdict_does_not_depend_on_log_order():
+    truncated = "tests/test_a.py::test_x[a"
+    skip_first = {
+        "tests/test_a.py::test_x[a b]": SKIPPED,
+        "tests/test_a.py::test_x[a c]": FAILED,
+    }
+    fail_first = {
+        "tests/test_a.py::test_x[a c]": FAILED,
+        "tests/test_a.py::test_x[a b]": SKIPPED,
+    }
+    assert grade_maintained(truncated, skip_first) == grade_maintained(
+        truncated, fail_first
+    )
+
+
+def test_truncated_p2p_all_skipped_is_still_maintained():
+    """Skip-only matches agree, so the existing tolerance is unchanged."""
+    truncated = "tests/test_a.py::test_x[a"
+    sm = {
+        "tests/test_a.py::test_x[a b]": SKIPPED,
+        "tests/test_a.py::test_x[a c]": SKIPPED,
+    }
+    assert grade_maintained(truncated, sm)
+
+
+def test_truncated_id_failed_and_error_still_resolve():
+    """FAILED and ERROR grade alike, so a mix of the two stays unambiguous."""
+    truncated = "tests/test_a.py::test_x[a"
+    sm = {
+        "tests/test_a.py::test_x[a b]": FAILED,
+        "tests/test_a.py::test_x[a c]": TestStatus.ERROR.value,
+    }
+    assert grade_failed(truncated, sm)
+    assert not grade_passed(truncated, sm)
