@@ -59,7 +59,16 @@ def parse_test_exit_code(content: str) -> int | None:
 
 
 def _resolve_case(case: str, sm: dict[str, str]) -> str | None:
-    """Return the status-map key for ``case``, tolerating truncated parametrized ids.
+    """Return the status-map key corresponding to an expected test case.
+
+    Some legacy benchmark entries preserve a backslash before a quoted word even
+    though test reporters print the quote itself.  Normalize that narrow escaping
+    difference and accept the match only when it identifies one parsed key.
+
+    Nested JavaScript suites can also make reporters prepend suite names that were
+    absent from older expected-test lists.  Accept ``"suite - expected case"`` only
+    when the expected case is a complete delimiter-bounded suffix of exactly one
+    parsed key.  Exact matches always take precedence.
 
     676 expected ids in SWE-bench_Verified are truncated mid-parameter (issue #290),
     e.g. ``test_ogip_grammar_fail[log(photon``. For those only, prefix-match when the
@@ -73,6 +82,24 @@ def _resolve_case(case: str, sm: dict[str, str]) -> str | None:
     """
     if case in sm:
         return case
+
+    def unescape_legacy_quotes(name: str) -> str:
+        return re.sub(r"\\(?=[\"'])", "", name)
+
+    normalized_case = unescape_legacy_quotes(case)
+    quote_matches = [
+        key for key in sm if unescape_legacy_quotes(key) == normalized_case
+    ]
+    if len(quote_matches) == 1:
+        return quote_matches[0]
+
+    suite_suffix = f" - {normalized_case}"
+    suffix_matches = [
+        key for key in sm if unescape_legacy_quotes(key).endswith(suite_suffix)
+    ]
+    if len(suffix_matches) == 1:
+        return suffix_matches[0]
+
     if case.count("[") > case.count("]"):
         matches = [k for k in sm if k.startswith(case)]
         # PASSED and XFAIL grade identically, so compare outcome not raw status
@@ -354,12 +381,16 @@ def get_eval_report(
         "resolved": False,
         "infra_failure": False,
     }
+    skip_patch = bool(prediction.get("skip_patch"))
+    if skip_patch:
+        report_map[instance_id]["patch_is_None"] = True
 
     # Check if the model patch exists
-    if prediction["model_patch"] is None:
+    if prediction["model_patch"] is None and not skip_patch:
         report_map[instance_id]["patch_is_None"] = True
         return report_map
-    report_map[instance_id]["patch_exists"] = True
+    if not skip_patch:
+        report_map[instance_id]["patch_exists"] = True
 
     # Get evaluation logs
     eval_status_map, found = get_logs_eval(test_spec, test_log_path)
@@ -373,7 +404,8 @@ def get_eval_report(
             report_map[instance_id]["infra_failure"] = tier == TIER_ENVIRONMENT
             report_map[instance_id]["infra_failure_reason"] = reason
         return report_map
-    report_map[instance_id]["patch_successfully_applied"] = True
+    if not skip_patch:
+        report_map[instance_id]["patch_successfully_applied"] = True
 
     eval_ref = {
         "instance_id": test_spec.instance_id,

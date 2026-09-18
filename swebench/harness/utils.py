@@ -41,8 +41,8 @@ def get_predictions_from_file(
     task_repo: str | None = None,
     instance_ids: list | None = None,
 ):
-    if predictions_path == "gold":
-        print("Using gold predictions - ignoring predictions_path")
+    if predictions_path in {"gold", "no-patch"}:
+        print(f"Using {predictions_path} predictions - ignoring predictions_path")
         # the gold patch has to come from wherever the rest of the instance came from,
         # or a run against a task repo silently grades the dataset's patch instead and
         # never notices the two disagreeing
@@ -57,8 +57,16 @@ def get_predictions_from_file(
         return [
             {
                 "instance_id": datum["instance_id"],
-                "model_patch": datum["patch"],
-                "model_name_or_path": "gold",
+                "model_patch": (
+                    datum["patch"]
+                    if predictions_path == "gold"
+                    else "__SWEBENCH_NO_PATCH__"
+                ),
+                "model_name_or_path": (
+                    "gold" if predictions_path == "gold" else "no_patch"
+                ),
+                "skip_patch": predictions_path == "no-patch",
+                "reference_patch": predictions_path == "gold",
             }
             for datum in dataset
         ]

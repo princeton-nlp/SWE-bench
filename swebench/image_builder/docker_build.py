@@ -9,7 +9,6 @@ import subprocess
 from swebench.image_builder.constants import (
     IMAGE_BUILDER_LOG_DIR,
 )
-from swebench.image_builder.docker_utils import remove_image
 from swebench.image_builder.image_spec import (
     ImageSpec,
 )
@@ -47,6 +46,7 @@ def build_image(
         platform (str): Platform to build the image for (overridden by image_spec.platform)
         nocache (bool): Whether to use the cache when building
         dry_run (bool): If True, create docker files and build contexts but don't build images
+        force_rebuild (bool): Build even when the target tag already exists
     """
     logger = setup_logger(
         image_spec.instance_id,
@@ -76,6 +76,10 @@ def build_image(
                 f"--platform={target_platform}",
                 f"--tag={image_spec.name}",
                 f"--file={dockerfile_path}",
+                (
+                    "--label=org.swebench.build-input-sha256="
+                    f"{image_spec.build_input_digest}"
+                ),
                 "--progress=plain",
                 "--load",
             ]
@@ -129,11 +133,10 @@ def build_instance_images(
         max_workers (int): Maximum number of workers to use for building images
         dry_run (bool): If True, create docker files and build contexts but don't build images
     """
-    if force_rebuild:
-        for spec in image_specs:
-            remove_image(client, spec.name, "quiet")
     successful, failed = list(), list()
-    payloads = [(spec, client, None, False, dry_run) for spec in image_specs]
+    payloads = [
+        (spec, client, None, False, dry_run, force_rebuild) for spec in image_specs
+    ]
     successful, failed = run_threadpool(build_instance_image, payloads, max_workers)
     if len(failed) == 0:
         print("All instance images built successfully.")
@@ -148,6 +151,7 @@ def build_instance_image(
     logger: logging.Logger | None,
     nocache: bool,
     dry_run: bool = False,
+    force_rebuild: bool = False,
 ):
     """
     Builds the instance image for the given image spec if it does not already exist.
@@ -172,7 +176,7 @@ def build_instance_image(
         except docker.errors.ImageNotFound:
             pass
 
-    if not image_exists:
+    if force_rebuild or not image_exists:
         build_image(
             image_spec=image_spec,
             nocache=nocache,

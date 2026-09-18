@@ -1,4 +1,13 @@
-from swebench.harness.log_parsers.javascript import parse_log_jest
+import json
+from types import SimpleNamespace
+
+import pytest
+
+from swebench.harness.log_parsers.javascript import (
+    parse_log_jest,
+    parse_log_lighthouse,
+    parse_log_prismjs,
+)
 from swebench.harness.constants import TestStatus
 
 
@@ -38,3 +47,43 @@ class TestParseLogJest:
         result = parse_log_jest(log, test_spec=None)
 
         assert result == {"works when nested": TestStatus.PASSED.value}
+
+
+@pytest.mark.parametrize(
+    "parser,spec",
+    [
+        (parse_log_prismjs, None),
+        (parse_log_lighthouse, SimpleNamespace(version="2.5")),
+    ],
+)
+def test_mocha_json_parsers_find_every_report_amid_reordered_streams(parser, spec):
+    def report(passes=(), failures=()):
+        def test(name):
+            return {"title": name, "fullTitle": name, "duration": 1, "err": {}}
+
+        passed = [test(name) for name in passes]
+        failed = [test(name) for name in failures]
+        return json.dumps(
+            {
+                "stats": {"tests": len(passed) + len(failed)},
+                "tests": passed + failed,
+                "pending": [],
+                "failures": failed,
+                "passes": passed,
+            },
+            indent=2,
+        )
+
+    log = (
+        'unrelated diff with braces: {"stats": definitely-not-json}\n'
+        + report(passes=["first passes"])
+        + "+ shell trace moved between streams\n"
+        + report(passes=["second passes"], failures=["second fails"])
+        + ">>>>> Test Exit Code: 1\n"
+    )
+
+    assert parser(log, spec) == {
+        "first passes": TestStatus.PASSED.value,
+        "second passes": TestStatus.PASSED.value,
+        "second fails": TestStatus.FAILED.value,
+    }

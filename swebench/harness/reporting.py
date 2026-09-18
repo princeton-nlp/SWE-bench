@@ -11,6 +11,7 @@ from swebench.harness.constants import (
 )
 from swebench.harness.infra_failure import TIER_ENVIRONMENT, classify_logs
 from swebench.image_builder.docker_utils import list_images
+from swebench.image_builder.image_spec import canonical_image_ref
 
 
 def make_run_report(
@@ -53,7 +54,9 @@ def make_run_report(
             incomplete_ids.add(instance_id)
             continue
         prediction = predictions[instance_id]
-        if prediction.get("model_patch", None) in ["", None]:
+        if prediction.get("skip_patch"):
+            empty_patch_ids.add(instance_id)
+        elif prediction.get("model_patch", None) in ["", None]:
             empty_patch_ids.add(instance_id)
             continue
         report_file = (
@@ -109,15 +112,21 @@ def make_run_report(
 
     if client:
         # get remaining images and containers
-        images = list_images(client)
-        for instance in full_dataset:
-            image_name = instance.get("image", "")
-            if image_name in images:
-                unremoved_images.add(image_name)
-        containers = client.containers.list(all=True)
-        for container in containers:
-            if run_id in container.name:
-                unstopped_containers.add(container.name)
+        try:
+            images = list_images(client)
+            for instance in full_dataset:
+                image_name = canonical_image_ref(instance.get("image", ""))
+                if image_name in images:
+                    unremoved_images.add(image_name)
+        except docker.errors.DockerException as error:
+            print(f"Warning: could not inspect remaining images: {error}")
+        try:
+            containers = client.containers.list(all=True)
+            for container in containers:
+                if run_id in container.name:
+                    unstopped_containers.add(container.name)
+        except docker.errors.DockerException as error:
+            print(f"Warning: could not inspect remaining containers: {error}")
 
     # print final report
     dataset_ids = {i["instance_id"] for i in full_dataset}

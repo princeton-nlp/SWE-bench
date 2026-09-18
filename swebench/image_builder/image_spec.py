@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import hashlib
+from pathlib import Path
 from typing import Optional, Union, cast
 
 from swebench.types import (
@@ -61,6 +63,51 @@ class ImageSpec:
             return "linux/arm64/v8"
         else:
             raise ValueError(f"Invalid architecture: {self.arch}")
+
+    @property
+    def build_input_digest(self) -> str:
+        """Digest the Dockerfile and explicitly public multimodal build inputs."""
+        digest = hashlib.sha256()
+
+        def add(name: str, payload: bytes) -> None:
+            digest.update(name.encode())
+            digest.update(b"\0")
+            digest.update(str(len(payload)).encode())
+            digest.update(b"\0")
+            digest.update(payload)
+
+        add("Dockerfile", self.dockerfile.encode())
+        if self.context_dir:
+            context = Path(self.context_dir)
+            dockerignore = context / ".dockerignore"
+            if dockerignore.is_file():
+                add(".dockerignore", dockerignore.read_bytes())
+            problem_assets = context / "problem_assets"
+            if problem_assets.is_dir():
+                for asset in sorted(path for path in problem_assets.rglob("*") if path.is_file()):
+                    add(asset.relative_to(context).as_posix(), asset.read_bytes())
+        return digest.hexdigest()
+
+
+def image_namespace_and_tag(image: str) -> tuple[str | None, str]:
+    """Return the complete registry/repository prefix and tag of an image ref."""
+    image = canonical_image_ref(image)
+    namespace = image.rsplit("/", 1)[0] if "/" in image else None
+    leaf = image.rsplit("/", 1)[-1]
+    tag = leaf.rsplit(":", 1)[1] if ":" in leaf else "latest"
+    return namespace, tag
+
+
+def canonical_image_ref(image: str) -> str:
+    """Expand Docker Hub short names so Podman and Docker use the same tag."""
+    if not image:
+        return image
+    first = image.split("/", 1)[0]
+    if "/" not in image:
+        return f"docker.io/library/{image}".lower()
+    if "." not in first and ":" not in first and first != "localhost":
+        return f"docker.io/{image}".lower()
+    return image.lower()
 
 
 def get_image_specs_from_dataset(

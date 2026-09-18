@@ -166,7 +166,17 @@ def task_paths(
 
 def asset_path(repo_path: str | Path, instance_id: str, path: str) -> Path:
     """Where a staged asset lives: tasks/<id>/test_assets/<path in the repo>."""
-    return tasks_root(repo_path) / instance_id / ASSETS_SUBDIR / path
+    if Path(instance_id).name != instance_id or instance_id in {"", ".", ".."}:
+        raise ValueError(f"Unsafe instance ID for asset lookup: {instance_id!r}")
+    root = (tasks_root(repo_path) / instance_id / ASSETS_SUBDIR).resolve()
+    candidate = (root / path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError as error:
+        raise ValueError(
+            f"Asset path for {instance_id} escapes its test_assets directory: {path!r}"
+        ) from error
+    return candidate
 
 
 def load_config(repo_path: str | Path) -> dict:

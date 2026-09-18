@@ -4,6 +4,10 @@ Always the run's own log directory. It used to land relative to the CWD, which m
 run report appeared wherever the command happened to be invoked from (#498).
 """
 
+import json
+from unittest.mock import MagicMock
+
+import docker
 import pytest
 
 from swebench.harness import reporting
@@ -66,3 +70,44 @@ def test_default_does_not_write_into_the_cwd(log_dir, tmp_path, monkeypatch):
     predictions, full_dataset = _fixture()
     make_run_report(predictions, full_dataset, "run-d")
     assert list(cwd.iterdir()) == []
+
+
+def test_daemon_cleanup_inspection_failure_does_not_lose_report(log_dir, monkeypatch):
+    predictions, full_dataset = _fixture()
+    client = MagicMock()
+    monkeypatch.setattr(
+        reporting,
+        "list_images",
+        MagicMock(side_effect=docker.errors.APIError("transient image-list failure")),
+    )
+    client.containers.list.side_effect = docker.errors.APIError(
+        "transient container-list failure"
+    )
+
+    out = make_run_report(predictions, full_dataset, "run-e", client)
+
+    assert json.loads(out.read_text())["total_instances"] == 1
+
+
+def test_no_patch_run_is_completed_and_counted_as_empty(log_dir):
+    instance_id = "x__x-1"
+    predictions = {
+        instance_id: {
+            "instance_id": instance_id,
+            "model_name_or_path": "no_patch",
+            "model_patch": "__SWEBENCH_NO_PATCH__",
+            "skip_patch": True,
+        }
+    }
+    report_dir = log_dir / "baseline" / "no_patch" / instance_id
+    report_dir.mkdir(parents=True)
+    (report_dir / "report.json").write_text(
+        json.dumps({instance_id: {"resolved": False}})
+    )
+
+    out = make_run_report(predictions, [{"instance_id": instance_id}], "baseline")
+    summary = json.loads(out.read_text())
+
+    assert summary["completed_instances"] == 1
+    assert summary["unresolved_instances"] == 1
+    assert summary["empty_patch_instances"] == 1

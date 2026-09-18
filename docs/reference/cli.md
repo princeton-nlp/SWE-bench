@@ -42,13 +42,33 @@ Run the reference patches or a model's predictions.
 
 ```bash
 swebench eval verified --gold
+swebench eval multimodal --no-patch --task-repo ~/swe-bench-multimodal-tasks \
+  --run-id baseline
 swebench eval verified -p preds.jsonl --run-id gpt5 -j 16
-swebench eval multimodal --gold -i carbon-design-system__carbon-10188
+swebench eval multimodal --gold --task-repo ~/swe-bench-multimodal-tasks \
+  -i carbon-design-system__carbon-10188
 swebench eval full --gold --modal
 ```
 
-Pass exactly one of `--gold` or `-p/--predictions`. `-i/--instance` is repeatable,
+Pass exactly one of `--gold`, `--no-patch`, or `-p/--predictions`. `--no-patch`
+runs the pristine repository as a negative control. `-i/--instance` is repeatable,
 `-j/--workers` sets parallelism, `-t/--timeout` is per instance (1800s).
+
+Local evaluation containers have no network by default. `--allow-network` opts into
+Docker's normal network. For patches that change dependency manifests, pass a private
+cache root with `--offline-deps-dir`; a directory named for the selected instance is
+mounted read-only and copied into the disposable grader as
+`/run/swebench-offline/{npm,yarn}`. The cache is not present in solver-visible images.
+When a task repo declares a required bundle, it must be supplied even with
+`--allow-network`; task evaluation scripts may independently enforce offline package
+manager mode.
+When grading from a task checkout, pass `--task-repo` so binary test fixtures are read
+from its local `test_assets/` mirror instead of requiring their original URLs.
+Offline evaluation intentionally treats a missing local fixture as an infrastructure
+error. Legacy URL-only evaluation requires the explicit `--allow-network` opt-in, which
+also gives the grader container network access.
+Build images first, then create dependency bundles from those exact images; evaluation
+with `--offline-deps-dir` therefore also requires `--reuse-images`.
 
 Artifacts go to `logs/evaluation/<run_id>/`, the summary to its `results.json`.
 That path is relative to where you run the command.

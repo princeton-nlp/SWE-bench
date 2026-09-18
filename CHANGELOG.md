@@ -22,6 +22,30 @@ Added:
   trajectories to `logs/inference/<run_id>`.
 * `swebench submit package|publish|register|verify` build and check a leaderboard
   submission, and `swebench submit hf` publishes to a HuggingFace bucket.
+* Local evaluation containers now default to Docker network mode `none`; use
+  `--allow-network` only for an explicitly networked run. `--offline-deps-dir` mounts a
+  sparse private cache store per instance, read-only on the host and copied to a writable
+  grader-only location for both root and unprivileged test users inside the disposable
+  container. Offline runs never fall back to
+  downloading missing binary grading assets. Before applying a candidate patch, the
+  evaluator rejects images containing known baked-in grading paths. Gold-only binary
+  assets are enabled solely by the trusted `--gold` mode, never by prediction-file fields.
+* `swebench eval --no-patch` runs baseline negative controls through the same evaluator
+  and grading path as submitted and gold patches.
+* `swebench images build --split <name>` limits a task-repository build to one split.
+  `--reuse-images` now refuses missing local images instead of pulling registry fallbacks,
+  verifies a build-input attestation, and creates containers by immutable image ID.
+  Private dependency bundles require that explicit reuse mode and are bound to the image,
+  reference patch, and dependency policy from which they were built.
+
+Fixed:
+* Evaluation scripts merge stderr into stdout before execution, and Mocha JSON parsers
+  recover every complete reporter object from noisy logs. This prevents Docker/Podman
+  stream batching from moving valid results outside their command trace.
+* Non-UTF-8 bytes in a repository diff no longer abort an otherwise completed grade.
+* Negative-control reports now distinguish an intentionally absent patch from a failed
+  patch application, and run metadata cannot be overwritten with different network or
+  input settings on resume.
 
 ## [5.0.1] - 8/17/2026
 

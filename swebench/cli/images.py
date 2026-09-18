@@ -23,6 +23,9 @@ def build(
     instance_ids: Optional[list[str]] = typer.Option(
         None, "-i", "--instance", help="Only these instances (repeatable)"
     ),
+    split: Optional[str] = typer.Option(
+        None, "-s", "--split", help="Only tasks in this split"
+    ),
     workers: int = typer.Option(4, "-j", "--workers"),
     force_rebuild: bool = typer.Option(False, "--force-rebuild"),
     namespace: Optional[str] = typer.Option(
@@ -30,12 +33,12 @@ def build(
     ),
     tag: str = typer.Option("latest", "--tag"),
     dry_run: bool = typer.Option(False, "--dry-run", help="List what would be built"),
-    open_file_limit: int = typer.Option(4096, "--open-file-limit"),
+    open_file_limit: int = typer.Option(65536, "--open-file-limit"),
 ):
     """Build images ahead of an evaluation, from a task repo.
 
-    Builds everything the repo publishes. Use -i to narrow to a subset, which can
-    name a task in an unpublished split.
+    Builds everything the repo publishes. Use --split or -i to narrow the build;
+    an explicit instance may name a task in an unpublished split.
 
     [yellow][bold]Examples:[/bold][/yellow]
 
@@ -60,8 +63,9 @@ def build(
             namespace=namespace,
             tag=tag,
             dry_run=dry_run,
+            split=split,
         )
-    except (CheckFailed, UnknownDataset) as e:
+    except (CheckFailed, UnknownDataset, ValueError, RuntimeError) as e:
         typer.echo(str(e), err=True)
         raise typer.Exit(1) from e
 

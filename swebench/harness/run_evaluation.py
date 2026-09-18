@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import docker
+import hashlib
 import json
 from datetime import datetime, timezone
 import os
 import platform
+import re
+import shlex
+import urllib.parse
 import urllib.request
 import traceback
 
@@ -15,6 +19,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pathlib import Path, PurePosixPath
 
 from swebench.image_builder.constants import CONTAINER_USER, CONTAINER_WORKDIR
+from swebench.image_builder.image_spec import canonical_image_ref
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
@@ -74,6 +79,10 @@ def create_container(
     client: docker.DockerClient,
     run_id: str,
     logger: logging.Logger,
+    allow_network: bool = False,
+    offline_deps_dir: str | Path | None = None,
+    pull_missing: bool = True,
+    task_repo: str | Path | None = None,
 ):
     """
     Creates a container from an instance image for running evaluation.
@@ -83,26 +92,90 @@ def create_container(
         client (docker.DockerClient): Docker client for creating the container
         run_id (str): Run ID identifying process, used for the container name
         logger (logging.Logger): Logger to use for logging the creation process
+        allow_network (bool): Give the container Docker's default network instead
+            of the network-isolated default
+        offline_deps_dir (str | Path | None): Root containing one read-only
+            dependency-cache directory per instance
+        pull_missing (bool): Pull a missing image from its registry. Task-repo runs
+            disable this so a stale published image cannot replace a missing build.
+        task_repo (str | Path | None): Source of dependency-bundle provenance metadata.
     """
     container = None
     try:
         # Check if the image exists
         try:
-            client.images.get(test_spec.image)
+            image_name = canonical_image_ref(test_spec.image)
+            image = client.images.get(image_name)
         except docker.errors.ImageNotFound:
+            if not pull_missing:
+                raise EvaluationError(
+                    test_spec.instance_id,
+                    f"Required local image is missing: {test_spec.image}",
+                    logger,
+                )
             try:
                 logger.info("Image not found locally, attempting to pull...")
-                client.images.pull(test_spec.image)
+                image = client.images.pull(image_name)
             except docker.errors.ImageNotFound:
                 raise EvaluationError(
                     test_spec.instance_id,
-                    f"Image {test_spec.image} not found for {test_spec.instance_id}",
+                    f"Image {image_name} not found for {test_spec.instance_id}",
                     logger,
                 )
 
         logger.info(f"Creating container for {test_spec.instance_id}...")
 
         container_name = f"sweb.eval.{test_spec.instance_id.lower()}.{run_id}"
+        create_kwargs = {
+            # Pin this container to the image object already validated above. A mutable
+            # tag could otherwise be retargeted between validation and creation.
+            "image": image.id,
+            "user": CONTAINER_USER,
+            "detach": True,
+            "command": "tail -f /dev/null",
+            # Docker's default seccomp profile only permits CLONE_NEWUSER with
+            # CAP_SYS_ADMIN, which browser sandboxes need (e.g. openlayers karma)
+            "cap_add": ["SYS_ADMIN"],
+        }
+        if not allow_network:
+            create_kwargs["network_mode"] = "none"
+        else:
+            # Docker's default bridge is normally appropriate. A rootless engine can
+            # explicitly select another connected mode (for example ``host``) without
+            # weakening the isolated default used by normal grading.
+            network_override = os.environ.get("SWEBENCH_NETWORK_MODE")
+            if network_override:
+                create_kwargs["network_mode"] = network_override
+            proxy_env = {
+                name: os.environ[name]
+                for name in (
+                    "HTTP_PROXY",
+                    "HTTPS_PROXY",
+                    "NO_PROXY",
+                    "http_proxy",
+                    "https_proxy",
+                    "no_proxy",
+                )
+                if os.environ.get(name)
+            }
+            if proxy_env:
+                create_kwargs["environment"] = proxy_env
+        if offline_deps_dir is not None:
+            bundle = _offline_deps_bundle_path(offline_deps_dir, test_spec.instance_id)
+            if bundle is not None:
+                _validate_offline_deps_bundle(
+                    bundle, test_spec, image.id, task_repo=task_repo
+                )
+                create_kwargs["volumes"] = {
+                    str(bundle): {
+                        "bind": "/run/swebench-offline-seed",
+                        "mode": "ro,z",
+                    }
+                }
+                logger.info(
+                    f"Mounting offline dependency bundle for {test_spec.instance_id} "
+                    "as a read-only seed"
+                )
         # Remove any existing container with this name (handles ghost containers)
         try:
             old = client.containers.get(container_name)
@@ -114,14 +187,8 @@ def create_container(
             pass
         try:
             container = client.containers.create(
-                image=test_spec.image,
                 name=container_name,
-                user=CONTAINER_USER,
-                detach=True,
-                command="tail -f /dev/null",
-                # Docker's default seccomp profile only permits CLONE_NEWUSER with
-                # CAP_SYS_ADMIN, which browser sandboxes need (e.g. openlayers karma)
-                cap_add=["SYS_ADMIN"],
+                **create_kwargs,
             )
         except docker.errors.APIError as e:
             if "409" in str(e) or "Conflict" in str(e):
@@ -131,14 +198,8 @@ def create_container(
                 container_name = f"{container_name}.{int(time.time())}"
                 logger.info(f"Retrying with unique name: {container_name}")
                 container = client.containers.create(
-                    image=test_spec.image,
                     name=container_name,
-                    user=CONTAINER_USER,
-                    detach=True,
-                    command="tail -f /dev/null",
-                    # Docker's default seccomp profile only permits CLONE_NEWUSER with
-                    # CAP_SYS_ADMIN, which browser sandboxes need (e.g. openlayers karma)
-                    cap_add=["SYS_ADMIN"],
+                    **create_kwargs,
                 )
             else:
                 raise
@@ -151,25 +212,250 @@ def create_container(
         raise EvaluationError(test_spec.instance_id, str(e), logger) from e
 
 
-def _resolve_asset_bytes(asset: dict, task_repo: str | None, logger) -> bytes | None:
+def _offline_deps_bundle_path(
+    offline_deps_dir: str | Path, instance_id: str
+) -> Path | None:
+    """Return the private cache directory for one instance.
+
+    The evaluator accepts a store whose immediate children are instance IDs.  It
+    mounts only the selected child, never the task repo or the whole private store.
+    That child may contain ``npm`` and/or ``yarn`` directories; they are copied to
+    ``/run/swebench-offline/npm`` and ``/run/swebench-offline/yarn`` in the grader.
+    """
+    if Path(instance_id).name != instance_id or instance_id in {"", ".", ".."}:
+        raise ValueError(
+            f"Unsafe instance ID for offline dependency lookup: {instance_id!r}"
+        )
+
+    root = Path(offline_deps_dir).expanduser().resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"Offline dependency root is not a directory: {root}")
+    bundle = root / instance_id
+    if not bundle.exists():
+        return None
+    if not bundle.is_dir():
+        raise ValueError(
+            f"Offline dependency bundle for {instance_id} is not a directory: {bundle}"
+        )
+    resolved_bundle = bundle.resolve()
+    try:
+        resolved_bundle.relative_to(root)
+    except ValueError as e:
+        raise ValueError(
+            f"Offline dependency bundle for {instance_id} escapes its root: "
+            f"{resolved_bundle}"
+        ) from e
+    return resolved_bundle
+
+
+def _required_offline_deps(task_repo: str | Path | None) -> set[str]:
+    """Load instance IDs whose manifest changes require a private offline cache."""
+    if task_repo is None:
+        return set()
+    path = Path(task_repo).expanduser().resolve() / "offline_dependencies.json"
+    if not path.is_file():
+        return set()
+    data = json.loads(path.read_text())
+    if data.get("schema_version") != 1 or not isinstance(data.get("instances"), dict):
+        raise ValueError(f"Invalid offline dependency metadata: {path}")
+    return set(data["instances"])
+
+
+def _patch_changes_root_package_json(patch: str | None) -> bool:
+    """Whether a unified diff changes the repository-root package manifest."""
+    if not patch:
+        return False
+    return bool(
+        re.search(
+            r"^diff --git (?:a/)?package\.json (?:b/)?package\.json\s*$",
+            patch,
+            re.MULTILINE,
+        )
+    )
+
+
+def _validate_offline_deps_bundle(
+    bundle: Path,
+    test_spec: TestSpec,
+    image_digest: str,
+    task_repo: str | Path | None = None,
+) -> dict:
+    """Reject a cache built for another task or mutable image revision."""
+    manifest_path = bundle / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Offline dependency manifest is missing: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("schema_version") != 1:
+        raise ValueError(f"Unsupported offline dependency manifest: {manifest_path}")
+    if manifest.get("instance_id") != test_spec.instance_id:
+        raise ValueError(
+            f"Offline dependency bundle names {manifest.get('instance_id')!r}, "
+            f"expected {test_spec.instance_id!r}"
+        )
+    expected_digest = str(manifest.get("image_digest", "")).removeprefix("sha256:")
+    actual_digest = str(image_digest).removeprefix("sha256:")
+    if not expected_digest or expected_digest != actual_digest:
+        raise ValueError(
+            f"Offline dependency bundle image digest {expected_digest!r} does not "
+            f"match {test_spec.image} digest {actual_digest!r}"
+        )
+    manager = manifest.get("manager")
+    if manager not in {"npm", "yarn"} or not (bundle / manager).is_dir():
+        raise ValueError(
+            f"Offline dependency bundle has no valid npm/yarn cache: {bundle}"
+        )
+    if task_repo is not None:
+        task_root = Path(task_repo).expanduser().resolve()
+        gold_patch = task_root / "tasks" / test_spec.instance_id / "gold.patch"
+        config_path = task_root / "offline_dependencies.json"
+        if not gold_patch.is_file() or not config_path.is_file():
+            raise FileNotFoundError(
+                f"Cannot validate dependency bundle provenance for {test_spec.instance_id}"
+            )
+        config = json.loads(config_path.read_text())
+        dependency_config = config.get("instances", {}).get(test_spec.instance_id)
+        if not isinstance(dependency_config, dict):
+            raise ValueError(
+                f"No dependency metadata for {test_spec.instance_id} in {config_path}"
+            )
+        expected_patch = hashlib.sha256(gold_patch.read_bytes()).hexdigest()
+        expected_config = hashlib.sha256(
+            json.dumps(
+                dependency_config, sort_keys=True, separators=(",", ":")
+            ).encode()
+        ).hexdigest()
+        if manifest.get("gold_patch_sha256") != expected_patch:
+            raise ValueError(
+                f"Offline dependency bundle gold patch is stale for {test_spec.instance_id}"
+            )
+        if manifest.get("dependency_config_sha256") != expected_config:
+            raise ValueError(
+                f"Offline dependency bundle configuration is stale for {test_spec.instance_id}"
+            )
+    return manifest
+
+
+def _prepare_offline_deps(container, instance_id: str, logger) -> None:
+    """Copy an immutable cache seed to the writable paths package managers use.
+
+    npm and Yarn both update cache bookkeeping during an offline install. Mounting
+    the host cache directly at ``/run/swebench-offline`` read-only therefore fails
+    with EROFS. The source remains immutable and shared, while every disposable
+    grader gets its own writable copy.
+    """
+    result = container.exec_run(
+        [
+            "/bin/bash",
+            "-c",
+            "rm -rf /run/swebench-offline && "
+            "mkdir -p /run/swebench-offline && "
+            "cp -a /run/swebench-offline-seed/. /run/swebench-offline/ && "
+            "chmod -R a+rwX /run/swebench-offline",
+        ],
+        user="root",
+    )
+    if result.exit_code != 0:
+        output = result.output.decode("utf-8", errors="replace")
+        raise EvaluationError(
+            instance_id,
+            f"Could not stage the offline dependency bundle: {output}",
+            logger,
+        )
+    logger.info(
+        "Copied the read-only dependency seed to writable "
+        "/run/swebench-offline for this container"
+    )
+
+
+def _assert_no_baked_grading_material(
+    container, instance_id: str, logger, allow_offline_seed: bool = False
+) -> None:
+    """Reject solver-visible images containing known private grader paths."""
+    forbidden = (
+        "/swebench/image_assets",
+        "/image_assets",
+        "/run/swebench-offline",
+        "/gold.patch",
+        "/test.patch",
+        "/tests.json",
+        "/eval.sh",
+        CONTAINER_PATCH_FILE,
+    )
+    if not allow_offline_seed:
+        forbidden += ("/run/swebench-offline-seed",)
+    command = "for path in " + " ".join(map(shlex.quote, forbidden)) + "; do "
+    command += 'if [ -e "$path" ]; then printf "%s\\n" "$path"; fi; done'
+    result = container.exec_run(["/bin/bash", "-c", command], user="root")
+    output = result.output.decode("utf-8", errors="replace").strip()
+    if result.exit_code != 0:
+        raise EvaluationError(
+            instance_id,
+            f"Could not inspect image for grading material: {output}",
+            logger,
+        )
+    if output:
+        raise EvaluationError(
+            instance_id,
+            "Solver-visible image contains forbidden grading material: "
+            + ", ".join(output.splitlines()),
+            logger,
+        )
+
+
+def _resolve_asset_bytes(
+    asset: dict,
+    task_repo: str | None,
+    logger,
+    allow_network: bool = True,
+) -> bytes | None:
     """Read an asset from the task repo if there is one, else fetch its url."""
+    _validate_asset_path(asset["path"])
     if task_repo is not None:
         local = asset_path(task_repo, asset["instance_id"], asset["path"])
         if local.is_file():
             return local.read_bytes()
-    if not asset.get("url"):
+    if not allow_network:
+        logger.warning(
+            f"Offline grading requires a local copy of {asset['instance_id']} "
+            f"asset {asset['path']}"
+        )
+        return None
+    url = asset.get("url")
+    if not url:
         logger.warning(f"No asset for {asset['instance_id']} at {asset['path']}")
         return None
+    if urllib.parse.urlparse(url).scheme not in {"http", "https"}:
+        logger.warning(f"Refusing non-HTTP asset URL: {url}")
+        return None
     try:
-        with urllib.request.urlopen(asset["url"], timeout=60) as resp:
+        with urllib.request.urlopen(url, timeout=60) as resp:
             return resp.read()
     except Exception as e:
-        logger.warning(f"Could not fetch image asset {asset['url']}: {e}")
+        logger.warning(f"Could not fetch image asset {url}: {e}")
         return None
+
+
+def _validate_asset_path(path: str) -> None:
+    """Reject absolute, escaping, or control-character asset paths."""
+    if not isinstance(path, str) or not path:
+        raise ValueError(f"asset path is not a non-empty string: {path!r}")
+    parsed = PurePosixPath(path)
+    if parsed.is_absolute():
+        raise ValueError(f"asset path is absolute: {path!r}")
+    if any(part in {"", ".", ".."} for part in parsed.parts):
+        raise ValueError(f"asset path contains an unsafe component: {path!r}")
+    if any(ord(char) < 32 or ord(char) == 127 for char in path):
+        raise ValueError(f"asset path contains a control character: {path!r}")
 
 
 def _stage_image_assets(
-    container, test_spec, log_dir: Path, logger, task_repo: str | None = None
+    container,
+    test_spec,
+    log_dir: Path,
+    logger,
+    task_repo: str | None = None,
+    allow_network: bool = True,
+    include_patch_assets: bool = False,
 ) -> list[str]:
     """Stage a patch's binary assets in the container; return restore commands.
 
@@ -181,7 +467,10 @@ def _stage_image_assets(
     """
     declared = test_spec.image_assets or {}
     assets = []
-    for key in ("test_patch", "patch"):
+    kinds = ["test_patch"]
+    if include_patch_assets:
+        kinds.append("patch")
+    for key in kinds:
         for entry in declared.get(key) or []:
             if entry.get("path"):
                 assets.append({**entry, "instance_id": test_spec.instance_id})
@@ -192,9 +481,17 @@ def _stage_image_assets(
     container.exec_run("mkdir -p /image_assets", user="root")
     restore, from_mirror = [], 0
     for asset in assets:
-        data = _resolve_asset_bytes(asset, task_repo, logger)
+        _validate_asset_path(asset["path"])
+        data = _resolve_asset_bytes(
+            asset, task_repo, logger, allow_network=allow_network
+        )
         if data is None:
-            continue
+            source = "local" if not allow_network else "local or remote"
+            raise EvaluationError(
+                test_spec.instance_id,
+                f"Missing {source} binary grading asset: {asset['path']}",
+                logger,
+            )
         if (
             task_repo is not None
             and asset_path(task_repo, asset["instance_id"], asset["path"]).is_file()
@@ -204,8 +501,12 @@ def _stage_image_assets(
         local = staging / flat
         local.write_bytes(data)
         copy_to_container(container, local, PurePosixPath("/image_assets") / flat)
+        quoted_path = shlex.quote(asset["path"])
+        quoted_flat = shlex.quote(flat)
         restore.append(
-            f"mkdir -p $(dirname {asset['path']}) && cp /image_assets/{flat} {asset['path']}"
+            f'{{ mkdir -p -- "$(dirname -- {quoted_path})" && '
+            f"cp -- /image_assets/{quoted_flat} {quoted_path}; }} || "
+            f"{{ echo 'failed to restore binary grading asset' >&2; exit 1; }}"
         )
     if restore:
         logger.info(
@@ -216,14 +517,22 @@ def _stage_image_assets(
 
 
 def _inject_asset_restore(eval_script: str, restore_cmds: list[str]) -> str:
-    """Insert asset-restore commands just before the test-output start marker."""
-    if not restore_cmds:
-        return eval_script
+    """Prepare an eval script for deterministic logging and grader-only assets.
+
+    Merging stderr into stdout inside the shell is necessary for Docker-compatible
+    runtimes that otherwise batch their two exec streams. Without it, test results can
+    move outside the start/end markers and be mistaken for missing tests.
+    """
     lines = eval_script.split("\n")
+    if "exec 2>&1" not in lines:
+        insert_at = 1 if lines and lines[0].startswith("#!") else 0
+        lines.insert(insert_at, "exec 2>&1")
+    if not restore_cmds:
+        return "\n".join(lines)
     for idx, line in enumerate(lines):
         if START_TEST_OUTPUT in line:
             return "\n".join(lines[:idx] + restore_cmds + lines[idx:])
-    return eval_script + "\n" + "\n".join(restore_cmds)
+    return "\n".join(lines + restore_cmds)
 
 
 def run_instance(
@@ -235,6 +544,9 @@ def run_instance(
     rewrite_reports: bool = False,
     skip_patch: bool = False,
     task_repo: str | None = None,
+    allow_network: bool = False,
+    offline_deps_dir: str | Path | None = None,
+    pull_missing: bool = True,
 ):
     """
     Run a single instance with the given prediction.
@@ -247,6 +559,10 @@ def run_instance(
         timeout (int): Timeout for running tests
         rewrite_reports (bool): True if eval run is just to reformat existing report
         skip_patch (bool): True to skip applying model patch (negative test mode)
+        task_repo (str | None): Optional local task repository
+        allow_network (bool): Opt in to Docker's default network for this grader
+        offline_deps_dir (str | Path | None): Per-instance dependency bundle root
+        pull_missing (bool): Whether a missing local image may be pulled
     """
     # Set up logging directory
     instance_id = test_spec.instance_id
@@ -281,9 +597,31 @@ def run_instance(
     container = None
     try:
         # Create container from image
-        container = create_container(test_spec, client, run_id, logger)
+        container = create_container(
+            test_spec,
+            client,
+            run_id,
+            logger,
+            allow_network=allow_network,
+            offline_deps_dir=offline_deps_dir,
+            pull_missing=pull_missing,
+            task_repo=task_repo,
+        )
         container.start()
         logger.info(f"Container for {instance_id} started: {container.id}")
+        if task_repo is not None:
+            # Registry images may predate this contract; task-repo validation must
+            # prove that the image produced by the candidate checkout is clean.
+            has_offline_seed = (
+                offline_deps_dir is not None
+                and _offline_deps_bundle_path(offline_deps_dir, instance_id) is not None
+            )
+            _assert_no_baked_grading_material(
+                container,
+                instance_id,
+                logger,
+                allow_offline_seed=has_offline_seed,
+            )
 
         if not skip_patch:
             # Copy model prediction as patch file to container
@@ -338,12 +676,18 @@ def run_instance(
         else:
             logger.info(f"Skipping model patch for {instance_id} (--no-patch mode)")
 
+        if (
+            offline_deps_dir is not None
+            and _offline_deps_bundle_path(offline_deps_dir, instance_id) is not None
+        ):
+            _prepare_offline_deps(container, instance_id, logger)
+
         # Get git diff before running eval script
         git_diff_output_before = (
             container.exec_run(
                 "git -c core.fileMode=false diff", workdir=CONTAINER_WORKDIR
             )
-            .output.decode("utf-8")
+            .output.decode("utf-8", errors="replace")
             .strip()
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
@@ -353,7 +697,13 @@ def run_instance(
         # them as urls in image_assets; without this the tests run against a
         # missing baseline and error out.
         restore_cmds = _stage_image_assets(
-            container, test_spec, log_dir, logger, task_repo
+            container,
+            test_spec,
+            log_dir,
+            logger,
+            task_repo,
+            allow_network=allow_network,
+            include_patch_assets=bool(pred.get("reference_patch")),
         )
 
         eval_file = Path(log_dir / "eval.sh")
@@ -385,7 +735,7 @@ def run_instance(
             container.exec_run(
                 "git -c core.fileMode=false diff", workdir=CONTAINER_WORKDIR
             )
-            .output.decode("utf-8")
+            .output.decode("utf-8", errors="replace")
             .strip()
         )
 
@@ -438,6 +788,9 @@ def run_instances(
     rewrite_reports: bool = False,
     skip_patch: bool = False,
     task_repo: str | None = None,
+    allow_network: bool = False,
+    offline_deps_dir: str | Path | None = None,
+    pull_missing: bool = True,
 ):
     """
     Run all instances for the given predictions in parallel.
@@ -450,6 +803,9 @@ def run_instances(
         run_id (str): Run ID
         timeout (int): Timeout for running tests
         rewrite_reports (bool): True if eval run is just to reformat existing report
+        allow_network (bool): Opt in to Docker's default network for graders
+        offline_deps_dir (str | Path | None): Per-instance dependency bundle root
+        pull_missing (bool): Whether workers may pull missing local images
     """
     client = _docker_client()
     test_specs = [make_test_spec(instance) for instance in instances]
@@ -467,6 +823,9 @@ def run_instances(
                 rewrite_reports,
                 skip_patch,
                 task_repo,
+                allow_network,
+                offline_deps_dir,
+                pull_missing,
             )
         )
 
@@ -477,7 +836,14 @@ def run_instances(
 
 
 def write_run_metadata(
-    run_id: str, dataset_name: str, split: str, task_repo: str | None
+    run_id: str,
+    dataset_name: str,
+    split: str,
+    task_repo: str | None,
+    allow_network: bool = False,
+    offline_deps_dir: str | Path | None = None,
+    reuse_images: bool = False,
+    prediction_mode: str = "gold",
 ) -> Path:
     """Record what this run graded against.
 
@@ -487,22 +853,51 @@ def write_run_metadata(
     """
     path = RUN_EVALUATION_LOG_DIR / run_id / LOG_RUN_METADATA
     path.parent.mkdir(parents=True, exist_ok=True)
-    # a re-grade passes no task repo, and overwriting the recorded one with null
-    # loses the only record of which tests the run was graded against
-    if task_repo is None and path.is_file():
-        task_repo = json.loads(path.read_text()).get("task_repo")
-    path.write_text(
-        json.dumps(
-            {
-                "dataset": dataset_name,
-                "split": split,
-                "task_repo": task_repo,
-                "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            },
-            indent=2,
-        )
-        + "\n"
-    )
+    metadata = {
+        "dataset": dataset_name,
+        "split": split,
+        "task_repo": task_repo,
+        "allow_network": allow_network,
+        "network_mode": (
+            os.environ.get("SWEBENCH_NETWORK_MODE", "default")
+            if allow_network
+            else "none"
+        ),
+        "offline_deps_dir": (
+            str(Path(offline_deps_dir).expanduser().resolve())
+            if offline_deps_dir is not None
+            else None
+        ),
+        "reuse_images": reuse_images,
+        "prediction_mode": prediction_mode,
+    }
+    if path.is_file():
+        existing = json.loads(path.read_text())
+        # ``reuse_images`` was added after run metadata first shipped; absence means
+        # the old build-before-eval behavior, which is equivalent to false.
+        existing.setdefault("reuse_images", False)
+        # Older metadata predates explicit negative controls and therefore represented
+        # gold runs. For an in-progress legacy no-patch run, tolerate the absent field;
+        # the report command can infer it from the saved model directory.
+        if "prediction_mode" not in existing:
+            existing["prediction_mode"] = metadata["prediction_mode"]
+        mismatches = {
+            key: (existing.get(key), value)
+            for key, value in metadata.items()
+            if existing.get(key) != value
+        }
+        if mismatches:
+            details = ", ".join(
+                f"{key}: {old!r} != {new!r}"
+                for key, (old, new) in sorted(mismatches.items())
+            )
+            raise ValueError(
+                f"Run {run_id!r} already has incompatible execution metadata: "
+                + details
+            )
+        return path
+    metadata["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    path.write_text(json.dumps(metadata, indent=2) + "\n")
     return path
 
 
@@ -648,15 +1043,20 @@ def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, cli
     evaluation will actually use, so a naming mismatch cannot pass for a build.
     """
     from swebench.image_builder.docker_build import build_instance_images
-    from swebench.image_builder.image_spec import get_image_specs_from_dataset
+    from swebench.image_builder.image_spec import (
+        get_image_specs_from_dataset,
+        image_namespace_and_tag,
+    )
     from swebench.image_builder.prepare_images import resolve_task_repo
     from swebench.task.repo import load_dockerfiles, task_paths
 
-    wanted = {d["instance_id"]: make_test_spec(d).image for d in dataset}
+    wanted = {
+        d["instance_id"]: canonical_image_ref(make_test_spec(d).image)
+        for d in dataset
+    }
     # namespace and tag come from the image the dataset names, so built tags match
     sample = next(iter(wanted.values()))
-    namespace = sample.split("/")[0] if "/" in sample else None
-    tag = sample.rsplit(":", 1)[1] if ":" in sample.rsplit("/", 1)[-1] else "latest"
+    namespace, tag = image_namespace_and_tag(sample)
 
     print(f"Building {len(wanted)} image(s) from {task_repo} before evaluating...")
     with resolve_task_repo(task_repo) as repo_path:
@@ -665,35 +1065,93 @@ def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, cli
         image_specs = get_image_specs_from_dataset(
             dataset, dockerfiles, namespace, tag, contexts
         )
+        mismatched_specs = {
+            spec.instance_id: (spec.name, wanted[spec.instance_id])
+            for spec in image_specs
+            if spec.instance_id in wanted and spec.name != wanted[spec.instance_id]
+        }
+        if mismatched_specs:
+            details = ", ".join(
+                f"{instance_id}: {actual} != {expected}"
+                for instance_id, (actual, expected) in sorted(
+                    mismatched_specs.items()
+                )
+            )
+            raise RuntimeError("Task-repo image tag mismatch: " + details)
+        spec_ids = {spec.instance_id for spec in image_specs}
+        missing_specs = sorted(set(wanted) - spec_ids)
+        if missing_specs:
+            raise RuntimeError(
+                "Task repo did not produce Docker build specs for: "
+                + ", ".join(missing_specs)
+            )
         if not image_specs:
             print("No Dockerfiles matched these instances; nothing was built.")
         else:
-            build_instance_images(
+            _successful, failed = build_instance_images(
                 client=client,
                 image_specs=image_specs,
                 force_rebuild=True,
                 max_workers=max_workers,
             )
+            if failed:
+                raise RuntimeError(
+                    f"{len(failed)} task-repo image build(s) failed; "
+                    "refusing registry fallback"
+                )
 
-    # trust the registry only where a build did not produce the image
-    missing = []
-    for iid, image in wanted.items():
-        try:
-            client.images.get(image)
-        except docker.errors.ImageNotFound:
-            missing.append((iid, image))
-    if not missing:
-        print(f"Built {len(wanted)} image(s) locally; none pulled.")
-        return
-    print(
-        f"BUILD FAILED for {len(missing)} instance(s): {', '.join(i for i, _ in sorted(missing))}"
+    # A task-repo validation run must exercise exactly the image built from that
+    # checkout. Falling back to a stale registry image can turn a failed build into a
+    # false green result and can reintroduce files intentionally removed for isolation.
+    _require_local_images(dataset, client, task_repo)
+    print(f"Built {len(wanted)} image(s) locally; none pulled.")
+
+
+def _require_local_images(dataset: list[dict], client, task_repo: str | Path) -> None:
+    """Ensure reused images exist and match the current task-repo build inputs."""
+    from swebench.image_builder.image_spec import (
+        image_namespace_and_tag,
+        make_image_spec,
     )
-    for iid, image in missing:
+    from swebench.task.repo import load_dockerfiles, task_paths
+
+    ids = [instance["instance_id"] for instance in dataset]
+    dockerfiles = load_dockerfiles(task_repo, ids)
+    contexts = task_paths(task_repo, ids)
+    missing = []
+    stale = []
+    for instance in dataset:
+        spec = make_test_spec(instance)
         try:
-            client.images.pull(image)
-            print(f"  {iid}: build failed; FELL BACK to the published image {image}")
+            image = client.images.get(canonical_image_ref(spec.image))
         except docker.errors.ImageNotFound:
-            print(f"  {iid}: build failed and no published image exists; it will error")
+            missing.append(f"{spec.instance_id} ({spec.image})")
+            continue
+        namespace, tag = image_namespace_and_tag(spec.image)
+        build_spec = make_image_spec(
+            instance,
+            dockerfiles[spec.instance_id],
+            namespace,
+            tag,
+            contexts[spec.instance_id],
+        )
+        labels = (image.attrs.get("Config") or {}).get("Labels") or {}
+        actual_digest = labels.get("org.swebench.build-input-sha256")
+        if (
+            build_spec.name != canonical_image_ref(spec.image)
+            or actual_digest != build_spec.build_input_digest
+        ):
+            stale.append(spec.instance_id)
+    if missing:
+        raise RuntimeError(
+            "--reuse-images requires every task image to exist locally; missing: "
+            + ", ".join(sorted(missing))
+        )
+    if stale:
+        raise RuntimeError(
+            "--reuse-images found images not built from the current task checkout: "
+            + ", ".join(sorted(stale))
+        )
 
 
 def main(
@@ -708,10 +1166,21 @@ def main(
     rewrite_reports: bool,
     modal: bool,
     task_repo: str | None = None,
+    allow_network: bool = False,
+    offline_deps_dir: str | Path | None = None,
+    reuse_images: bool = False,
 ):
     """
     Run evaluation harness for the given dataset and predictions.
     """
+    if task_repo is not None:
+        local_task_repo = Path(task_repo).expanduser()
+        if local_task_repo.is_dir():
+            task_repo = str(local_task_repo.resolve())
+    local_dataset = Path(dataset_name).expanduser()
+    if local_dataset.is_file():
+        dataset_name = str(local_dataset.resolve())
+
     if dataset_name == "SWE-bench/SWE-bench_Multimodal" and split == "test":
         print(
             "ℹ️ Running local evaluation for the test split of SWE-bench Multimodal. "
@@ -727,15 +1196,80 @@ def main(
             "repo's Dockerfiles would be ignored while its tests were used. Drop "
             "--task-repo to run on Modal, or drop --modal to build the repo."
         )
+    if modal and offline_deps_dir:
+        raise ValueError(
+            "--offline-deps-dir is only supported by local evaluation containers; "
+            "drop --modal to use the private dependency bundles."
+        )
+    if modal and predictions_path == "no-patch":
+        raise ValueError("--no-patch is currently supported only by local evaluation")
+    if reuse_images and not task_repo:
+        raise ValueError("--reuse-images requires --task-repo")
+    if offline_deps_dir and not task_repo and not rewrite_reports:
+        raise ValueError("--offline-deps-dir requires --task-repo for provenance checks")
+    if (
+        offline_deps_dir
+        and task_repo
+        and not Path(task_repo).is_dir()
+        and not rewrite_reports
+    ):
+        raise ValueError(
+            "--offline-deps-dir requires a local --task-repo for provenance checks"
+        )
+    if task_repo and offline_deps_dir and not reuse_images and not rewrite_reports:
+        raise ValueError(
+            "--offline-deps-dir with --task-repo requires --reuse-images; "
+            "build images first so bundle digests cannot be invalidated"
+        )
+
+    if offline_deps_dir is not None:
+        # Keep metadata and all worker payloads stable even if the caller changes
+        # its working directory while a run is in progress. Re-grading starts no
+        # containers, so it must still work after a private bundle has been moved.
+        offline_deps_dir = str(Path(offline_deps_dir).expanduser().resolve())
+        if not rewrite_reports and not Path(offline_deps_dir).is_dir():
+            raise ValueError(
+                f"--offline-deps-dir is not a directory: {offline_deps_dir}"
+            )
+
+    skip_patch = predictions_path == "no-patch"
 
     # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
     # load predictions as map of instance_id to prediction
-    predictions = get_predictions_from_file(
+    loaded_predictions = get_predictions_from_file(
         predictions_path, dataset_name, split, task_repo, instance_ids
     )
+    # These flags control trusted grader behavior and are not part of the prediction
+    # format. Never let a submitted JSON/JSONL file opt into reference-only assets or
+    # claim that its patch was intentionally skipped.
+    reference_patch = predictions_path == "gold"
+    predictions = [
+        {
+            **prediction,
+            "skip_patch": skip_patch,
+            "reference_patch": reference_patch,
+        }
+        for prediction in loaded_predictions
+    ]
     predictions = {pred["instance_id"]: pred for pred in predictions}
-    write_run_metadata(run_id, dataset_name, split, task_repo)
+    if not rewrite_reports:
+        write_run_metadata(
+            run_id,
+            dataset_name,
+            split,
+            task_repo,
+            allow_network=allow_network,
+            offline_deps_dir=offline_deps_dir,
+            reuse_images=reuse_images,
+            prediction_mode=(
+                "gold"
+                if predictions_path == "gold"
+                else "no-patch"
+                if predictions_path == "no-patch"
+                else "predictions"
+            ),
+        )
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(
@@ -748,6 +1282,33 @@ def main(
         task_repo=task_repo,
     )
     full_dataset = load_instances(dataset_name, split, instance_ids, task_repo)
+
+    if not rewrite_reports:
+        selected_ids = {instance["instance_id"] for instance in dataset}
+        declared_ids = _required_offline_deps(task_repo) & selected_ids
+        required_ids = {
+            instance_id
+            for instance_id in declared_ids
+            if not skip_patch
+            and _patch_changes_root_package_json(
+                predictions[instance_id].get("model_patch")
+            )
+        }
+        if required_ids and offline_deps_dir is None:
+            raise ValueError(
+                "Dependency bundles are required for task-repo evaluation of: "
+                + ", ".join(sorted(required_ids))
+            )
+        if offline_deps_dir is not None:
+            # The store is intentionally sparse, but every task declared by this task
+            # repo must be present. Other selected tasks simply get no cache mount.
+            for instance_id in sorted(required_ids):
+                if _offline_deps_bundle_path(offline_deps_dir, instance_id) is None:
+                    raise FileNotFoundError(
+                        f"No offline dependency bundle for required task {instance_id}"
+                    )
+            for instance in dataset:
+                _offline_deps_bundle_path(offline_deps_dir, instance["instance_id"])
 
     if modal:
         # run instances on Modal
@@ -769,10 +1330,12 @@ def main(
     else:
         # a re-grade reads existing logs and starts no container, so building the
         # images it names would cost hours and change nothing
-        if task_repo and not rewrite_reports:
+        if task_repo and not rewrite_reports and not reuse_images:
             _build_before_eval(
                 dataset, dataset_name, split, task_repo, max_workers, client
             )
+        elif task_repo and not rewrite_reports:
+            _require_local_images(dataset, client, task_repo)
         # run instances (images assumed to be pre-built)
         run_instances(
             predictions,
@@ -781,7 +1344,11 @@ def main(
             run_id,
             timeout,
             rewrite_reports=rewrite_reports,
+            skip_patch=skip_patch,
             task_repo=task_repo,
+            allow_network=allow_network,
+            offline_deps_dir=offline_deps_dir,
+            pull_missing=task_repo is None,
         )
 
     # make final report
@@ -845,6 +1412,37 @@ if __name__ == "__main__":
         type=str2bool,
         default=False,
         help="Doesn't run new instances, only writes reports for instances with existing test outputs",
+    )
+    parser.add_argument(
+        "--allow-network",
+        action="store_true",
+        help=(
+            "Allow network access in local evaluation containers (default: "
+            "network_mode=none)"
+        ),
+    )
+    parser.add_argument(
+        "--offline-deps-dir",
+        type=str,
+        help=(
+            "Private cache root; <instance_id> is mounted as an immutable seed "
+            "for /run/swebench-offline"
+        ),
+    )
+    parser.add_argument(
+        "--task_repo",
+        "--task-repo",
+        dest="task_repo",
+        type=str,
+        default=None,
+        help="Task repository used for image builds, fixtures, and bundle provenance",
+    )
+    parser.add_argument(
+        "--reuse_images",
+        "--reuse-images",
+        dest="reuse_images",
+        action="store_true",
+        help="Use locally prebuilt task-repo images without rebuilding",
     )
     # Modal execution args
     parser.add_argument("--modal", type=str2bool, default=False, help="Run on Modal")

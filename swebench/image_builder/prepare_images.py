@@ -8,7 +8,11 @@ from argparse import ArgumentParser
 from contextlib import contextmanager
 from pathlib import Path
 
-from swebench.image_builder.image_spec import get_image_specs_from_dataset
+from swebench.image_builder.image_spec import (
+    canonical_image_ref,
+    image_namespace_and_tag,
+    make_image_spec,
+)
 from swebench.image_builder.docker_build import build_instance_images
 from swebench.image_builder.docker_utils import list_images
 from swebench.harness.utils import optional_str, str2bool
@@ -112,6 +116,7 @@ def main(
     namespace,
     tag,
     dry_run,
+    split=None,
 ):
     """
     Build Docker images for the tasks in a task repo.
@@ -126,6 +131,7 @@ def main(
         namespace (str): Docker registry namespace.
         tag (str): Docker image tag.
         dry_run (bool): If True, create docker files and build contexts but don't build images.
+        split (str | None): Only tasks in this split.
     """
     # Set open file limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
@@ -134,11 +140,36 @@ def main(
     with resolve_task_repo(task_repo) as repo_path:
         guard(repo_path)
         dataset = select_tasks(repo_path, instance_ids, datasets)
+        if split is not None:
+            dataset = [instance for instance in dataset if instance.get("split") == split]
+            if not dataset:
+                raise ValueError(f"No tasks matched split {split!r}")
         ids = [i["instance_id"] for i in dataset]
         dockerfiles = load_dockerfiles(repo_path, ids)
-        image_specs = get_image_specs_from_dataset(
-            dataset, dockerfiles, namespace, tag, task_paths(repo_path, ids)
-        )
+        contexts = task_paths(repo_path, ids)
+        image_specs = []
+        for instance in dataset:
+            inferred_namespace, _ = image_namespace_and_tag(instance["image"])
+            image_specs.append(
+                make_image_spec(
+                    instance,
+                    dockerfiles[instance["instance_id"]],
+                    namespace if namespace is not None else inferred_namespace,
+                    tag,
+                    contexts.get(instance["instance_id"]),
+                )
+            )
+        if namespace is None:
+            mismatches = [
+                f"{instance['instance_id']}: {spec.name} != {instance['image']}"
+                for instance, spec in zip(dataset, image_specs)
+                if spec.name != canonical_image_ref(instance["image"])
+            ]
+            if mismatches:
+                raise ValueError(
+                    "Default image names do not match task metadata: "
+                    + ", ".join(mismatches)
+                )
         image_specs = filter_image_specs(image_specs, client, force_rebuild)
 
         if len(image_specs) == 0:
@@ -166,6 +197,17 @@ def main(
         print(f"Successfully built {len(successful)} images")
         if len(failed) > 0:
             print(f"Failed to build {len(failed)} images")
+            failed_ids = [
+                payload[0].instance_id
+                if isinstance(payload, tuple) and payload
+                else str(payload)
+                for payload in failed
+            ]
+            raise RuntimeError(
+                f"{len(failed)} image build(s) failed: "
+                + ", ".join(sorted(failed_ids))
+            )
+    return 0
 
 
 if __name__ == "__main__":
@@ -183,7 +225,7 @@ if __name__ == "__main__":
         "--force_rebuild", type=str2bool, default=False, help="Force rebuild images"
     )
     parser.add_argument(
-        "--open_file_limit", type=int, default=8192, help="Open file limit"
+        "--open_file_limit", type=int, default=65536, help="Open file limit"
     )
     parser.add_argument(
         "--namespace",
@@ -200,6 +242,7 @@ if __name__ == "__main__":
         default=False,
         help="Create docker files and build contexts but don't build images",
     )
+    parser.add_argument("--split", type=str, default=None, help="Only tasks in this split")
     parser.add_argument(
         "--task_repo",
         type=str,
