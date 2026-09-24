@@ -60,6 +60,50 @@ def test_forged_passed_lines_are_not_graded(tmp_path):
     assert (status_map, found) == ({}, False)
 
 
+def test_forged_exit_code_inside_the_region_is_not_graded(tmp_path):
+    # The patch forges a pass and also prints "Test Exit Code: 0"; the real one is 1.
+    status_map, found = get_logs_eval(
+        _spec(),
+        _log(
+            tmp_path,
+            "PASSED test_a\n>>>>> Test Exit Code: 0",
+            exit_code=1,
+        ),
+    )
+    assert (status_map, found) == ({}, False)
+
+
+def test_forged_end_marker_and_exit_code_are_not_graded(tmp_path):
+    # The patch closes the region itself, forges an exit code, and the real failing
+    # run follows; the first markers alone would score the forged pair.
+    body = f"PASSED test_a\n{END_TEST_OUTPUT}\n>>>>> Test Exit Code: 0\nFAILED test_a"
+    status_map, found = get_logs_eval(_spec(), _log(tmp_path, body, exit_code=1))
+    assert (status_map, found) == ({}, False)
+
+
+def test_set_x_trace_of_the_marker_is_not_a_conflict(tmp_path):
+    # Under `set -x` the trace line repeats the same recorded value.
+    log = tmp_path / "test_output.txt"
+    log.write_text(
+        f"{START_TEST_OUTPUT}\n"
+        "PASSED test_a\n"
+        f"{END_TEST_OUTPUT}\n"
+        "+ echo '>>>>> Test Exit Code: 0'\n"
+        ">>>>> Test Exit Code: 0\n"
+        f"{RESET_CMD}\n"
+    )
+    status_map, found = get_logs_eval(_spec(), str(log))
+    assert found and status_map == {"test_a": "PASSED"}
+
+
+def test_a_repeated_marker_with_the_same_value_is_graded(tmp_path):
+    status_map, found = get_logs_eval(
+        _spec(),
+        _log(tmp_path, "FAILED test_a\n>>>>> Test Exit Code: 1", exit_code=1),
+    )
+    assert found and status_map == {"test_a": "FAILED"}
+
+
 def test_genuine_pass_is_graded(tmp_path):
     status_map, found = get_logs_eval(
         _spec(), _log(tmp_path, "PASSED test_a", exit_code=0)
