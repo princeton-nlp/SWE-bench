@@ -163,6 +163,12 @@ def get_logs_eval(test_spec: TestSpec, log_fp: str) -> tuple[dict[str, str], boo
         # so cross-check the log against the test command's exit status, recorded
         # by the eval script. Exiting non-zero while reporting no failure at all
         # means the log is not describing the run that actually happened.
+        if len(set(TEST_EXIT_CODE_RE.findall(content))) > 1:
+            # The eval script echoes its marker after the test command, but a patch
+            # can print its own earlier in the log. A genuine log repeats one value
+            # (the `set -x` trace echoes it too), so conflicting values mean the log
+            # is not describing the run that actually happened.
+            return {}, False
         exit_code = parse_test_exit_code(content)
         if (
             exit_code not in (None, 0)
