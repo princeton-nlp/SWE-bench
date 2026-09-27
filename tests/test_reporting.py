@@ -4,6 +4,8 @@ Always the run's own log directory. It used to land relative to the CWD, which m
 run report appeared wherever the command happened to be invoked from (#498).
 """
 
+import json
+
 import pytest
 
 from swebench.harness import reporting
@@ -66,3 +68,36 @@ def test_default_does_not_write_into_the_cwd(log_dir, tmp_path, monkeypatch):
     predictions, full_dataset = _fixture()
     make_run_report(predictions, full_dataset, "run-d")
     assert list(cwd.iterdir()) == []
+
+
+def test_submitted_counts_only_the_selected_instances(log_dir):
+    """--instance_ids restricts full_dataset but not the predictions file (#666).
+
+    The console line already intersected the two; the JSON did not, so a predictions file
+    wider than the selection reported submitted_instances > total_instances.
+    """
+    selected = ["x__x-1", "x__x-2"]
+    predictions = {
+        instance_id: {
+            "instance_id": instance_id,
+            "model_name_or_path": "gold",
+            "model_patch": "diff",
+        }
+        for instance_id in [*selected, "x__x-3", "x__x-4"]
+    }
+    full_dataset = [{"instance_id": instance_id} for instance_id in selected]
+
+    out = make_run_report(predictions, full_dataset, "run-submitted")
+    report = json.loads(out.read_text())
+
+    assert report["submitted_instances"] == 2
+    assert report["submitted_ids"] == selected
+    assert report["submitted_instances"] <= report["total_instances"]
+
+
+def test_submitted_is_every_prediction_when_nothing_is_filtered(log_dir):
+    predictions, full_dataset = _fixture()
+    out = make_run_report(predictions, full_dataset, "run-unfiltered")
+    report = json.loads(out.read_text())
+    assert report["submitted_ids"] == ["x__x-1"]
+    assert report["submitted_instances"] == report["total_instances"] == 1
