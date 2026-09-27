@@ -121,8 +121,11 @@ def make_run_report(
 
     # print final report
     dataset_ids = {i["instance_id"] for i in full_dataset}
+    # Predictions outside the selected instances were never evaluated, so they are not part
+    # of this run: every other list below is built while evaluating and cannot contain them.
+    submitted_ids = sorted(set(predictions.keys()) & dataset_ids)
     print(f"Total instances: {len(full_dataset)}")
-    print(f"Instances submitted: {len(set(predictions.keys()) & dataset_ids)}")
+    print(f"Instances submitted: {len(submitted_ids)}")
     print(f"Instances completed: {len(completed_ids)}")
     print(f"Instances incomplete: {len(incomplete_ids)}")
     print(f"Instances resolved: {len(resolved_ids)}")
@@ -138,7 +141,7 @@ def make_run_report(
     # write report to file
     report = {
         "total_instances": len(full_dataset),
-        "submitted_instances": len(predictions),
+        "submitted_instances": len(submitted_ids),
         "completed_instances": len(completed_ids),
         "resolved_instances": len(resolved_ids),
         "unresolved_instances": len(unresolved_ids),
@@ -149,7 +152,7 @@ def make_run_report(
         "completed_ids": list(sorted(completed_ids)),
         "incomplete_ids": list(sorted(incomplete_ids)),
         "empty_patch_ids": list(sorted(empty_patch_ids)),
-        "submitted_ids": list(sorted(predictions.keys())),
+        "submitted_ids": submitted_ids,
         "resolved_ids": list(sorted(resolved_ids)),
         "unresolved_ids": list(sorted(unresolved_ids)),
         "infra_failure_ids": list(sorted(infra_failure_ids)),
