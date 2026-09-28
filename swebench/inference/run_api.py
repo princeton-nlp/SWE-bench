@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 import numpy as np
 import tiktoken
 import openai
-from anthropic import HUMAN_PROMPT, AI_PROMPT, Anthropic
+from anthropic import Anthropic
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -383,6 +383,8 @@ def anthropic_inference(
     if "claude-3" in model_name_or_path.lower():
         call_api = call_anthropic_v2
     else:
+        from anthropic import HUMAN_PROMPT, AI_PROMPT
+
         call_api = call_anthropic
     with open(output_file, "a+") as f:
         for datum in tqdm(test_dataset, desc=f"Inference for {model_name_or_path}"):
