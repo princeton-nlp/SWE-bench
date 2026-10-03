@@ -66,7 +66,14 @@ different dataset on purpose.
 ```bash
 swebench report my-run                     # dataset taken from the run itself
 swebench report my-run -d multimodal -i grommet__grommet-6282
+swebench report my-run --model org/my-agent # choose if the run has several models
 ```
+
+Predictions come from the selected model's saved `patch.diff` files, including for
+gold runs. A single model directory is detected automatically; several require
+`-m/--model`. Re-grading uses the saved logs without contacting Docker and leaves
+the run's original `run.json` metadata unchanged. Keep the evaluated patches with
+the logs: a test-output file without its saved patch is rejected.
 
 ## Submit
 

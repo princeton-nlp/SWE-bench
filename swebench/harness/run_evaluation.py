@@ -451,7 +451,7 @@ def run_instances(
         timeout (int): Timeout for running tests
         rewrite_reports (bool): True if eval run is just to reformat existing report
     """
-    client = _docker_client()
+    client = None if rewrite_reports else _docker_client()
     test_specs = [make_test_spec(instance) for instance in instances]
 
     # run instances in parallel
@@ -472,7 +472,10 @@ def run_instances(
 
     # run instances in parallel
     print(f"Running {len(instances)} instances...")
-    run_threadpool(run_instance, payloads, max_workers)
+    _, failed = run_threadpool(run_instance, payloads, max_workers)
+    if rewrite_reports and failed:
+        failed_ids = sorted(payload[0].instance_id for payload in failed)
+        raise RuntimeError(f"Failed to re-grade: {', '.join(failed_ids)}")
     print("All instances run.")
 
 
@@ -592,7 +595,11 @@ def get_dataset_from_preds(
                 / prediction["instance_id"]
                 / "test_output.txt"
             )
-            if test_output_file.exists():
+            if (
+                test_output_file.parent / LOG_REPORT
+            ).is_file() and not test_output_file.is_file():
+                raise ValueError(f"Missing saved test output: {test_output_file}")
+            if test_output_file.is_file():
                 test_output_ids.add(instance["instance_id"])
         dataset = [
             i
@@ -735,7 +742,8 @@ def main(
         predictions_path, dataset_name, split, task_repo, instance_ids
     )
     predictions = {pred["instance_id"]: pred for pred in predictions}
-    write_run_metadata(run_id, dataset_name, split, task_repo)
+    if not rewrite_reports:
+        write_run_metadata(run_id, dataset_name, split, task_repo)
 
     # get dataset from predictions
     dataset = get_dataset_from_preds(
@@ -759,9 +767,9 @@ def main(
         return
 
     # run instances locally
-    if platform.system() == "Linux":
+    if not rewrite_reports and platform.system() == "Linux":
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-    client = _docker_client()
+    client = None if rewrite_reports else _docker_client()
 
     if not dataset:
         print("No instances to run.")

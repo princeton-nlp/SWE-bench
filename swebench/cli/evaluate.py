@@ -1,5 +1,8 @@
 """`swebench eval` and `swebench report`."""
 
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Optional
 
 import typer
@@ -87,6 +90,12 @@ def report_command(
     ),
     split: Optional[str] = typer.Option(None, "-s", "--split"),
     instance_ids: Optional[list[str]] = typer.Option(None, "-i", "--instance"),
+    model: Optional[str] = typer.Option(
+        None,
+        "-m",
+        "--model",
+        help="Model dir inside the run (auto-detected if only one)",
+    ),
 ):
     """Re-grade a finished run from its saved logs, without starting containers.
 
@@ -101,6 +110,8 @@ def report_command(
     """
     from swebench.harness.run_evaluation import main as run_evaluation
     from swebench.harness.run_evaluation import read_run_metadata
+    from swebench.harness.constants import RUN_EVALUATION_LOG_DIR
+    from swebench.submit.package import PackageError, resolve_run_dir
 
     recorded = read_run_metadata(run_id) or {}
     if dataset is None:
@@ -115,18 +126,47 @@ def report_command(
     if split is None:
         split = recorded.get("split", "test")
 
-    run_evaluation(
-        dataset_name=resolve_dataset(dataset),
-        split=split,
-        instance_ids=list(instance_ids) if instance_ids else None,
-        predictions_path="gold",
-        max_workers=1,
-        open_file_limit=4096,
-        run_id=run_id,
-        timeout=1800,
-        rewrite_reports=True,
-        modal=False,
-        # a run made against a task repo has to be re-graded against the same tests,
-        # or the dataset's copy silently overrides them and the verdict changes
-        task_repo=recorded.get("task_repo"),
-    )
+    try:
+        run = resolve_run_dir(RUN_EVALUATION_LOG_DIR / run_id, model)
+    except PackageError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    predictions = []
+    for artifacts in sorted(run.logs_dir.iterdir()):
+        if not artifacts.is_dir() or (
+            instance_ids and artifacts.name not in instance_ids
+        ):
+            continue
+        patch = artifacts / "patch.diff"
+        if not patch.is_file():
+            # A missing prediction must not be replaced with the reference patch.
+            if (artifacts / "test_output.txt").is_file():
+                raise typer.BadParameter(f"Missing saved prediction: {patch}")
+            continue
+        predictions.append(
+            {
+                "instance_id": artifacts.name,
+                "model_name_or_path": run.model,
+                "model_patch": patch.read_text(),
+            }
+        )
+
+    # Keep the harness's prediction-file API, using only the evaluated patches.
+    # The temporary file lives until grading completes and is never an artifact.
+    with TemporaryDirectory() as temp_dir:
+        predictions_path = Path(temp_dir) / "predictions.json"
+        predictions_path.write_text(json.dumps(predictions))
+        run_evaluation(
+            dataset_name=resolve_dataset(dataset),
+            split=split,
+            instance_ids=list(instance_ids) if instance_ids else None,
+            predictions_path=str(predictions_path),
+            max_workers=1,
+            open_file_limit=4096,
+            run_id=run_id,
+            timeout=1800,
+            rewrite_reports=True,
+            modal=False,
+            # Replay the same task repo's test definitions when one was recorded.
+            task_repo=recorded.get("task_repo"),
+        )
