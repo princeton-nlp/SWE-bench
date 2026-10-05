@@ -4,7 +4,7 @@
 <document_content>
 <p align="center">
   <a href="https://swebench.com">
-    <img src="../../assets/figures/swellama_banner_nobg.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
+    <img src="../assets/figures/swellama_banner_nobg.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 
@@ -50,7 +50,7 @@ SWE-benchエコシステムの他のプロジェクトもチェックしてく�
 SWE-benchは、GitHubから収集した実世界のソフトウェア問題に対する大規模言語モデルの評価のためのベンチマークです。
 *コードベース*と*課題*が与えられ、言語モデルは記述された問題を解決する*パッチ*を生成することが求められます。
 
-<img src="../../assets/figures/teaser.png">
+<img src="../assets/figures/teaser.png">
 
 SWE-benchにアクセスするには、以下のコードをコピーして実行してください：
 ```python
