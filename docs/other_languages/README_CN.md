@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://swebench.com">
-    <img src="../../assets/figures/swellama_banner_nobg.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
+    <img src="../assets/figures/swellama_banner_nobg.svg" style="height: 10em" alt="Kawi the SWE-Llama" />
   </a>
 </p>
 
@@ -49,7 +49,7 @@
 SWE-bench是一个用于评估大型语言模型在真实世界软件问题上表现的基准测试,这些问题收集自GitHub。
 给定一个*代码库*和一个*问题*,语言模型的任务是生成一个*补丁*来解决描述的问题。
 
-<img src="../../assets/figures/teaser.png">
+<img src="../assets/figures/teaser.png">
 
 要访问SWE-bench,复制并运行以下代码:
 ```python
