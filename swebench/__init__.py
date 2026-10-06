@@ -22,6 +22,8 @@ _LAZY_IMPORTS = {
     "PARSER_REGISTRY": ("swebench.harness.log_parsers", "PARSER_REGISTRY"),
     "run_evaluation": ("swebench.harness.run_evaluation", "main"),
     "run_threadpool": ("swebench.harness.utils", "run_threadpool"),
+    "VettoContainer": ("swebench.harness.vetto_adapter", "VettoContainer"),
+    "VettoTaskRunner": ("swebench.harness.vetto_adapter", "VettoTaskRunner"),
 }
 
 __all__ = [
@@ -29,6 +31,8 @@ __all__ = [
     "ResolvedStatus",
     "SWEbenchInstance",
     "TestStatus",
+    "VettoContainer",
+    "VettoTaskRunner",
     "__version__",
     "build_dataset",
     "build_instance_image",

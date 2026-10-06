@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-import docker
+try:
+    import docker
+    import docker.errors
+except ImportError:
+    docker = None
 import json
 from datetime import datetime, timezone
 import os
@@ -13,6 +17,7 @@ if platform.system() == "Linux":
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from swebench.image_builder.constants import CONTAINER_USER, CONTAINER_WORKDIR
 from swebench.harness.constants import (
@@ -63,6 +68,10 @@ DOCKER_CLIENT_POOL_SIZE = int(os.environ.get("SWEBENCH_DOCKER_POOL_SIZE", "128")
 
 
 def _docker_client() -> docker.DockerClient:
+    if docker is None:
+        raise ImportError(
+            "The docker package is required for the docker runtime. Install with `pip install docker`."
+        )
     return docker.from_env(
         timeout=DOCKER_CLIENT_TIMEOUT,
         max_pool_size=DOCKER_CLIENT_POOL_SIZE,
@@ -71,7 +80,7 @@ def _docker_client() -> docker.DockerClient:
 
 def create_container(
     test_spec: TestSpec,
-    client: docker.DockerClient,
+    client: Any,
     run_id: str,
     logger: logging.Logger,
 ):
@@ -85,15 +94,18 @@ def create_container(
         logger (logging.Logger): Logger to use for logging the creation process
     """
     container = None
+    image_not_found_err = docker.errors.ImageNotFound if docker else Exception
+    api_err = docker.errors.APIError if docker else Exception
+    not_found_err = docker.errors.NotFound if docker else Exception
     try:
         # Check if the image exists
         try:
             client.images.get(test_spec.image)
-        except docker.errors.ImageNotFound:
+        except image_not_found_err:
             try:
                 logger.info("Image not found locally, attempting to pull...")
                 client.images.pull(test_spec.image)
-            except docker.errors.ImageNotFound:
+            except image_not_found_err:
                 raise EvaluationError(
                     test_spec.instance_id,
                     f"Image {test_spec.image} not found for {test_spec.instance_id}",
@@ -108,7 +120,7 @@ def create_container(
             old = client.containers.get(container_name)
             old.remove(force=True)
             logger.info(f"Removed existing container {container_name}")
-        except docker.errors.NotFound:
+        except not_found_err:
             pass
         except Exception:
             pass
@@ -123,7 +135,7 @@ def create_container(
                 # CAP_SYS_ADMIN, which browser sandboxes need (e.g. openlayers karma)
                 cap_add=["SYS_ADMIN"],
             )
-        except docker.errors.APIError as e:
+        except api_err as e:
             if "409" in str(e) or "Conflict" in str(e):
                 # Ghost container — use a unique suffix
                 import time
@@ -229,12 +241,13 @@ def _inject_asset_restore(eval_script: str, restore_cmds: list[str]) -> str:
 def run_instance(
     test_spec: TestSpec,
     pred: dict,
-    client: docker.DockerClient,
+    client: docker.DockerClient | None,
     run_id: str,
     timeout: int | None = None,
     rewrite_reports: bool = False,
     skip_patch: bool = False,
     task_repo: str | None = None,
+    runtime: str = "docker",
 ):
     """
     Run a single instance with the given prediction.
@@ -247,6 +260,7 @@ def run_instance(
         timeout (int): Timeout for running tests
         rewrite_reports (bool): True if eval run is just to reformat existing report
         skip_patch (bool): True to skip applying model patch (negative test mode)
+        runtime (str): Runtime execution backend ('docker' or 'vetto')
     """
     # Set up logging directory
     instance_id = test_spec.instance_id
@@ -280,8 +294,15 @@ def run_instance(
     # Run the instance
     container = None
     try:
-        # Create container from image
-        container = create_container(test_spec, client, run_id, logger)
+        # Create container from image or runtime
+        if runtime == "vetto":
+            from swebench.harness.vetto_adapter import create_vetto_container
+
+            container = create_vetto_container(
+                test_spec, run_id, logger, task_repo=task_repo
+            )
+        else:
+            container = create_container(test_spec, client, run_id, logger)
         container.start()
         logger.info(f"Container for {instance_id} started: {container.id}")
 
@@ -438,6 +459,7 @@ def run_instances(
     rewrite_reports: bool = False,
     skip_patch: bool = False,
     task_repo: str | None = None,
+    runtime: str = "docker",
 ):
     """
     Run all instances for the given predictions in parallel.
@@ -450,8 +472,9 @@ def run_instances(
         run_id (str): Run ID
         timeout (int): Timeout for running tests
         rewrite_reports (bool): True if eval run is just to reformat existing report
+        runtime (str): Runtime execution backend ('docker' or 'vetto')
     """
-    client = _docker_client()
+    client = _docker_client() if runtime != "vetto" else None
     test_specs = [make_test_spec(instance) for instance in instances]
 
     # run instances in parallel
@@ -467,6 +490,7 @@ def run_instances(
                 rewrite_reports,
                 skip_patch,
                 task_repo,
+                runtime,
             )
         )
 
@@ -708,6 +732,7 @@ def main(
     rewrite_reports: bool,
     modal: bool,
     task_repo: str | None = None,
+    runtime: str = "docker",
 ):
     """
     Run evaluation harness for the given dataset and predictions.
@@ -727,6 +752,9 @@ def main(
             "repo's Dockerfiles would be ignored while its tests were used. Drop "
             "--task-repo to run on Modal, or drop --modal to build the repo."
         )
+
+    if modal and runtime == "vetto":
+        raise ValueError("Cannot combine --modal with --runtime vetto")
 
     # set open file limit
     assert len(run_id) > 0, "Run ID must be provided"
@@ -761,7 +789,7 @@ def main(
     # run instances locally
     if platform.system() == "Linux":
         resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
-    client = _docker_client()
+    client = _docker_client() if runtime != "vetto" else None
 
     if not dataset:
         print("No instances to run.")
@@ -769,7 +797,7 @@ def main(
     else:
         # a re-grade reads existing logs and starts no container, so building the
         # images it names would cost hours and change nothing
-        if task_repo and not rewrite_reports:
+        if task_repo and not rewrite_reports and runtime != "vetto":
             _build_before_eval(
                 dataset, dataset_name, split, task_repo, max_workers, client
             )
@@ -782,6 +810,7 @@ def main(
             timeout,
             rewrite_reports=rewrite_reports,
             task_repo=task_repo,
+            runtime=runtime,
         )
 
     # make final report
@@ -845,6 +874,13 @@ if __name__ == "__main__":
         type=str2bool,
         default=False,
         help="Doesn't run new instances, only writes reports for instances with existing test outputs",
+    )
+    parser.add_argument(
+        "--runtime",
+        type=str,
+        default="docker",
+        choices=["docker", "vetto"],
+        help="Runtime execution backend ('docker' or 'vetto')",
     )
     # Modal execution args
     parser.add_argument("--modal", type=str2bool, default=False, help="Run on Modal")
