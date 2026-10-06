@@ -5,7 +5,11 @@ import pytest
 
 from swebench import VettoContainer, VettoTaskRunner
 from swebench.harness import docker_utils
-from swebench.harness.run_evaluation import main as run_evaluation
+from swebench.harness.run_evaluation import (
+    get_parser,
+    main as run_evaluation,
+    run_instances,
+)
 from swebench.harness.vetto_adapter import (
     ExecResult,
     create_vetto_container,
@@ -46,6 +50,27 @@ def test_vetto_container_lifecycle(tmp_path):
     container.cleanup()
 
 
+def test_vetto_container_custom_workspace_preservation(tmp_path):
+    custom_ws = tmp_path / "my_project"
+    custom_ws.mkdir()
+    marker = custom_ws / "keep_me.txt"
+    marker.write_text("important")
+
+    runner = VettoTaskRunner(workspace=custom_ws)
+    container = VettoContainer(runner=runner, workdir=custom_ws)
+    container.start()
+
+    # Artifacts exist in temp root dir, not in custom workspace
+    assert container.root_dir != container.workdir
+    assert container.patch_file.parent.exists()
+
+    # Cleanup should remove temp root dir but preserve custom workspace
+    container.cleanup()
+    assert not container.root_dir.exists()
+    assert custom_ws.exists()
+    assert marker.read_text() == "important"
+
+
 def test_vetto_container_copy_to_and_archive(tmp_path):
     workdir = tmp_path / "testbed"
     runner = VettoTaskRunner(workspace=workdir)
@@ -62,7 +87,7 @@ def test_vetto_container_copy_to_and_archive(tmp_path):
     # 2. Test eval.sh copying and path rewriting
     eval_src = tmp_path / "eval.sh"
     eval_src.write_text(
-        "cd /testbed\ngit apply /tmp/patch.diff\ncp /image_assets/test.png .\n"
+        "source /opt/miniconda3/bin/activate\ncd /testbed\ngit apply /tmp/patch.diff\ncp /image_assets/test.png .\n"
     )
     container.copy_to(eval_src, PurePosixPath("/eval.sh"))
     assert container.eval_script_path.exists()
@@ -70,6 +95,9 @@ def test_vetto_container_copy_to_and_archive(tmp_path):
     assert f"cd {container.workdir}" in rewritten
     assert f"git apply {container.patch_file}" in rewritten
     assert str(container.assets_dir) in rewritten
+    # Ensure miniconda activation is guarded when absent
+    if not Path("/opt/miniconda3/bin/activate").exists():
+        assert "test -f /opt/miniconda3/bin/activate" in rewritten
 
     # 3. Test image asset copying
     asset_file = tmp_path / "baseline.png"
@@ -106,6 +134,24 @@ def test_vetto_container_exec_run(tmp_path):
     code, output = res
     assert code == 0
     assert b"hello_vetto" in output
+
+    container.cleanup()
+
+
+def test_vetto_container_exec_run_path_translation(tmp_path):
+    workdir = tmp_path / "testbed"
+    workdir.mkdir(parents=True, exist_ok=True)
+    runner = VettoTaskRunner(workspace=workdir)
+    container = VettoContainer(runner=runner, workdir=workdir)
+    container.start()
+
+    # Test that /testbed in command string is translated
+    res_str = container.exec_run("echo /testbed")
+    assert str(workdir).encode() in res_str.output
+
+    # Test that /testbed in command list is translated
+    res_list = container.exec_run(["echo", "/testbed"])
+    assert str(workdir).encode() in res_list.output
 
     container.cleanup()
 
@@ -177,15 +223,13 @@ def test_vetto_task_runner_find_binary(monkeypatch, tmp_path):
 
     # 3. None when missing
     monkeypatch.delenv("VETTO_BIN", raising=False)
-    monkeypatch.setattr(
-        "shutil.which", lambda name: None if name == "vetto" else "/bin/which"
-    )
+    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("pathlib.Path.is_file", lambda self: False)
     found_none = VettoTaskRunner._find_vetto_binary()
-    # Should either find local candidate or be None
-    assert found_none is None or Path(found_none).is_file()
+    assert found_none is None
 
 
-def test_create_vetto_container_factory(tmp_path):
+def test_create_vetto_container_factory(tmp_path, monkeypatch):
     test_spec = _make_dummy_test_spec()
     workdir = tmp_path / "factory_ws"
     container = create_vetto_container(
@@ -199,30 +243,41 @@ def test_create_vetto_container_factory(tmp_path):
     assert container.workdir == workdir
     container.cleanup()
 
-
-def test_cli_parser_runtime_option():
-    import argparse
-
-    # Inspect ArgumentParser through dry run of __main__ logic
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--runtime",
-        type=str,
-        default="docker",
-        choices=["docker", "vetto"],
+    # Check env var fallback
+    monkeypatch.setenv("VETTO_WORKSPACE", str(workdir))
+    container_env = create_vetto_container(
+        test_spec=test_spec,
+        run_id="factory-run-env",
     )
+    assert container_env.workdir == workdir
+    container_env.cleanup()
 
-    args_default = parser.parse_args([])
+
+def test_cli_parser_runtime_and_workspace_options():
+    parser = get_parser()
+
+    args_default = parser.parse_args(["-p", "gold", "-id", "default-run"])
     assert args_default.runtime == "docker"
+    assert args_default.workspace is None
 
-    args_vetto = parser.parse_args(["--runtime", "vetto"])
+    args_vetto = parser.parse_args(
+        [
+            "-p",
+            "gold",
+            "-id",
+            "vetto-run",
+            "--runtime",
+            "vetto",
+            "--workspace",
+            "/tmp/ws",
+        ]
+    )
     assert args_vetto.runtime == "vetto"
+    assert args_vetto.workspace == "/tmp/ws"
 
 
 def test_guard_modal_and_vetto():
-    with pytest.raises(
-        ValueError, match="Cannot combine --modal with --runtime vetto"
-    ):
+    with pytest.raises(ValueError, match="Cannot combine --modal with --runtime vetto"):
         run_evaluation(
             dataset_name="SWE-bench/SWE-bench_Lite",
             split="test",
@@ -245,3 +300,26 @@ def test_public_api_exports():
     assert hasattr(swebench, "VettoTaskRunner")
     assert "VettoContainer" in swebench.__all__
     assert "VettoTaskRunner" in swebench.__all__
+
+
+def test_run_instances_signature_backward_compatibility():
+    import inspect
+
+    sig = inspect.signature(run_instances)
+    params = list(sig.parameters.keys())
+
+    # Verify original positional order
+    expected_prefix = [
+        "predictions",
+        "instances",
+        "max_workers",
+        "run_id",
+        "timeout",
+        "rewrite_reports",
+        "skip_patch",
+        "task_repo",
+        "runtime",
+        "workspace",
+        "client",
+    ]
+    assert params == expected_prefix

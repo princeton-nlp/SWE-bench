@@ -44,6 +44,12 @@ def eval_command(
     runtime: str = typer.Option(
         "docker", "--runtime", help="Execution runtime backend ('docker' or 'vetto')"
     ),
+    workspace: Optional[str] = typer.Option(
+        None,
+        "--workspace",
+        "-w",
+        help="Workspace / repository directory for containerless execution",
+    ),
     open_file_limit: int = typer.Option(4096, "--open-file-limit"),
 ):
     """Evaluate gold or model predictions against a dataset.
@@ -80,6 +86,7 @@ def eval_command(
         modal=modal,
         task_repo=task_repo,
         runtime=runtime,
+        workspace=workspace,
     )
 
 

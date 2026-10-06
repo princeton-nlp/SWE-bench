@@ -248,6 +248,7 @@ def run_instance(
     skip_patch: bool = False,
     task_repo: str | None = None,
     runtime: str = "docker",
+    workspace: str | Path | None = None,
 ):
     """
     Run a single instance with the given prediction.
@@ -261,6 +262,7 @@ def run_instance(
         rewrite_reports (bool): True if eval run is just to reformat existing report
         skip_patch (bool): True to skip applying model patch (negative test mode)
         runtime (str): Runtime execution backend ('docker' or 'vetto')
+        workspace (str | Path | None): Workspace directory for containerless execution
     """
     # Set up logging directory
     instance_id = test_spec.instance_id
@@ -299,7 +301,7 @@ def run_instance(
             from swebench.harness.vetto_adapter import create_vetto_container
 
             container = create_vetto_container(
-                test_spec, run_id, logger, task_repo=task_repo
+                test_spec, run_id, logger, task_repo=task_repo, workspace=workspace
             )
         else:
             container = create_container(test_spec, client, run_id, logger)
@@ -460,6 +462,8 @@ def run_instances(
     skip_patch: bool = False,
     task_repo: str | None = None,
     runtime: str = "docker",
+    workspace: str | Path | None = None,
+    client: docker.DockerClient | None = None,
 ):
     """
     Run all instances for the given predictions in parallel.
@@ -473,8 +477,11 @@ def run_instances(
         timeout (int): Timeout for running tests
         rewrite_reports (bool): True if eval run is just to reformat existing report
         runtime (str): Runtime execution backend ('docker' or 'vetto')
+        workspace (str | Path | None): Workspace directory for containerless execution
+        client (docker.DockerClient | None): Optional pre-initialized docker client
     """
-    client = _docker_client() if runtime != "vetto" else None
+    if client is None and runtime != "vetto":
+        client = _docker_client()
     test_specs = [make_test_spec(instance) for instance in instances]
 
     # run instances in parallel
@@ -491,6 +498,7 @@ def run_instances(
                 skip_patch,
                 task_repo,
                 runtime,
+                workspace,
             )
         )
 
@@ -733,6 +741,7 @@ def main(
     modal: bool,
     task_repo: str | None = None,
     runtime: str = "docker",
+    workspace: str | Path | None = None,
 ):
     """
     Run evaluation harness for the given dataset and predictions.
@@ -811,13 +820,16 @@ def main(
             rewrite_reports=rewrite_reports,
             task_repo=task_repo,
             runtime=runtime,
+            workspace=workspace,
+            client=client,
         )
 
     # make final report
     return make_run_report(predictions, full_dataset, run_id, client)
 
 
-if __name__ == "__main__":
+def get_parser() -> ArgumentParser:
+    """Create ArgumentParser for run_evaluation CLI."""
     parser = ArgumentParser(
         description="Run evaluation harness for the given dataset and predictions.",
         formatter_class=ArgumentDefaultsHelpFormatter,
@@ -882,8 +894,19 @@ if __name__ == "__main__":
         choices=["docker", "vetto"],
         help="Runtime execution backend ('docker' or 'vetto')",
     )
+    parser.add_argument(
+        "--workspace",
+        type=str,
+        default=None,
+        help="Workspace / repository directory for containerless execution",
+    )
     # Modal execution args
     parser.add_argument("--modal", type=str2bool, default=False, help="Run on Modal")
 
+    return parser
+
+
+if __name__ == "__main__":
+    parser = get_parser()
     args = parser.parse_args()
     main(**vars(args))

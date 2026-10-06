@@ -81,20 +81,28 @@ class VettoContainer:
         # Lightweight dummy client object to prevent AttributeError
         self.client = None
 
-        if workdir:
-            self._owns_temp_dir = False
-            self._temp_dir = None
-            self.root_dir = Path(workdir).resolve()
-            self.workdir = self.root_dir
+        configured_workdir = (
+            workdir
+            or os.environ.get("VETTO_WORKSPACE")
+            or os.environ.get("SWEBENCH_WORKSPACE")
+        )
+
+        self._temp_dir = tempfile.mkdtemp(prefix=f"sweb_vetto_{inst_id}_")
+        self.root_dir = Path(self._temp_dir).resolve()
+
+        if configured_workdir:
+            self._owns_workdir = False
+            self.workdir = Path(configured_workdir).resolve()
         else:
-            self._owns_temp_dir = True
-            self._temp_dir = tempfile.mkdtemp(prefix=f"sweb_vetto_{inst_id}_")
-            self.root_dir = Path(self._temp_dir).resolve()
+            self._owns_workdir = True
             self.workdir = self.root_dir / "testbed"
 
         self.patch_file = self.root_dir / "tmp" / "patch.diff"
         self.eval_script_path = self.root_dir / "eval.sh"
         self.assets_dir = self.root_dir / "image_assets"
+
+        # Align runner workspace with this container's working directory
+        self.runner.workspace = self.workdir
 
     def start(self) -> None:
         """Initialize workspace and prepare execution environment."""
@@ -102,15 +110,53 @@ class VettoContainer:
         self.patch_file.parent.mkdir(parents=True, exist_ok=True)
         self.assets_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize git repo if not already a git repository to allow git diff/apply
         if not (self.workdir / ".git").exists():
-            subprocess.run(
-                ["git", "init"],
-                cwd=self.workdir,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
+            repo_cache = (
+                Path(
+                    os.environ.get(
+                        "SWEBENCH_REPO_CACHE",
+                        Path.home() / ".cache" / "swebench" / "repos",
+                    )
+                )
+                / self.test_spec.repo
+                if self.test_spec and self.test_spec.repo
+                else None
             )
+            cloned = False
+            if repo_cache and (repo_cache / ".git").exists():
+                clone_res = subprocess.run(
+                    ["git", "clone", "--shared", str(repo_cache), str(self.workdir)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                cloned = clone_res.returncode == 0
+            if (
+                not cloned
+                and os.environ.get("VETTO_AUTO_CLONE", "0") == "1"
+                and self.test_spec
+                and self.test_spec.repo
+            ):
+                clone_res = subprocess.run(
+                    [
+                        "git",
+                        "clone",
+                        f"https://github.com/{self.test_spec.repo}.git",
+                        str(self.workdir),
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                cloned = clone_res.returncode == 0
+            if not cloned and not (self.workdir / ".git").exists():
+                subprocess.run(
+                    ["git", "init"],
+                    cwd=self.workdir,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
 
     def stop(self, timeout: int = 10) -> None:
         """No-op: Vetto is daemon-less and terminates process trees deterministically."""
@@ -121,7 +167,7 @@ class VettoContainer:
 
     def cleanup(self) -> None:
         """Remove temporary directory created for this container."""
-        if self._owns_temp_dir and self._temp_dir and Path(self._temp_dir).exists():
+        if self._temp_dir and Path(self._temp_dir).exists():
             shutil.rmtree(self._temp_dir, ignore_errors=True)
 
     def copy_to(self, src: str | Path, dst: str | Path | PurePosixPath) -> None:
@@ -144,6 +190,13 @@ class VettoContainer:
             content = content.replace("/testbed", str(self.workdir))
             content = re.sub(r"/(?:tmp/)?patch\.diff\b", str(self.patch_file), content)
             content = content.replace("/image_assets", str(self.assets_dir))
+            content = content.replace("/eval.sh", str(self.eval_script_path))
+            # Guard miniconda activation so evaluation does not fail if /opt/miniconda3 is absent on host
+            if not Path("/opt/miniconda3/bin/activate").exists():
+                content = content.replace(
+                    "source /opt/miniconda3/bin/activate",
+                    "test -f /opt/miniconda3/bin/activate && source /opt/miniconda3/bin/activate || true",
+                )
             self.eval_script_path.write_text(content, encoding="utf-8")
             self.eval_script_path.chmod(0o755)
             return
@@ -200,6 +253,8 @@ class VettoContainer:
                 cmd_to_run = cmd_to_run.replace("/eval.sh", str(self.eval_script_path))
             if "/image_assets" in cmd_to_run:
                 cmd_to_run = cmd_to_run.replace("/image_assets", str(self.assets_dir))
+            if "/testbed" in cmd_to_run:
+                cmd_to_run = cmd_to_run.replace("/testbed", str(self.workdir))
         else:
             cmd_to_run = []
             for arg in cmd:
@@ -212,6 +267,8 @@ class VettoContainer:
                     cmd_to_run.append(
                         arg_str.replace("/image_assets", str(self.assets_dir))
                     )
+                elif "/testbed" in arg_str:
+                    cmd_to_run.append(arg_str.replace("/testbed", str(self.workdir)))
                 else:
                     cmd_to_run.append(arg_str)
 
@@ -293,20 +350,18 @@ class VettoTaskRunner:
         if which_path:
             return which_path
 
-        # Check repository target directories or common local locations
-        candidate_roots = [
-            Path.cwd(),
-            Path.home() / ".cargo" / "bin",
-            Path.home() / "prod" / "vetto",
+        # Check standard binary locations and local builds
+        candidate_paths = [
+            Path.home() / ".cargo" / "bin" / "vetto",
+            Path.home() / ".local" / "bin" / "vetto",
+            Path("/usr/local/bin/vetto"),
+            Path("/usr/bin/vetto"),
+            Path.cwd() / "target" / "release" / "vetto",
+            Path.cwd() / "target" / "debug" / "vetto",
         ]
-        for root in candidate_roots:
-            for profile in ["release", "debug"]:
-                candidate = root / "target" / profile / "vetto"
-                if candidate.is_file():
-                    return str(candidate)
-            direct_candidate = root / "vetto"
-            if direct_candidate.is_file() and os.access(direct_candidate, os.X_OK):
-                return str(direct_candidate)
+        for candidate in candidate_paths:
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
 
         return None
 
@@ -365,8 +420,7 @@ class VettoTaskRunner:
             return VettoExecResult(
                 exit_code=124,
                 stdout=stdout_str,
-                stderr=stderr_str
-                or f"Command timed out after {exec_timeout} seconds",
+                stderr=stderr_str or f"Command timed out after {exec_timeout} seconds",
                 cold_start_ns=0,
                 cold_start_ms=0.0,
                 duration_ms=wall_time_ms,
@@ -496,9 +550,7 @@ class VettoTaskRunner:
                             oom_killed=data.get("oom_killed", False),
                             status=data.get(
                                 "status",
-                                "COMPLETED"
-                                if proc.returncode == 0
-                                else "FAIL_CLOSED",
+                                "COMPLETED" if proc.returncode == 0 else "FAIL_CLOSED",
                             ),
                             instance_id=data.get("instance_id", instance_id),
                         )
@@ -545,14 +597,10 @@ class VettoTaskRunner:
             cmd_args, target_cwd, exec_timeout, env, instance_id, t_start
         )
 
-    def apply_patch(
-        self, patch_content: str, workspace: Path | None = None
-    ) -> bool:
+    def apply_patch(self, patch_content: str, workspace: Path | None = None) -> bool:
         """Apply unified diff patch using git apply within the repository."""
         target_ws = workspace or self.workspace
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".patch", delete=False
-        ) as tf:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".patch", delete=False) as tf:
             tf.write(patch_content)
             patch_file = Path(tf.name)
 
@@ -635,7 +683,13 @@ def create_vetto_container(
     """
     Factory function for creating a VettoContainer instance.
     """
+    effective_workspace = (
+        workspace
+        or os.environ.get("VETTO_WORKSPACE")
+        or os.environ.get("SWEBENCH_WORKSPACE")
+    )
     runner = VettoTaskRunner(
+        workspace=effective_workspace,
         timeout=timeout,
         memory_limit_mb=memory_limit_mb,
         profile="swebench",
@@ -646,7 +700,7 @@ def create_vetto_container(
         runner=runner,
         test_spec=test_spec,
         run_id=run_id,
-        workdir=workspace,
+        workdir=effective_workspace,
         task_repo=task_repo,
     )
     if logger:
