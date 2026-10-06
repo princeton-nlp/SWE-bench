@@ -8,7 +8,15 @@ import traceback
 import subprocess
 from pathlib import Path
 
-from docker.models.containers import Container
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from docker.models.containers import Container
+else:
+    try:
+        from docker.models.containers import Container
+    except ImportError:
+        Container = Any
 
 from swebench.utils import generate_heredoc_delimiter, _get_log_objects
 
@@ -22,6 +30,10 @@ def copy_to_container(container: Container, src: Path, dst: Path):
         src (Path): Source file path
         dst (Path): Destination file path in the container
     """
+    if hasattr(container, "copy_to"):
+        container.copy_to(src, dst)
+        return
+
     if os.path.dirname(dst) == "":
         raise ValueError(
             f"Destination path parent directory cannot be empty!, dst: {dst}"
@@ -56,6 +68,10 @@ def cleanup_container(client, container, logger):
         logger (logging.Logger): Logger to use for output. If None, print to stdout
     """
     if not container:
+        return
+
+    if hasattr(container, "cleanup"):
+        container.cleanup()
         return
 
     container_id = container.id
@@ -134,6 +150,9 @@ def exec_run_with_timeout(container, cmd, timeout: int | None = 60):
         cmd (str): Command to run.
         timeout (int): Timeout in seconds.
     """
+    if hasattr(container, "exec_run_with_timeout"):
+        return container.exec_run_with_timeout(cmd, timeout=timeout)
+
     exec_result = b""
     exec_id = None
     exec_stream = None

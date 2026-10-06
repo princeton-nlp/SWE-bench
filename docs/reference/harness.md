@@ -106,6 +106,8 @@ The harness accepts various parameters to configure the evaluation:
 - `--namespace`: Namespace for images
 - `--timeout`: Maximum time (seconds) for evaluating each instance
 - `--modal`: If true, run on Modal
+- `--runtime`: Execution runtime backend (`docker` or `vetto`, default: `docker`)
+- `--workspace`: Workspace or repository directory for containerless execution (`--runtime vetto`)
 
 For a complete list of arguments, run:
 ```bash

@@ -1,7 +1,10 @@
-import docker
+try:
+    import docker
+except ImportError:
+    docker = None
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from swebench.harness.constants import (
     RUN_EVALUATION_LOG_DIR,
@@ -17,7 +20,7 @@ def make_run_report(
     predictions: dict,
     full_dataset: list,
     run_id: str,
-    client: Optional[docker.DockerClient] = None,
+    client: Optional[Any] = None,
 ) -> Path:
     """
     Make a final evaluation and run report of the instances that have been run.

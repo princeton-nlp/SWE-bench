@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-import docker
-import docker.errors
+try:
+    import docker
+    import docker.errors
+except ImportError:
+    docker = None
 import traceback
 
 from swebench.utils import generate_heredoc_delimiter, _get_log_objects

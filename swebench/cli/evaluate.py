@@ -41,6 +41,15 @@ def eval_command(
     modal: bool = typer.Option(
         False, "--modal", help="Run on Modal instead of local Docker"
     ),
+    runtime: str = typer.Option(
+        "docker", "--runtime", help="Execution runtime backend ('docker' or 'vetto')"
+    ),
+    workspace: Optional[str] = typer.Option(
+        None,
+        "--workspace",
+        "-w",
+        help="Workspace / repository directory for containerless execution",
+    ),
     open_file_limit: int = typer.Option(4096, "--open-file-limit"),
 ):
     """Evaluate gold or model predictions against a dataset.
@@ -50,6 +59,8 @@ def eval_command(
         swebench eval verified --gold
 
         swebench eval verified -p preds.jsonl --run-id gpt5 -j 16
+
+        swebench eval verified --gold --runtime vetto
 
         swebench eval multimodal --gold -i carbon-design-system__carbon-10188
 
@@ -74,6 +85,8 @@ def eval_command(
         rewrite_reports=False,
         modal=modal,
         task_repo=task_repo,
+        runtime=runtime,
+        workspace=workspace,
     )
 
 

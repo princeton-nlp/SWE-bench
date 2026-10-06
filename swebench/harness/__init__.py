@@ -6,6 +6,7 @@ from swebench.harness import (
     constants,
     log_parsers,
     modal_eval,
+    vetto_adapter,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "constants",
     "log_parsers",
     "modal_eval",
+    "vetto_adapter",
 ]
