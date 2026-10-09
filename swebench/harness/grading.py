@@ -20,6 +20,7 @@ from swebench.harness.constants import (
 from swebench.harness.infra_failure import TIER_ENVIRONMENT, classify_logs
 from swebench.types import TestSpec
 from swebench.harness.log_parsers import PARSER_REGISTRY
+from swebench.harness.log_parsers.python import is_progress_artifact_id
 
 
 # Evidence that a test runner actually executed, used to tell "ran with no failures"
@@ -204,6 +205,18 @@ def get_eval_tests_report(
     - Fail-Fail (F2F) + P: Success (Extra Credit)
     - Pass-Fail (P2F) + P: Not considered
     """
+    # Issue #660: dataset construction captured pytest's wrapped progress line
+    # "PASSED [100%]" as the gold test id "[100%]" (20 artifact labels across 10
+    # records, e.g. the PASS_TO_PASS of pytest-dev__pytest-5262 and -7521). Those
+    # ids are not tests and the parser no longer reports them, so without this
+    # guard the missing id grades every correct patch on those instances as
+    # failed. Same family as _resolve_case's truncated ids: a data defect
+    # tolerated in grading -- TODO(john-b-yang): remove once the gold lists are
+    # repaired in swe-bench-tasks and the published datasets are rebuilt.
+    gold_results = {
+        bucket: [c for c in cases if not is_progress_artifact_id(c)]
+        for bucket, cases in gold_results.items()
+    }
 
     def check_pass_and_fail(test_case, eval_status_map, success, failed):
         if test_passed(test_case, eval_status_map):

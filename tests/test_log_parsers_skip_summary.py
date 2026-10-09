@@ -39,7 +39,10 @@ def test_genuine_skipped_test_is_still_recorded():
     }
 
 
-def test_wrapped_progress_artifact_is_preserved():
-    """``PASSED [100%]`` must survive: PASS_TO_PASS for pytest-dev__pytest-5262
-    and -7521 literally expects ``[100%]``, so dropping it fails those gold instances."""
-    assert parse_log_pytest("PASSED [100%]", None) == {"[100%]": PASSED}
+def test_wrapped_progress_artifact_is_dropped():
+    """``PASSED [100%]`` is pytest's progress indicator wrapped onto its own
+    line, not a test (#660). It used to be recorded because the gold PASS_TO_PASS
+    of pytest-dev__pytest-5262/-7521 literally contained ``[100%]``; grading now
+    tolerates that polluted label (see test_grading_progress_artifact_gold.py),
+    so the parser can drop the artifact."""
+    assert parse_log_pytest("PASSED [100%]", None) == {}
