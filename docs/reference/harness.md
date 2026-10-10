@@ -101,7 +101,8 @@ The harness accepts various parameters to configure the evaluation:
 - `--clean`: Whether to clean up resources after evaluation
 - `--instance_ids`: Specific instances to evaluate (space-separated)
 - `--open_file_limit`: Open file limit
-- `--force_rebuild`: Force rebuild all images
+- `--force_rebuild`: Rebuild images that already exist locally (applies to builds from a task repo)
+- `--nocache`: Ignore the buildx layer cache when building; implies `--force_rebuild`
 - `--log_level`: Logging verbosity
 - `--namespace`: Namespace for images
 - `--timeout`: Maximum time (seconds) for evaluating each instance

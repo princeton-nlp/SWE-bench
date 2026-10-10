@@ -38,6 +38,16 @@ def eval_command(
             "when one exists."
         ),
     ),
+    force_rebuild: bool = typer.Option(
+        False,
+        "--force-rebuild",
+        help="Rebuild images that already exist locally; needs --task-repo",
+    ),
+    nocache: bool = typer.Option(
+        False,
+        "--no-cache",
+        help="Ignore the buildx layer cache; implies --force-rebuild",
+    ),
     modal: bool = typer.Option(
         False, "--modal", help="Run on Modal instead of local Docker"
     ),
@@ -59,6 +69,10 @@ def eval_command(
         raise typer.BadParameter("pass either --gold or --predictions, not both")
     if not gold and not predictions:
         raise typer.BadParameter("pass --gold or --predictions <path>")
+    if (force_rebuild or nocache) and not task_repo:
+        raise typer.BadParameter(
+            "--force-rebuild and --no-cache only apply to builds; pass --task-repo"
+        )
 
     from swebench.harness.run_evaluation import main as run_evaluation
 
@@ -74,6 +88,8 @@ def eval_command(
         rewrite_reports=False,
         modal=modal,
         task_repo=task_repo,
+        force_rebuild=force_rebuild,
+        nocache=nocache,
     )
 
 

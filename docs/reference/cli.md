@@ -50,6 +50,11 @@ swebench eval full --gold --modal
 Pass exactly one of `--gold` or `-p/--predictions`. `-i/--instance` is repeatable,
 `-j/--workers` sets parallelism, `-t/--timeout` is per instance (1800s).
 
+`--task-repo` builds this run's images from a task repo instead of trusting the
+registry. Images that already exist locally are reused; `--force-rebuild` rebuilds them
+anyway, and `--no-cache` additionally ignores the buildx layer cache (which implies
+`--force-rebuild`). Both only apply alongside `--task-repo`.
+
 Artifacts go to `logs/evaluation/<run_id>/`, the summary to its `results.json`.
 That path is relative to where you run the command.
 Re-running a run id skips instances that already have a `report.json`.
@@ -164,6 +169,10 @@ swebench images clean --run-id my-run      # remove leftover containers
 `images check` is worth running before a long evaluation: it catches a stale or
 partially-pushed image set in seconds rather than one instance at a time.
 `images push --dry-run` prints the exact `docker push` commands and stops.
+
+An image that already exists locally is skipped. `--force-rebuild` rebuilds it from
+scratch, and `--no-cache` also discards the buildx layer cache, which implies
+`--force-rebuild` since there is otherwise nothing to rebuild.
 
 ## Datasets
 

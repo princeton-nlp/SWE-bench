@@ -118,6 +118,7 @@ def build_instance_images(
     force_rebuild: bool = False,
     max_workers: int = 4,
     dry_run: bool = False,
+    nocache: bool = False,
 ):
     """
     Builds the instance images required for the dataset if they do not already exist.
@@ -128,12 +129,16 @@ def build_instance_images(
         force_rebuild (bool): Whether to force rebuild the images even if they already exist
         max_workers (int): Maximum number of workers to use for building images
         dry_run (bool): If True, create docker files and build contexts but don't build images
+        nocache (bool): Whether to ignore the buildx layer cache; implies force_rebuild
     """
+    # an existing image is skipped before nocache is read, so there would be nothing to rebuild
+    force_rebuild = force_rebuild or nocache
+
     if force_rebuild:
         for spec in image_specs:
             remove_image(client, spec.name, "quiet")
     successful, failed = list(), list()
-    payloads = [(spec, client, None, False, dry_run) for spec in image_specs]
+    payloads = [(spec, client, None, nocache, dry_run) for spec in image_specs]
     successful, failed = run_threadpool(build_instance_image, payloads, max_workers)
     if len(failed) == 0:
         print("All instance images built successfully.")

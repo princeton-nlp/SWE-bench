@@ -25,6 +25,11 @@ def build(
     ),
     workers: int = typer.Option(4, "-j", "--workers"),
     force_rebuild: bool = typer.Option(False, "--force-rebuild"),
+    nocache: bool = typer.Option(
+        False,
+        "--no-cache",
+        help="Ignore the buildx layer cache; implies --force-rebuild",
+    ),
     namespace: Optional[str] = typer.Option(
         None, "-n", "--namespace", help="Registry namespace to tag for"
     ),
@@ -60,6 +65,7 @@ def build(
             namespace=namespace,
             tag=tag,
             dry_run=dry_run,
+            nocache=nocache,
         )
     except (CheckFailed, UnknownDataset) as e:
         typer.echo(str(e), err=True)
