@@ -4,18 +4,49 @@ from swebench.harness.constants import TestStatus
 from swebench.types import TestSpec
 
 _SKIP_SUMMARY_COUNT = re.compile(r"^\[\d+\]$")
+# pytest right-aligns its progress percentage ("[  2%]", "[100%]"); when a node
+# id overflows the terminal width the indicator wraps onto the next line and
+# whitespace splitting breaks it into fragments like "[", "3%]"
+_PROGRESS_RESIDUE = re.compile(r"[\[\]0-9\s%]+")
 
 
-def _is_skip_summary(status: str, name: str) -> bool:
-    """True for pytest's ``SKIPPED [N] path:line: reason`` summary, where [N] is not a test.
+def is_progress_artifact_id(test_id: str) -> bool:
+    """True for pytest progress fragments that dataset build recorded as test ids (#660).
 
-    Deliberately scoped to SKIPPED. Wrapped progress lines produce a similar
-    ``PASSED [100%]`` artifact, but PASS_TO_PASS for pytest-dev__pytest-5262 and
-    -7521 literally expects ``[100%]``, so dropping it fails those instances.
-    TODO(john-b-yang): repair those two P2P lists, then widen this to any
-    bare bracketed count.
+    A wrapped verbose line ``PASSED [100%]`` was captured as the test id
+    ``[100%]`` (and pytest's right-aligned ``[ 42%]`` as ``[``), which then
+    leaked into the gold PASS_TO_PASS of e.g. pytest-dev__pytest-5262/-7521.
+    A real node id always carries a ``file.py::`` path, so a residue of only
+    brackets, digits, spaces and ``%`` can never be one.
+
+    Used in two places: while parsing (wrapped status lines) and while grading
+    (gold lists still polluted on the published datasets until swe-bench-tasks
+    repairs them -- see grading.py).
     """
-    return status == TestStatus.SKIPPED.value and bool(_SKIP_SUMMARY_COUNT.match(name))
+    return "::" not in test_id and _PROGRESS_RESIDUE.fullmatch(test_id) is not None
+
+
+def _is_testless_status(test_case: list[str]) -> bool:
+    """True for pytest status-first lines that name no test (#598, #660).
+
+    Two shapes:
+
+    - ``SKIPPED [N] path:line: reason`` -- the skip summary; ``[N]`` is a
+      repetition count, not a test.
+    - ``PASSED [100%]`` -- the progress indicator wrapped onto its own line
+      together with the status word when the node id overflowed the terminal
+      width. With pytest's right-aligned percentage (``PASSED [ 42%]``) the
+      indicator splits into ``[`` and ``42%]``, so the check joins the
+      remaining tokens before matching.
+
+    A line is only dropped when nothing after the status is a node id, so
+    genuine ids -- including parametrized ones like
+    ``tests/test_a.py::test_foo[param]`` -- are never affected.
+    """
+    status, tail = test_case[0], test_case[1:]
+    if status == TestStatus.SKIPPED.value and _SKIP_SUMMARY_COUNT.match(tail[0]):
+        return True
+    return is_progress_artifact_id(" ".join(tail))
 
 
 def parse_log_pytest(log: str, test_spec: TestSpec) -> dict[str, str]:
@@ -36,7 +67,7 @@ def parse_log_pytest(log: str, test_spec: TestSpec) -> dict[str, str]:
             test_case = line.split()
             if len(test_case) <= 1:
                 continue
-            if _is_skip_summary(test_case[0], test_case[1]):
+            if _is_testless_status(test_case):
                 continue
             test_status_map[test_case[1]] = test_case[0]
     return test_status_map
@@ -61,7 +92,7 @@ def parse_log_pytest_options(log: str, test_spec: TestSpec) -> dict[str, str]:
             test_case = line.split()
             if len(test_case) <= 1:
                 continue
-            if _is_skip_summary(test_case[0], test_case[1]):
+            if _is_testless_status(test_case):
                 continue
             has_option = option_pattern.search(test_case[1])
             if has_option:
@@ -179,7 +210,7 @@ def parse_log_pytest_v2(log: str, test_spec: TestSpec) -> dict[str, str]:
                 # drop the trailing " - <assertion message>" so it can't enter the id
                 line = line.split(" - ", 1)[0]
             test_case = line.split()
-            if len(test_case) >= 2 and not _is_skip_summary(test_case[0], test_case[1]):
+            if len(test_case) >= 2 and not _is_testless_status(test_case):
                 test_status_map[" ".join(test_case[1:])] = test_case[0]
         # Support older pytest versions by checking if the line ends with the test status
         elif any([line.endswith(x.value) for x in TestStatus]):
@@ -266,7 +297,7 @@ def parse_log_matplotlib(log: str, test_spec: TestSpec) -> dict[str, str]:
             test_case = line.split()
             if len(test_case) <= 1:
                 continue
-            if _is_skip_summary(test_case[0], test_case[1]):
+            if _is_testless_status(test_case):
                 continue
             test_status_map[test_case[1]] = test_case[0]
     return test_status_map
