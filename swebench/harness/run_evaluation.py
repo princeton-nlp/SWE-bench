@@ -91,8 +91,15 @@ def create_container(
             client.images.get(test_spec.image)
         except docker.errors.ImageNotFound:
             try:
-                logger.info("Image not found locally, attempting to pull...")
-                client.images.pull(test_spec.image)
+                # without a platform the daemon resolves against the host arch, so an
+                # arm64 machine reports the amd64-only published image as missing
+                target_platform = (
+                    "linux/arm64/v8" if ".arm64." in test_spec.image else "linux/amd64"
+                )
+                logger.info(
+                    f"Image not found locally, attempting to pull for {target_platform}..."
+                )
+                client.images.pull(test_spec.image, platform=target_platform)
             except docker.errors.ImageNotFound:
                 raise EvaluationError(
                     test_spec.instance_id,
