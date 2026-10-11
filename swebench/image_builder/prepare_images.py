@@ -112,6 +112,7 @@ def main(
     namespace,
     tag,
     dry_run,
+    nocache=False,
 ):
     """
     Build Docker images for the tasks in a task repo.
@@ -126,7 +127,11 @@ def main(
         namespace (str): Docker registry namespace.
         tag (str): Docker image tag.
         dry_run (bool): If True, create docker files and build contexts but don't build images.
+        nocache (bool): Whether to ignore the buildx layer cache; implies force_rebuild.
     """
+    # filter_image_specs would otherwise drop existing images before anything is rebuilt
+    force_rebuild = force_rebuild or nocache
+
     # Set open file limit
     resource.setrlimit(resource.RLIMIT_NOFILE, (open_file_limit, open_file_limit))
     client = docker.from_env(timeout=600)
@@ -157,6 +162,7 @@ def main(
             force_rebuild=force_rebuild,
             max_workers=max_workers,
             dry_run=dry_run,
+            nocache=nocache,
         )
     if dry_run:
         print(f"Successfully created build contexts for {len(successful)} images")
@@ -181,6 +187,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--force_rebuild", type=str2bool, default=False, help="Force rebuild images"
+    )
+    parser.add_argument(
+        "--nocache",
+        type=str2bool,
+        default=False,
+        help="Ignore the buildx layer cache; implies --force_rebuild",
     )
     parser.add_argument(
         "--open_file_limit", type=int, default=8192, help="Open file limit"

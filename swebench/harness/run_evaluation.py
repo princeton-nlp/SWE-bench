@@ -69,6 +69,11 @@ def _docker_client() -> docker.DockerClient:
     )
 
 
+def _image_platform(image: str) -> str:
+    """The platform an image is built for, taken from the arch in its name."""
+    return "linux/arm64/v8" if ".arm64." in image else "linux/amd64"
+
+
 def create_container(
     test_spec: TestSpec,
     client: docker.DockerClient,
@@ -91,8 +96,13 @@ def create_container(
             client.images.get(test_spec.image)
         except docker.errors.ImageNotFound:
             try:
-                logger.info("Image not found locally, attempting to pull...")
-                client.images.pull(test_spec.image)
+                # without a platform the daemon resolves against the host arch, so an
+                # arm64 machine reports the amd64-only published image as missing
+                target_platform = _image_platform(test_spec.image)
+                logger.info(
+                    f"Image not found locally, attempting to pull for {target_platform}..."
+                )
+                client.images.pull(test_spec.image, platform=target_platform)
             except docker.errors.ImageNotFound:
                 raise EvaluationError(
                     test_spec.instance_id,
@@ -640,7 +650,16 @@ def get_dataset_from_preds(
     return dataset
 
 
-def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, client):
+def _build_before_eval(
+    dataset,
+    dataset_name,
+    split,
+    task_repo,
+    max_workers,
+    client,
+    force_rebuild=False,
+    nocache=False,
+):
     """Build this run's images from a task repo instead of trusting the registry.
 
     Without this a failed build is invisible: the image is pulled instead, so a stale
@@ -671,8 +690,9 @@ def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, cli
             build_instance_images(
                 client=client,
                 image_specs=image_specs,
-                force_rebuild=True,
+                force_rebuild=force_rebuild,
                 max_workers=max_workers,
+                nocache=nocache,
             )
 
     # trust the registry only where a build did not produce the image
@@ -690,7 +710,7 @@ def _build_before_eval(dataset, dataset_name, split, task_repo, max_workers, cli
     )
     for iid, image in missing:
         try:
-            client.images.pull(image)
+            client.images.pull(image, platform=_image_platform(image))
             print(f"  {iid}: build failed; FELL BACK to the published image {image}")
         except docker.errors.ImageNotFound:
             print(f"  {iid}: build failed and no published image exists; it will error")
@@ -708,6 +728,8 @@ def main(
     rewrite_reports: bool,
     modal: bool,
     task_repo: str | None = None,
+    force_rebuild: bool = False,
+    nocache: bool = False,
 ):
     """
     Run evaluation harness for the given dataset and predictions.
@@ -771,7 +793,14 @@ def main(
         # images it names would cost hours and change nothing
         if task_repo and not rewrite_reports:
             _build_before_eval(
-                dataset, dataset_name, split, task_repo, max_workers, client
+                dataset,
+                dataset_name,
+                split,
+                task_repo,
+                max_workers,
+                client,
+                force_rebuild,
+                nocache,
             )
         # run instances (images assumed to be pre-built)
         run_instances(
@@ -845,6 +874,18 @@ if __name__ == "__main__":
         type=str2bool,
         default=False,
         help="Doesn't run new instances, only writes reports for instances with existing test outputs",
+    )
+    parser.add_argument(
+        "--force_rebuild",
+        type=str2bool,
+        default=False,
+        help="Rebuild images that already exist locally (only applies with a task repo)",
+    )
+    parser.add_argument(
+        "--nocache",
+        type=str2bool,
+        default=False,
+        help="Ignore the buildx layer cache; implies --force_rebuild",
     )
     # Modal execution args
     parser.add_argument("--modal", type=str2bool, default=False, help="Run on Modal")
