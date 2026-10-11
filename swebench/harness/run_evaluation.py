@@ -69,6 +69,11 @@ def _docker_client() -> docker.DockerClient:
     )
 
 
+def _image_platform(image: str) -> str:
+    """The platform an image is built for, taken from the arch in its name."""
+    return "linux/arm64/v8" if ".arm64." in image else "linux/amd64"
+
+
 def create_container(
     test_spec: TestSpec,
     client: docker.DockerClient,
@@ -93,9 +98,7 @@ def create_container(
             try:
                 # without a platform the daemon resolves against the host arch, so an
                 # arm64 machine reports the amd64-only published image as missing
-                target_platform = (
-                    "linux/arm64/v8" if ".arm64." in test_spec.image else "linux/amd64"
-                )
+                target_platform = _image_platform(test_spec.image)
                 logger.info(
                     f"Image not found locally, attempting to pull for {target_platform}..."
                 )
@@ -707,7 +710,7 @@ def _build_before_eval(
     )
     for iid, image in missing:
         try:
-            client.images.pull(image)
+            client.images.pull(image, platform=_image_platform(image))
             print(f"  {iid}: build failed; FELL BACK to the published image {image}")
         except docker.errors.ImageNotFound:
             print(f"  {iid}: build failed and no published image exists; it will error")
