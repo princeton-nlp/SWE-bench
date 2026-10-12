@@ -240,7 +240,7 @@ def main(
     # Save dataset
     if push_to_hub_user is not None:
         final_dataset.push_to_hub(
-            f"{push_to_hub_user}/{output_file.name}", use_auth_token=hub_token
+            f"{push_to_hub_user}/{output_file.name}", token=hub_token
         )
     else:
         final_dataset.save_to_disk(output_file)

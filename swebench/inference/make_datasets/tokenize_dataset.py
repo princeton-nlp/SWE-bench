@@ -200,7 +200,7 @@ def main(
     output_file = Path(dataset_name_or_path).name + f"__tok-{tokenizer_name}"
     if push_to_hub_user is not None:
         output_file = f"{push_to_hub_user}/{output_file}"
-        dataset.push_to_hub(output_file, use_auth_token=hub_token)
+        dataset.push_to_hub(output_file, token=hub_token)
     else:
         output_file = Path(output_dir) / output_file
         dataset.save_to_disk(output_file)
