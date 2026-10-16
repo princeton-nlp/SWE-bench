@@ -162,15 +162,14 @@ def get_logs_eval(test_spec: TestSpec, log_fp: str) -> tuple[dict[str, str], boo
         # A patch can print its own "PASSED" lines (e.g. from a conftest.py hook),
         # so cross-check the log against the test command's exit status, recorded
         # by the eval script. Exiting non-zero while reporting no failure at all
-        # means the log is not describing the run that actually happened.
+        # means the log is not describing the run that actually happened. An empty
+        # status map is no exception: a suite-level error (e.g. a Jasmine afterAll
+        # failure) records no per-test failure but still exits non-zero, and under
+        # EvalType.FAIL_ONLY an empty map would otherwise grade as a pass.
         exit_code = parse_test_exit_code(content)
-        if (
-            exit_code not in (None, 0)
-            and status_map
-            and not any(
-                status in (TestStatus.FAILED.value, TestStatus.ERROR.value)
-                for status in status_map.values()
-            )
+        if exit_code not in (None, 0) and not any(
+            status in (TestStatus.FAILED.value, TestStatus.ERROR.value)
+            for status in status_map.values()
         ):
             return {}, False
         return status_map, True
