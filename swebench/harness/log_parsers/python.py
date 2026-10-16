@@ -18,6 +18,28 @@ def _is_skip_summary(status: str, name: str) -> bool:
     return status == TestStatus.SKIPPED.value and bool(_SKIP_SUMMARY_COUNT.match(name))
 
 
+def _normalize_pytest_xpass(line: str) -> str:
+    """Non-strict XPASS is a successful execution; strict XPASS is reported FAILED."""
+    if line.startswith("XPASS "):
+        # Like FAILED, pytest's -rA summary appends a reason after the node id.
+        # Remove it before v2 preserves the (possibly space-containing) full id.
+        node_id = line[len("XPASS") :]
+        # Parameter values can contain spaces, dashes and unmatched brackets.
+        # A parametrized node id ends in ']' before the summary's reason.
+        separator = "] - " if "[" in node_id.split(" - ", 1)[0] else " - "
+        node_id, marker, _ = node_id.partition(separator)
+        if marker == "] - ":
+            node_id += "]"
+        return "PASSED" + node_id
+    if line.endswith(" XPASS") and not any(
+        line.startswith(f"{status.value} ") for status in TestStatus
+    ):
+        # Older pytest output supported by parse_log_pytest_v2. Status-first
+        # lines take precedence; a reason ending in XPASS is not a result.
+        return line[: -len("XPASS")] + "PASSED"
+    return line
+
+
 def parse_log_pytest(log: str, test_spec: TestSpec) -> dict[str, str]:
     """
     Parser for test logs generated with PyTest framework
@@ -29,6 +51,7 @@ def parse_log_pytest(log: str, test_spec: TestSpec) -> dict[str, str]:
     """
     test_status_map = {}
     for line in log.split("\n"):
+        line = _normalize_pytest_xpass(line)
         if any([line.startswith(x.value) for x in TestStatus]):
             # Additional parsing for FAILED status
             if line.startswith(TestStatus.FAILED.value):
@@ -54,6 +77,7 @@ def parse_log_pytest_options(log: str, test_spec: TestSpec) -> dict[str, str]:
     option_pattern = re.compile(r"(.*?)\[(.*)\]")
     test_status_map = {}
     for line in log.split("\n"):
+        line = _normalize_pytest_xpass(line)
         if any([line.startswith(x.value) for x in TestStatus]):
             # Additional parsing for FAILED status
             if line.startswith(TestStatus.FAILED.value):
@@ -174,6 +198,7 @@ def parse_log_pytest_v2(log: str, test_spec: TestSpec) -> dict[str, str]:
         line = re.sub(r"\[(\d+)m", "", line)
         translator = str.maketrans("", "", escapes)
         line = line.translate(translator)
+        line = _normalize_pytest_xpass(line)
         if any([line.startswith(x.value) for x in TestStatus]):
             if line.startswith(TestStatus.FAILED.value):
                 # drop the trailing " - <assertion message>" so it can't enter the id
@@ -257,6 +282,7 @@ def parse_log_matplotlib(log: str, test_spec: TestSpec) -> dict[str, str]:
     """
     test_status_map = {}
     for line in log.split("\n"):
+        line = _normalize_pytest_xpass(line)
         line = line.replace("MouseButton.LEFT", "1")
         line = line.replace("MouseButton.RIGHT", "3")
         if any([line.startswith(x.value) for x in TestStatus]):
