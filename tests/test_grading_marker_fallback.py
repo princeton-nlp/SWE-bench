@@ -7,7 +7,11 @@ SWE-bench_Multilingual fails this way (208 chars inside the markers, 3 real
 results outside them).
 """
 
-from swebench.harness.constants import END_TEST_OUTPUT, START_TEST_OUTPUT
+from swebench.harness.constants import (
+    END_TEST_OUTPUT,
+    START_TEST_OUTPUT,
+    TEST_EXIT_CODE,
+)
 from swebench.harness.grading import get_logs_eval
 from swebench.types import TestSpec
 
@@ -105,6 +109,41 @@ def test_a_suite_that_never_started_is_still_rejected(tmp_path):
         _spec(log_parser="parse_log_marked", eval_type="fail_only"), str(log)
     )
     assert not found
+
+
+def test_jasmine_suite_error_with_nonzero_exit_is_not_found(tmp_path):
+    """A suite-level failure records no per-test failure but exits non-zero.
+
+    Jasmine prints an afterAll failure as an unnumbered "Suite error:" block, so
+    parse_log_marked returns an empty map even though the runner reports
+    "1 spec, 1 failure" and exits 1. The recorded exit code is the only signal
+    that something failed; without it the empty map grades resolved under
+    fail_only (#686).
+    """
+    log = tmp_path / "test_output.txt"
+    log.write_text(
+        f"{START_TEST_OUTPUT}\nStarted\n.\n\n\n"
+        "Suite error: evaluation reproduction\n"
+        "  Message:\n    Error: suite teardown failed\n\n"
+        f"1 spec, 1 failure\n{END_TEST_OUTPUT}\n{TEST_EXIT_CODE}: 1\n"
+    )
+    sm, found = get_logs_eval(
+        _spec(log_parser="parse_log_marked", eval_type="fail_only"), str(log)
+    )
+    assert (sm, found) == ({}, False)
+
+
+def test_clean_jasmine_run_with_zero_exit_is_still_found(tmp_path):
+    """The empty-map rejection above must not swallow clean Jasmine runs."""
+    log = tmp_path / "test_output.txt"
+    log.write_text(
+        f"{START_TEST_OUTPUT}\nStarted\n.\n\n1 spec, 0 failures\n"
+        f"{END_TEST_OUTPUT}\n{TEST_EXIT_CODE}: 0\n"
+    )
+    sm, found = get_logs_eval(
+        _spec(log_parser="parse_log_marked", eval_type="fail_only"), str(log)
+    )
+    assert (sm, found) == ({}, True)
 
 
 def test_a_zero_count_summary_is_not_evidence_the_suite_ran(tmp_path):
