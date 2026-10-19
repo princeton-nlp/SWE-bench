@@ -180,12 +180,12 @@ def parse_log_pytest_v2(log: str, test_spec: TestSpec) -> dict[str, str]:
                 line = line.split(" - ", 1)[0]
             test_case = line.split()
             if len(test_case) >= 2 and not _is_skip_summary(test_case[0], test_case[1]):
-                test_status_map[" ".join(test_case[1:])] = test_case[0]
+                test_status_map[line.split(maxsplit=1)[1].strip()] = test_case[0]
         # Support older pytest versions by checking if the line ends with the test status
         elif any([line.endswith(x.value) for x in TestStatus]):
             test_case = line.split()
             if len(test_case) >= 2:
-                test_status_map[" ".join(test_case[:-1])] = test_case[-1]
+                test_status_map[line.rsplit(maxsplit=1)[0].strip()] = test_case[-1]
     return test_status_map
 
 
