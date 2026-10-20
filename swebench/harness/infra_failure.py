@@ -66,13 +66,33 @@ _COMPILED = tuple(
 )
 
 
+# Nested pytest runs can report zero collected tests inside a completed outer run.
+# Only disregard the signature when a later summary reports executed tests.
+_PYTEST_SUMMARY = re.compile(
+    r"^=+ (?P<result>[^\n]+) in \d+(?:\.\d+)?s(?: \([^\n]*\))? =+\s*$",
+    re.MULTILINE,
+)
+_PYTEST_EXECUTED = re.compile(r"\b[1-9]\d* (?:passed|failed|skipped|xfailed|xpassed)\b")
+
+
+def _pytest_ran_after(text: str, offset: int) -> bool:
+    summaries = list(_PYTEST_SUMMARY.finditer(text, offset))
+    return bool(summaries and _PYTEST_EXECUTED.search(summaries[-1]["result"]))
+
+
 def classify_text(text: str) -> tuple[str, str] | None:
     """Return (reason, tier) for the first matching signature, else None."""
     if not text:
         return None
     for reason, tier, pattern in _COMPILED:
-        if pattern.search(text):
-            return reason, tier
+        matches = list(pattern.finditer(text))
+        if not matches:
+            continue
+        if reason == "no_tests_collected" and _pytest_ran_after(
+            text, matches[-1].end()
+        ):
+            continue
+        return reason, tier
     return None
 
 
