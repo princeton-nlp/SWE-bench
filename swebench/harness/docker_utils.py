@@ -152,7 +152,7 @@ def exec_run_with_timeout(container, cmd, timeout: int | None = 60):
         finally:
             _close_exec_stream(exec_stream)
 
-    thread = threading.Thread(target=run_command)
+    thread = threading.Thread(target=run_command, daemon=True)
     start_time = time.time()
     thread.start()
     thread.join(timeout)
@@ -160,8 +160,16 @@ def exec_run_with_timeout(container, cmd, timeout: int | None = 60):
         raise exception
     if thread.is_alive():
         if exec_id is not None:
-            exec_pid = container.client.api.exec_inspect(exec_id)["Pid"]
-            container.exec_run(f"kill -TERM {exec_pid}", detach=True)
+            try:
+                exec_pid = container.client.api.exec_inspect(exec_id).get("Pid")
+                if exec_pid:
+                    container.exec_run(
+                        f"/bin/sh -c 'kill -TERM -{exec_pid} {exec_pid} 2>/dev/null; "
+                        f"sleep 2; kill -KILL -{exec_pid} {exec_pid} 2>/dev/null'",
+                        detach=True,
+                    )
+            except Exception:
+                pass
         # the reader is still blocked on the stream; closing it lets that thread end
         _close_exec_stream(exec_stream)
         timed_out = True
