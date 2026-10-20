@@ -65,6 +65,21 @@ _COMPILED = tuple(
     for reason, tier, pattern in INFRA_FAILURE_SIGNATURES
 )
 
+# Pytest's own tests can print an empty inner run before the outer summary (#683).
+# Only a later final summary with nonzero test outcomes overrides that advisory.
+_PYTEST_SUMMARY = re.compile(
+    r"^=+ (?P<result>[^\r\n]+) in \d+(?:\.\d+)?s(?: \([^\r\n]*\))? =+[ \t\r]*$",
+    re.MULTILINE,
+)
+_PYTEST_OUTCOMES = re.compile(r"\b[1-9]\d* (?:passed|failed|skipped|xfailed|xpassed)\b")
+
+
+def _pytest_ran_after(text: str, offset: int) -> bool:
+    last_summary = None
+    for summary in _PYTEST_SUMMARY.finditer(text, offset):
+        last_summary = summary
+    return bool(last_summary and _PYTEST_OUTCOMES.search(last_summary["result"]))
+
 
 def classify_text(text: str) -> tuple[str, str] | None:
     """Return (reason, tier) for the first matching signature, else None."""
@@ -72,6 +87,10 @@ def classify_text(text: str) -> tuple[str, str] | None:
         return None
     for reason, tier, pattern in _COMPILED:
         if pattern.search(text):
+            if reason == "no_tests_collected":
+                last_empty_end = max(match.end() for match in pattern.finditer(text))
+                if _pytest_ran_after(text, last_empty_end):
+                    continue
             return reason, tier
     return None
 
