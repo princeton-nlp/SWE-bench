@@ -127,3 +127,64 @@ def test_genuine_failure_is_not_flagged(monkeypatch, tmp_path):
     assert report["unresolved_ids"] == [instance_id]
     assert report["infra_failure_ids"] == []
     assert report["ambiguous_failure_ids"] == []
+
+
+def test_nested_empty_pytest_run_does_not_override_outer_results():
+    text = (
+        "collected 16 items\n"
+        "collected 0 items\n"
+        "================ no tests ran in 0.01s ================\n"
+        "FAILED testing/logging/test_fixture.py::test_clear_for_call_stage\n"
+        "================ 1 failed, 15 passed in 0.46s ================\n"
+    )
+    assert classify_text(text) is None
+
+
+def test_genuine_empty_pytest_run_stays_ambiguous():
+    text = (
+        "collected 0 items\n================ no tests ran in 0.01s ================\n"
+    )
+    assert classify_text(text) == ("no_tests_collected", TIER_AMBIGUOUS)
+
+
+def test_collection_error_is_not_hidden_by_an_earlier_nested_success():
+    text = (
+        "================ 1 passed in 0.01s ================\n"
+        "collected 0 items / 1 error\n"
+        "================ 1 error in 0.02s ================\n"
+    )
+    assert classify_text(text) == ("no_tests_collected", TIER_AMBIGUOUS)
+
+
+def test_later_empty_suite_is_not_hidden_by_an_earlier_success():
+    text = (
+        "================ 2 passed in 0.01s ================\n"
+        "collected 0 items\n"
+        "================ no tests ran in 0.02s ================\n"
+    )
+    assert classify_text(text) == ("no_tests_collected", TIER_AMBIGUOUS)
+
+
+def test_all_deselected_is_still_no_tests_collected():
+    text = (
+        "collected 0 items\n================ 16 deselected in 0.01s ================\n"
+    )
+    assert classify_text(text) == ("no_tests_collected", TIER_AMBIGUOUS)
+
+
+def test_other_failure_signatures_keep_their_priority():
+    text = (
+        "ModuleNotFoundError: No module named appdirs\n"
+        "collected 0 items\n"
+        "================ 1 failed, 15 passed in 0.46s ================\n"
+    )
+    assert classify_text(text) == ("missing_module", TIER_AMBIGUOUS)
+
+
+def test_timeout_is_not_hidden_by_a_nested_empty_run():
+    text = (
+        "collected 0 items\n"
+        "================ 1 failed, 15 passed in 0.46s ================\n"
+        "Timeout error: 1800 seconds exceeded\n"
+    )
+    assert classify_text(text) == ("tests_timed_out", TIER_AMBIGUOUS)
