@@ -41,3 +41,13 @@ def test_bare_status_line_is_skipped():
 def test_ansi_coloring_still_stripped():
     log = "\x1b[32mPASSED\x1b[0m tests/test_a.py::\x1b[1mtest_z\x1b[0m"
     assert parse_log_pytest_v2(log, None) == {"tests/test_a.py::test_z": PASSED}
+
+
+def test_xpass_is_preserved():
+    from swebench.harness.log_parsers.python import parse_log_pytest
+
+    log = "XPASS tests/test_a.py::test_expected_failure - condition now holds"
+    expected = {"tests/test_a.py::test_expected_failure": "XPASS"}
+
+    assert parse_log_pytest(log, None) == expected
+    assert parse_log_pytest_v2(log, None) == expected

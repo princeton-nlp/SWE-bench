@@ -75,8 +75,12 @@ def _resolve_case(case: str, sm: dict[str, str]) -> str | None:
         return case
     if case.count("[") > case.count("]"):
         matches = [k for k in sm if k.startswith(case)]
-        # PASSED and XFAIL grade identically, so compare outcome not raw status
-        passing = {TestStatus.PASSED.value, TestStatus.XFAIL.value}
+        # PASSED, XFAIL, and XPASS grade identically, so compare outcome not raw status
+        passing = {
+            TestStatus.PASSED.value,
+            TestStatus.XFAIL.value,
+            TestStatus.XPASS.value,
+        }
         if matches and len({sm[k] in passing for k in matches}) == 1:
             return matches[0]
     return None
@@ -87,6 +91,7 @@ def test_passed(case: str, sm: dict[str, str]) -> bool:
     return key is not None and sm[key] in [
         TestStatus.PASSED.value,
         TestStatus.XFAIL.value,
+        TestStatus.XPASS.value,
     ]
 
 
