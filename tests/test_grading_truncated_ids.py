@@ -100,3 +100,14 @@ def test_surplus_closing_bracket_is_not_a_truncation():
     sm = {"handles foo] gracefully and more": PASSED}
     assert not grade_passed(case, sm)
     assert grade_failed(case, sm)
+
+
+def test_xpass_is_a_passing_result():
+    xpass = "XPASS"
+    assert grade_passed("tests/test_a.py::test_x", {"tests/test_a.py::test_x": xpass})
+    assert not grade_failed("tests/test_a.py::test_x", {"tests/test_a.py::test_x": xpass})
+
+
+def test_failed_remains_a_failure():
+    assert not grade_passed("tests/test_a.py::test_x", {"tests/test_a.py::test_x": FAILED})
+    assert grade_failed("tests/test_a.py::test_x", {"tests/test_a.py::test_x": FAILED})
