@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import os
 import tarfile
 import threading
@@ -26,14 +27,13 @@ def copy_to_container(container: Container, src: Path, dst: Path):
         raise ValueError(
             f"Destination path parent directory cannot be empty!, dst: {dst}"
         )
-    tar_path = src.with_suffix(".tar")
-    with tarfile.open(tar_path, "w") as tar:
-        tar.add(src, arcname=dst.name)
-    with open(tar_path, "rb") as tar_file:
-        data = tar_file.read()
+    # A sibling .tar path can be an existing file, or even src itself.
+    with io.BytesIO() as buffer:
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            tar.add(src, arcname=dst.name)
+        data = buffer.getvalue()
     container.exec_run(f"mkdir -p {dst.parent}")
     container.put_archive(os.path.dirname(dst), data)
-    tar_path.unlink()
 
 
 def write_to_container(container: Container, data: str, dst: Path):
