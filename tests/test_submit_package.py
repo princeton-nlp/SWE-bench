@@ -221,6 +221,26 @@ def test_trajs_are_flattened(tmp_path, run, dataset):
     ).is_file()
 
 
+@pytest.mark.parametrize("nested", [False, True])
+def test_trajs_match_complete_instance_ids(tmp_path, run, dataset, nested):
+    run("a__a-1")
+    dataset(["a__a-1"])
+    src = tmp_path / "agent-output"
+    for iid in ("a__a-1", "a__a-10", "a__a-1-backup"):
+        parent = src / iid if nested else src
+        parent.mkdir(parents=True, exist_ok=True)
+        (parent / f"{iid}.traj.json").write_text(json.dumps({"instance_id": iid}))
+
+    result = pkg.package_run(run.run_dir, "verified", tmp_path / "out", trajs=src)
+
+    dest = tmp_path / "out" / "submission-repo" / "trajs"
+    assert sorted(p.name for p in dest.iterdir()) == ["a__a-1.traj.json"]
+    assert result.n_trajs == 1
+    assert json.loads((dest / "a__a-1.traj.json").read_text()) == {
+        "instance_id": "a__a-1"
+    }
+
+
 def test_metadata_stub_is_valid_yaml_with_todos(tmp_path, run, dataset):
     run("a__a-1")
     dataset(["a__a-1"])
