@@ -62,6 +62,56 @@ DOCKER_CLIENT_TIMEOUT = int(os.environ.get("SWEBENCH_DOCKER_TIMEOUT", "1800"))
 DOCKER_CLIENT_POOL_SIZE = int(os.environ.get("SWEBENCH_DOCKER_POOL_SIZE", "128"))
 
 
+# Uncommitted edits the image's setup made to tracked files (e.g. a test-logging
+# tweak in a build config), saved before the first attempt so a retry can restore them
+CONTAINER_ENV_DIFF_FILE = "/tmp/swebench_env.diff"
+SAVE_ENV_DIFF_CMD = (
+    f"git -c core.fileMode=false diff HEAD --binary > {CONTAINER_ENV_DIFF_FILE}"
+)
+# Return to the tree the image shipped. `git checkout -- .` is not enough: it restores
+# from the index, so it fails on the unmerged paths a conflicting --3way leaves behind
+# and it also discards the setup edits saved above.
+RESTORE_TREE_CMD = (
+    "git -c core.fileMode=false reset -q --hard HEAD && git clean -fdq && "
+    f"if [ -s {CONTAINER_ENV_DIFF_FILE} ]; then git apply {CONTAINER_ENV_DIFF_FILE}; fi"
+)
+
+
+def _apply_model_patch(container, logger) -> tuple[bool, str]:
+    """Apply CONTAINER_PATCH_FILE with each of GIT_APPLY_CMDS until one succeeds.
+
+    Every attempt after the first starts from the tree the image shipped, so a failed
+    attempt's partial state cannot break the next one. Returns whether the patch is
+    applied and the output of the last command run.
+    """
+
+    def run(cmd: str):
+        return container.exec_run(
+            ["/bin/bash", "-c", cmd], workdir=CONTAINER_WORKDIR, user=CONTAINER_USER
+        )
+
+    run(SAVE_ENV_DIFF_CMD)
+    output = ""
+    for attempt, git_apply_cmd in enumerate(GIT_APPLY_CMDS):
+        if attempt:
+            restore = run(RESTORE_TREE_CMD)
+            if restore.exit_code != 0:
+                logger.info(
+                    f"Failed to restore tree before retry:\n{restore.output.decode('utf-8')}"
+                )
+        val = run(f"{git_apply_cmd} {CONTAINER_PATCH_FILE}")
+        output = val.output.decode("utf-8")
+        if val.exit_code == 0:
+            logger.info(f"{APPLY_PATCH_PASS}:\n{output}")
+            return True, output
+        logger.info(f"Failed to apply patch to container: {git_apply_cmd}")
+    # the chain can leave the patch fully applied while each command still exited non-zero
+    if run(f"git apply --check --reverse {CONTAINER_PATCH_FILE}").exit_code == 0:
+        logger.info(f"{APPLY_PATCH_PASS}: verified already applied")
+        return True, output
+    return False, output
+
+
 def _docker_client() -> docker.DockerClient:
     return docker.from_env(
         timeout=DOCKER_CLIENT_TIMEOUT,
@@ -296,43 +346,12 @@ def run_instance(
                 container, patch_file, PurePosixPath(CONTAINER_PATCH_FILE)
             )
 
-            # Attempt to apply patch to container
-            applied_patch = False
-            for attempt, git_apply_cmd in enumerate(GIT_APPLY_CMDS):
-                if attempt:
-                    # a failed attempt (notably --reject) leaves partial state behind,
-                    # which makes every later command fail; restart from a pristine tree
-                    container.exec_run(
-                        ["/bin/bash", "-c", "git checkout -- . ; git clean -fd"],
-                        workdir=CONTAINER_WORKDIR,
-                        user=CONTAINER_USER,
-                    )
-                val = container.exec_run(
-                    f"{git_apply_cmd} {CONTAINER_PATCH_FILE}",
-                    workdir=CONTAINER_WORKDIR,
-                    user=CONTAINER_USER,
-                )
-                if val.exit_code == 0:
-                    logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
-                    applied_patch = True
-                    break
-                else:
-                    logger.info(f"Failed to apply patch to container: {git_apply_cmd}")
+            applied_patch, apply_output = _apply_model_patch(container, logger)
             if not applied_patch:
-                # the chain can leave the patch fully applied while each command still exited non-zero
-                reverse_check = container.exec_run(
-                    f"git apply --check --reverse {CONTAINER_PATCH_FILE}",
-                    workdir=CONTAINER_WORKDIR,
-                    user=CONTAINER_USER,
-                )
-                if reverse_check.exit_code == 0:
-                    logger.info(f"{APPLY_PATCH_PASS}: verified already applied")
-                    applied_patch = True
-            if not applied_patch:
-                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+                logger.info(f"{APPLY_PATCH_FAIL}:\n{apply_output}")
                 raise EvaluationError(
                     instance_id,
-                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
+                    f"{APPLY_PATCH_FAIL}:\n{apply_output}",
                     logger,
                 )
         else:
