@@ -477,7 +477,7 @@ def _copy_trajs(src: Path, dest: Path, instance_ids: set[str]) -> int:
             if path.parent == src
             else f"{path.parent.name}{''.join(path.suffixes)}"
         )
-        if not any(name.startswith(iid) for iid in instance_ids):
+        if not any(name == iid or name.startswith(f"{iid}.") for iid in instance_ids):
             continue
         shutil.copy2(path, dest / name)
         copied += 1
